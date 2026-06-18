@@ -21,7 +21,7 @@ export const Route = createFileRoute("/discipline/$code")({
   ),
 });
 
-function DiveRow({ dive, lang }: { dive: Dive; lang: "el" | "en" }) {
+function DiveRow({ dive }: { dive: Dive }) {
   return (
     <li className="glass-card flex items-center justify-between rounded-xl px-4 py-3">
       <div>
