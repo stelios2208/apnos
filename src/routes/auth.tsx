@@ -1,10 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Waves } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
-import { Logo } from "@/components/Logo";
+import { useI18n } from "@/lib/i18n";
+import { Logo, RopeMark } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,6 +18,7 @@ export const Route = createFileRoute("/auth")({
 
 function AuthPage() {
   const { user, loading } = useAuth();
+  const { t } = useI18n();
   const navigate = useNavigate();
   const [mode, setMode] = useState<"login" | "register">("login");
   const [email, setEmail] = useState("");
@@ -35,7 +36,7 @@ function AuthPage() {
       if (mode === "login") {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        toast.success("Welcome back");
+        toast.success(t("auth.welcomeBack"));
         navigate({ to: "/dashboard" });
       } else {
         const { error } = await supabase.auth.signUp({
@@ -44,7 +45,7 @@ function AuthPage() {
           options: { emailRedirectTo: window.location.origin + "/dashboard" },
         });
         if (error) throw error;
-        toast.success("Account created — you're in");
+        toast.success(t("auth.accountCreated"));
         navigate({ to: "/dashboard" });
       }
     } catch (err) {
@@ -64,21 +65,19 @@ function AuthPage() {
         <div className="glass-card rounded-3xl p-7">
           <div className="mb-6 flex items-center gap-3">
             <div className="flex size-11 items-center justify-center rounded-2xl bg-[image:var(--gradient-primary)]">
-              <Waves className="size-5 text-primary-foreground" />
+              <RopeMark className="h-6 w-auto" />
             </div>
             <div>
-              <h1 className="text-xl font-bold">
-                {mode === "login" ? "Welcome back" : "Create your log"}
-              </h1>
+              <h1 className="text-xl font-bold">{mode === "login" ? t("auth.welcome") : t("auth.create")}</h1>
               <p className="text-xs text-muted-foreground">
-                {mode === "login" ? "Dive back in." : "Start tracking your apnea."}
+                {mode === "login" ? t("auth.diveBack") : t("auth.startTracking")}
               </p>
             </div>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">{t("auth.email")}</Label>
               <Input
                 id="email"
                 type="email"
@@ -90,7 +89,7 @@ function AuthPage() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">{t("auth.password")}</Label>
               <Input
                 id="password"
                 type="password"
@@ -103,18 +102,18 @@ function AuthPage() {
               />
             </div>
             <Button type="submit" variant="hero" size="lg" className="w-full" disabled={submitting}>
-              {submitting ? "Please wait…" : mode === "login" ? "Sign in" : "Create account"}
+              {submitting ? t("auth.pleaseWait") : mode === "login" ? t("auth.signIn") : t("auth.createAccount")}
             </Button>
           </form>
 
           <p className="mt-5 text-center text-sm text-muted-foreground">
-            {mode === "login" ? "New to Apnos?" : "Already have an account?"}{" "}
+            {mode === "login" ? t("auth.newHere") : t("auth.haveAccount")}{" "}
             <button
               type="button"
               className="font-semibold text-primary hover:underline"
               onClick={() => setMode(mode === "login" ? "register" : "login")}
             >
-              {mode === "login" ? "Create one" : "Sign in"}
+              {mode === "login" ? t("auth.createOne") : t("auth.signIn")}
             </button>
           </p>
         </div>

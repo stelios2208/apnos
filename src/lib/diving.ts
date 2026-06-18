@@ -10,27 +10,38 @@ export type DisciplineCode =
 
 export type DisciplineUnit = "time" | "distance";
 
+export type Federation = "AIDA" | "CMAS";
+
+export const FEDERATIONS: Federation[] = ["AIDA", "CMAS"];
+
 export interface Discipline {
   code: DisciplineCode;
   name: string;
+  name_el: string;
   unit: DisciplineUnit;
   group: "Pool" | "Depth";
 }
 
 export const DISCIPLINES: Discipline[] = [
-  { code: "STA", name: "Static Apnea", unit: "time", group: "Pool" },
-  { code: "DYN", name: "Dynamic Bi-fins", unit: "distance", group: "Pool" },
-  { code: "DYNB", name: "Dynamic Mono-fin", unit: "distance", group: "Pool" },
-  { code: "DNF", name: "Dynamic No-fins", unit: "distance", group: "Pool" },
-  { code: "CWT", name: "Constant Weight Bi-fins", unit: "distance", group: "Depth" },
-  { code: "CWTB", name: "Constant Weight Mono-fin", unit: "distance", group: "Depth" },
-  { code: "CNF", name: "Constant Weight No-fins", unit: "distance", group: "Depth" },
-  { code: "FIM", name: "Free Immersion", unit: "distance", group: "Depth" },
+  { code: "STA", name: "Static Apnea", name_el: "Στατική Άπνοια", unit: "time", group: "Pool" },
+  { code: "DYN", name: "Dynamic Bi-fins", name_el: "Δυναμική με Πτερύγια", unit: "distance", group: "Pool" },
+  { code: "DYNB", name: "Dynamic Mono-fin", name_el: "Δυναμική με Μονοπέδιλο", unit: "distance", group: "Pool" },
+  { code: "DNF", name: "Dynamic No-fins", name_el: "Δυναμική χωρίς Πτερύγια", unit: "distance", group: "Pool" },
+  { code: "CWT", name: "Constant Weight Bi-fins", name_el: "Σταθερό Βάρος με Πτερύγια", unit: "distance", group: "Depth" },
+  { code: "CWTB", name: "Constant Weight Mono-fin", name_el: "Σταθερό Βάρος με Μονοπέδιλο", unit: "distance", group: "Depth" },
+  { code: "CNF", name: "Constant Weight No-fins", name_el: "Σταθερό Βάρος χωρίς Πτερύγια", unit: "distance", group: "Depth" },
+  { code: "FIM", name: "Free Immersion", name_el: "Ελεύθερη Κατάδυση", unit: "distance", group: "Depth" },
 ];
 
 export const DISCIPLINE_MAP: Record<DisciplineCode, Discipline> = Object.fromEntries(
   DISCIPLINES.map((d) => [d.code, d]),
 ) as Record<DisciplineCode, Discipline>;
+
+export function disciplineName(code: DisciplineCode, lang: "el" | "en"): string {
+  const d = DISCIPLINE_MAP[code];
+  if (!d) return code;
+  return lang === "el" ? d.name_el : d.name;
+}
 
 export type SessionType = "training" | "competition";
 
@@ -40,6 +51,7 @@ export interface Dive {
   discipline: DisciplineCode;
   result: number;
   session_type: SessionType;
+  federation: Federation | null;
   dive_date: string;
   dive_time: string | null;
   sleep_hours: number | null;
@@ -48,6 +60,10 @@ export interface Dive {
   notes: string | null;
   is_personal_best: boolean;
   created_at: string;
+}
+
+export function isTimeDiscipline(code: DisciplineCode): boolean {
+  return DISCIPLINE_MAP[code]?.unit === "time";
 }
 
 export function formatResult(discipline: DisciplineCode, result: number): string {
@@ -59,4 +75,15 @@ export function formatResult(discipline: DisciplineCode, result: number): string
     return `${m}:${s.toString().padStart(2, "0")}`;
   }
   return `${result} m`;
+}
+
+/** Convert minutes + seconds into total seconds. */
+export function toSeconds(minutes: number, seconds: number): number {
+  return minutes * 60 + seconds;
+}
+
+/** Split total seconds into { minutes, seconds }. */
+export function fromSeconds(total: number): { minutes: number; seconds: number } {
+  const t = Math.round(total);
+  return { minutes: Math.floor(t / 60), seconds: t % 60 };
 }

@@ -2,8 +2,10 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { Waves, Timer, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Logo } from "@/components/Logo";
+import { Logo, RopeMark } from "@/components/Logo";
+import { Bubbles } from "@/components/Bubbles";
 import { useAuth } from "@/hooks/use-auth";
+import { useI18n } from "@/lib/i18n";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -21,6 +23,7 @@ export const Route = createFileRoute("/")({
 
 function Landing() {
   const { user, loading } = useAuth();
+  const { t } = useI18n();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -28,48 +31,50 @@ function Landing() {
   }, [loading, user, navigate]);
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col px-5 py-8">
-      <header>
-        <Logo />
-      </header>
+    <div className="relative min-h-screen overflow-hidden">
+      {/* Underwater scene */}
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(ellipse 90% 70% at 50% -20%, oklch(0.3 0.09 280 / 0.45), transparent 70%)," +
+            "radial-gradient(ellipse 80% 60% at 70% 120%, oklch(0.45 0.11 190 / 0.3), transparent 70%)",
+        }}
+      />
+      <Bubbles />
 
-      <main className="flex flex-1 flex-col items-center justify-center text-center">
-        <div className="mb-6 flex size-20 items-center justify-center rounded-3xl bg-[image:var(--gradient-primary)] shadow-[var(--shadow-glow)]">
-          <Waves className="size-10 text-primary-foreground" />
-        </div>
-        <h1 className="text-4xl font-extrabold leading-tight sm:text-5xl">
-          Your freedive, <span className="text-gradient">measured</span>.
-        </h1>
-        <p className="mt-4 max-w-md text-base text-muted-foreground">
-          Track dives, recovery and personal bests across every discipline — from static apnea to
-          constant weight. Quiet, focused, made for the deep.
-        </p>
+      <div className="relative mx-auto flex min-h-screen w-full max-w-2xl flex-col px-5 py-8">
+        <header>
+          <Logo />
+        </header>
 
-        <div className="mt-8 flex w-full max-w-xs flex-col gap-3">
-          <Button asChild variant="hero" size="lg">
-            <Link to="/auth">Start logging</Link>
-          </Button>
-        </div>
+        <main className="flex flex-1 flex-col items-center justify-center text-center">
+          <div className="mb-7 flex size-24 items-center justify-center rounded-3xl bg-[image:var(--gradient-primary)] shadow-[var(--shadow-glow)]">
+            <RopeMark className="h-12 w-auto" />
+          </div>
+          <h1 className="text-4xl font-extrabold leading-tight sm:text-5xl">
+            {t("landing.headline1")} <span className="text-gradient">{t("landing.headline2")}</span>.
+          </h1>
+          <p className="mt-4 max-w-md text-base text-muted-foreground">{t("landing.sub")}</p>
 
-        <div className="mt-14 grid w-full grid-cols-1 gap-4 sm:grid-cols-3">
-          <Feature icon={Timer} title="Every discipline" text="STA, DYN, DNF, CWT, CNF, FIM & more." />
-          <Feature icon={TrendingUp} title="Personal bests" text="Auto-detected the moment you beat one." />
-          <Feature icon={Waves} title="Recovery aware" text="Log sleep, food & mental state." />
-        </div>
-      </main>
+          <div className="mt-8 flex w-full max-w-xs flex-col gap-3">
+            <Button asChild variant="hero" size="lg">
+              <Link to="/auth">{t("landing.cta")}</Link>
+            </Button>
+          </div>
+
+          <div className="mt-14 grid w-full grid-cols-1 gap-4 sm:grid-cols-3">
+            <Feature icon={Timer} title={t("landing.f1.title")} text={t("landing.f1.text")} />
+            <Feature icon={TrendingUp} title={t("landing.f2.title")} text={t("landing.f2.text")} />
+            <Feature icon={Waves} title={t("landing.f3.title")} text={t("landing.f3.text")} />
+          </div>
+        </main>
+      </div>
     </div>
   );
 }
 
-function Feature({
-  icon: Icon,
-  title,
-  text,
-}: {
-  icon: typeof Waves;
-  title: string;
-  text: string;
-}) {
+function Feature({ icon: Icon, title, text }: { icon: typeof Waves; title: string; text: string }) {
   return (
     <div className="glass-card rounded-2xl p-5 text-left">
       <Icon className="size-6 text-primary" />
