@@ -10,15 +10,35 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as RulesRouteImport } from './routes/rules'
+import { Route as PlannerRouteImport } from './routes/planner'
 import { Route as LogRouteImport } from './routes/log'
 import { Route as HistoryRouteImport } from './routes/history'
+import { Route as EquipmentRouteImport } from './routes/equipment'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as DisciplineCodeRouteImport } from './routes/discipline.$code'
 
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
   path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RulesRoute = RulesRouteImport.update({
+  id: '/rules',
+  path: '/rules',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PlannerRoute = PlannerRouteImport.update({
+  id: '/planner',
+  path: '/planner',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LogRoute = LogRouteImport.update({
@@ -29,6 +49,11 @@ const LogRoute = LogRouteImport.update({
 const HistoryRoute = HistoryRouteImport.update({
   id: '/history',
   path: '/history',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EquipmentRoute = EquipmentRouteImport.update({
+  id: '/equipment',
+  path: '/equipment',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardRoute = DashboardRouteImport.update({
@@ -46,54 +71,106 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DisciplineCodeRoute = DisciplineCodeRouteImport.update({
+  id: '/discipline/$code',
+  path: '/discipline/$code',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof DashboardRoute
+  '/equipment': typeof EquipmentRoute
   '/history': typeof HistoryRoute
   '/log': typeof LogRoute
+  '/planner': typeof PlannerRoute
+  '/rules': typeof RulesRoute
+  '/settings': typeof SettingsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/discipline/$code': typeof DisciplineCodeRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof DashboardRoute
+  '/equipment': typeof EquipmentRoute
   '/history': typeof HistoryRoute
   '/log': typeof LogRoute
+  '/planner': typeof PlannerRoute
+  '/rules': typeof RulesRoute
+  '/settings': typeof SettingsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/discipline/$code': typeof DisciplineCodeRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof DashboardRoute
+  '/equipment': typeof EquipmentRoute
   '/history': typeof HistoryRoute
   '/log': typeof LogRoute
+  '/planner': typeof PlannerRoute
+  '/rules': typeof RulesRoute
+  '/settings': typeof SettingsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/discipline/$code': typeof DisciplineCodeRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/dashboard' | '/history' | '/log' | '/sitemap.xml'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/dashboard'
+    | '/equipment'
+    | '/history'
+    | '/log'
+    | '/planner'
+    | '/rules'
+    | '/settings'
+    | '/sitemap.xml'
+    | '/discipline/$code'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/dashboard' | '/history' | '/log' | '/sitemap.xml'
+  to:
+    | '/'
+    | '/auth'
+    | '/dashboard'
+    | '/equipment'
+    | '/history'
+    | '/log'
+    | '/planner'
+    | '/rules'
+    | '/settings'
+    | '/sitemap.xml'
+    | '/discipline/$code'
   id:
     | '__root__'
     | '/'
     | '/auth'
     | '/dashboard'
+    | '/equipment'
     | '/history'
     | '/log'
+    | '/planner'
+    | '/rules'
+    | '/settings'
     | '/sitemap.xml'
+    | '/discipline/$code'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
   DashboardRoute: typeof DashboardRoute
+  EquipmentRoute: typeof EquipmentRoute
   HistoryRoute: typeof HistoryRoute
   LogRoute: typeof LogRoute
+  PlannerRoute: typeof PlannerRoute
+  RulesRoute: typeof RulesRoute
+  SettingsRoute: typeof SettingsRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  DisciplineCodeRoute: typeof DisciplineCodeRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -103,6 +180,27 @@ declare module '@tanstack/react-router' {
       path: '/sitemap.xml'
       fullPath: '/sitemap.xml'
       preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rules': {
+      id: '/rules'
+      path: '/rules'
+      fullPath: '/rules'
+      preLoaderRoute: typeof RulesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/planner': {
+      id: '/planner'
+      path: '/planner'
+      fullPath: '/planner'
+      preLoaderRoute: typeof PlannerRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/log': {
@@ -117,6 +215,13 @@ declare module '@tanstack/react-router' {
       path: '/history'
       fullPath: '/history'
       preLoaderRoute: typeof HistoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/equipment': {
+      id: '/equipment'
+      path: '/equipment'
+      fullPath: '/equipment'
+      preLoaderRoute: typeof EquipmentRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard': {
@@ -140,6 +245,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/discipline/$code': {
+      id: '/discipline/$code'
+      path: '/discipline/$code'
+      fullPath: '/discipline/$code'
+      preLoaderRoute: typeof DisciplineCodeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -147,20 +259,15 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
   DashboardRoute: DashboardRoute,
+  EquipmentRoute: EquipmentRoute,
   HistoryRoute: HistoryRoute,
   LogRoute: LogRoute,
+  PlannerRoute: PlannerRoute,
+  RulesRoute: RulesRoute,
+  SettingsRoute: SettingsRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  DisciplineCodeRoute: DisciplineCodeRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
