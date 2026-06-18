@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as RulesRouteImport } from './routes/rules'
 import { Route as PlannerRouteImport } from './routes/planner'
 import { Route as LogRouteImport } from './routes/log'
 import { Route as HistoryRouteImport } from './routes/history'
@@ -27,6 +28,11 @@ const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RulesRoute = RulesRouteImport.update({
+  id: '/rules',
+  path: '/rules',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PlannerRoute = PlannerRouteImport.update({
@@ -73,6 +79,7 @@ export interface FileRoutesByFullPath {
   '/history': typeof HistoryRoute
   '/log': typeof LogRoute
   '/planner': typeof PlannerRoute
+  '/rules': typeof RulesRoute
   '/settings': typeof SettingsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
 }
@@ -84,6 +91,7 @@ export interface FileRoutesByTo {
   '/history': typeof HistoryRoute
   '/log': typeof LogRoute
   '/planner': typeof PlannerRoute
+  '/rules': typeof RulesRoute
   '/settings': typeof SettingsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
 }
@@ -96,6 +104,7 @@ export interface FileRoutesById {
   '/history': typeof HistoryRoute
   '/log': typeof LogRoute
   '/planner': typeof PlannerRoute
+  '/rules': typeof RulesRoute
   '/settings': typeof SettingsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
 }
@@ -109,6 +118,7 @@ export interface FileRouteTypes {
     | '/history'
     | '/log'
     | '/planner'
+    | '/rules'
     | '/settings'
     | '/sitemap.xml'
   fileRoutesByTo: FileRoutesByTo
@@ -120,6 +130,7 @@ export interface FileRouteTypes {
     | '/history'
     | '/log'
     | '/planner'
+    | '/rules'
     | '/settings'
     | '/sitemap.xml'
   id:
@@ -131,6 +142,7 @@ export interface FileRouteTypes {
     | '/history'
     | '/log'
     | '/planner'
+    | '/rules'
     | '/settings'
     | '/sitemap.xml'
   fileRoutesById: FileRoutesById
@@ -143,6 +155,7 @@ export interface RootRouteChildren {
   HistoryRoute: typeof HistoryRoute
   LogRoute: typeof LogRoute
   PlannerRoute: typeof PlannerRoute
+  RulesRoute: typeof RulesRoute
   SettingsRoute: typeof SettingsRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
 }
@@ -161,6 +174,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rules': {
+      id: '/rules'
+      path: '/rules'
+      fullPath: '/rules'
+      preLoaderRoute: typeof RulesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/planner': {
@@ -223,6 +243,7 @@ const rootRouteChildren: RootRouteChildren = {
   HistoryRoute: HistoryRoute,
   LogRoute: LogRoute,
   PlannerRoute: PlannerRoute,
+  RulesRoute: RulesRoute,
   SettingsRoute: SettingsRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
 }
