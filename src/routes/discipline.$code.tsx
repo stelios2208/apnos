@@ -93,7 +93,7 @@ function DisciplineDetail() {
           <TabsContent value="all" className="mt-4">
             <ul className="space-y-2">
               {dives.map((d) => (
-                <DiveRow key={d.id} dive={d} lang={lang} />
+                <DiveRow key={d.id} dive={d} />
               ))}
             </ul>
           </TabsContent>
@@ -101,7 +101,7 @@ function DisciplineDetail() {
           <TabsContent value="training" className="mt-4">
             <ul className="space-y-2">
               {training.map((d) => (
-                <DiveRow key={d.id} dive={d} lang={lang} />
+                <DiveRow key={d.id} dive={d} />
               ))}
             </ul>
           </TabsContent>
@@ -112,7 +112,7 @@ function DisciplineDetail() {
                 <Badge variant="outline">AIDA</Badge>
                 <ul className="space-y-2">
                   {aida.map((d) => (
-                    <DiveRow key={d.id} dive={d} lang={lang} />
+                    <DiveRow key={d.id} dive={d} />
                   ))}
                 </ul>
               </div>
@@ -122,7 +122,7 @@ function DisciplineDetail() {
                 <Badge variant="outline">CMAS</Badge>
                 <ul className="space-y-2">
                   {cmas.map((d) => (
-                    <DiveRow key={d.id} dive={d} lang={lang} />
+                    <DiveRow key={d.id} dive={d} />
                   ))}
                 </ul>
               </div>
@@ -130,7 +130,7 @@ function DisciplineDetail() {
             {otherComp.length > 0 && (
               <ul className="space-y-2">
                 {otherComp.map((d) => (
-                  <DiveRow key={d.id} dive={d} lang={lang} />
+                  <DiveRow key={d.id} dive={d} />
                 ))}
               </ul>
             )}
