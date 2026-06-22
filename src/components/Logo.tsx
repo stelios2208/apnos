@@ -8,10 +8,10 @@ export function Logo({ className }: { className?: string }) {
       <span className="flex items-center gap-2.5">
         <RopeMark />
         <span className="block">
-          <span className="block text-2xl font-extrabold lowercase leading-none tracking-tight text-gradient">
+          <span className="block text-2xl font-extrabold lowercase leading-none tracking-tight text-white">
             apnos
           </span>
-          <span className="mt-1 block text-[0.55rem] font-medium uppercase tracking-[0.3em] text-muted-foreground">
+          <span className="mt-1 block text-[0.55rem] font-medium uppercase tracking-[0.3em] text-[#5DCAA5]">
             {t("tagline")}
           </span>
         </span>

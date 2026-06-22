@@ -156,7 +156,7 @@ const en: Dict = {
 };
 
 const el: Dict = {
-  "tagline": "ανάπνευσε · βούτα · επανέλαβε",
+  "tagline": "breathe · dive · repeat",
   "nav.dashboard": "Πίνακας",
   "nav.log": "Νέα Βουτιά",
   "nav.history": "Ιστορικό",
@@ -180,9 +180,9 @@ const el: Dict = {
   "common.training": "Προπόνηση",
   "common.competition": "Αγώνας",
   "common.export": "Εξαγωγή CSV",
-  "landing.headline1": "Η βουτιά σου,",
-  "landing.headline2": "μετρημένη",
-  "landing.sub": "Κατέγραψε βουτιές, αποκατάσταση και ρεκόρ σε κάθε αγώνισμα — από στατική άπνοια έως σταθερό βάρος. Ήσυχα, εστιασμένα, για το βαθύ.",
+  "landing.headline1": "Η κατάδυσή σου,",
+  "landing.headline2": " με απόλυτη ακρίβεια",
+  "landing.sub": "Κατάγραψε επιδόσεις, χρόνους και PB σε κάθε αγώνισμα, από τη στατική μέχρι τα σταθερά βάρη. Σχεδιασμένο για απόλυτη εστίαση στην επόμενη βουτιά.",
   "landing.cta": "Ξεκίνα την καταγραφή",
   "landing.f1.title": "Κάθε αγώνισμα",
   "landing.f1.text": "STA, DYN, DNF, CWT, CNF, FIM & άλλα.",
