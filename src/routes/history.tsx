@@ -1,15 +1,19 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Trophy, Trash2, Moon, Brain, Waves, Plus, Pencil, Download, ChevronDown, ChevronUp } from "lucide-react";
+import {
+  Trophy, Trash2, Moon, Brain, Waves, Plus, Pencil, Download,
+  ChevronRight, ChevronDown, SlidersHorizontal, X, ArrowLeftRight,
+} from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { useState } from "react";
 import { AppLayout } from "@/components/AppLayout";
 import { useAuth } from "@/hooks/use-auth";
 import { deleteDive, divesToCsv, downloadCsv, fetchDives } from "@/lib/dives";
-import { disciplineName, formatResult } from "@/lib/diving";
+import { DISCIPLINE_MAP, type DisciplineCode, type Federation, formatResult } from "@/lib/diving";
 import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import type { Dive } from "@/lib/diving";
 
 export const Route = createFileRoute("/history")({
@@ -21,45 +25,47 @@ export const Route = createFileRoute("/history")({
   ),
 });
 
-// ─── discipline groups ────────────────────────────────────────────────────────
-const POOL = ["STA", "DYN", "DYNB", "DNF"] as const;
-const DEPTH = ["CWT", "CWTB", "CNF", "FIM"] as const;
+// ── types ─────────────────────────────────────────────────────────────────────
+type Segment = "all" | "pool" | "depth";
+type SessionFilter = "all" | "training" | "competition";
+type FedFilter = "all" | Federation;
 
-type FilterValue = "all" | "pool" | "depth" | typeof POOL[number] | typeof DEPTH[number];
+// ── helpers ───────────────────────────────────────────────────────────────────
+const POOL_DISC  = ["STA", "DYN", "DYNB", "DNF"]  as DisciplineCode[];
+const DEPTH_DISC = ["CWT", "CWTB", "CNF", "FIM"] as DisciplineCode[];
 
-interface Chip { label: string; value: FilterValue; sep?: boolean }
+function isPool(d: string)  { return POOL_DISC.includes(d as DisciplineCode); }
+function isDepth(d: string) { return DEPTH_DISC.includes(d as DisciplineCode); }
 
-const CHIPS: Chip[] = [
-  { label: "Όλα",     value: "all" },
-  { label: "Πισίνα",  value: "pool" },
-  { label: "Θάλασσα", value: "depth" },
-  { label: "STA",  value: "STA",  sep: true },
-  { label: "DYN",  value: "DYN" },
-  { label: "DYNB", value: "DYNB" },
-  { label: "DNF",  value: "DNF" },
-  { label: "CWT",  value: "CWT",  sep: true },
-  { label: "CWTB", value: "CWTB" },
-  { label: "CNF",  value: "CNF" },
-  { label: "FIM",  value: "FIM" },
-];
-
-function matchFilter(discipline: string, f: FilterValue): boolean {
-  if (f === "all")   return true;
-  if (f === "pool")  return (POOL  as readonly string[]).includes(discipline);
-  if (f === "depth") return (DEPTH as readonly string[]).includes(discipline);
-  return discipline === f;
+function cardBorder(dive: Dive): string {
+  if (dive.is_personal_best) return "#EF9F27";
+  return isPool(dive.discipline) ? "#1D9E75" : "#9FE1CB";
 }
 
-function isPool(discipline: string)  { return (POOL  as readonly string[]).includes(discipline); }
-function isDepth(discipline: string) { return (DEPTH as readonly string[]).includes(discipline); }
+function formatDiff(a: Dive, b: Dive): string {
+  const unit = DISCIPLINE_MAP[a.discipline]?.unit ?? DISCIPLINE_MAP[b.discipline]?.unit;
+  const diff = Math.abs(a.result - b.result);
+  if (unit === "time") {
+    const m = Math.floor(diff / 60);
+    const s = Math.round(diff % 60);
+    return m > 0 ? `+${m}:${s.toString().padStart(2, "0")}` : `+${s}s`;
+  }
+  return `+${diff}m`;
+}
 
-// ─── main component ───────────────────────────────────────────────────────────
+// ── main component ────────────────────────────────────────────────────────────
 function History() {
   const { user } = useAuth();
   const { t, lang } = useI18n();
   const queryClient = useQueryClient();
-  const [filter, setFilter] = useState<FilterValue>("all");
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  const [segment,       setSegment]      = useState<Segment>("all");
+  const [sessionFilter, setSessionFilter] = useState<SessionFilter>("all");
+  const [fedFilter,     setFedFilter]    = useState<FedFilter>("all");
+  const [discFilter,    setDiscFilter]   = useState<DisciplineCode | null>(null);
+  const [filterOpen,    setFilterOpen]   = useState(false);
+  const [expanded,      setExpanded]     = useState<Set<string>>(new Set());
+  const [compareIds,    setCompareIds]   = useState<string[]>([]);
 
   const { data: dives = [], isLoading } = useQuery({
     queryKey: ["dives", user?.id],
@@ -68,7 +74,7 @@ function History() {
   });
 
   const remove = useMutation({
-    mutationFn: (d: { id: string; discipline: Dive["discipline"] }) =>
+    mutationFn: (d: { id: string; discipline: DisciplineCode }) =>
       deleteDive(d.id, user?.id, d.discipline),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["dives", user?.id] });
@@ -78,25 +84,44 @@ function History() {
   });
 
   const toggleExpand = (id: string) =>
-    setExpanded((prev) => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
+    setExpanded((p) => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
+
+  const toggleCompare = (id: string) =>
+    setCompareIds((p) => {
+      if (p.includes(id)) return p.filter((x) => x !== id);
+      if (p.length >= 2)  return [p[1], id];
+      return [...p, id];
     });
 
   const handleExport = () =>
     downloadCsv(`apnos-dives-${new Date().toISOString().slice(0, 10)}.csv`, divesToCsv(dives));
 
-  const filtered = dives.filter((d) => matchFilter(d.discipline, filter));
+  // apply filters
+  const filtered = dives.filter((d) => {
+    if (segment === "pool"  && !isPool(d.discipline))  return false;
+    if (segment === "depth" && !isDepth(d.discipline)) return false;
+    if (sessionFilter !== "all" && d.session_type !== sessionFilter) return false;
+    if (fedFilter !== "all" && d.federation !== fedFilter) return false;
+    if (discFilter && d.discipline !== discFilter) return false;
+    return true;
+  });
 
-  // split into pool / depth buckets for section grouping
-  const showPool  = filter === "all" || filter === "pool"  || (POOL  as readonly string[]).includes(filter);
-  const showDepth = filter === "all" || filter === "depth" || (DEPTH as readonly string[]).includes(filter);
   const poolDives  = filtered.filter((d) => isPool(d.discipline));
   const depthDives = filtered.filter((d) => isDepth(d.discipline));
 
+  const compareDives = compareIds.map((id) => dives.find((d) => d.id === id)).filter(Boolean) as Dive[];
+
+  // labels
+  const SEG_LABELS: Record<Segment, string> = {
+    all:   lang === "el" ? "Όλα"      : "All",
+    pool:  lang === "el" ? "Πισίνα"   : "Pool",
+    depth: lang === "el" ? "Θάλασσα"  : "Depth",
+  };
+
+  const activeFilters = (sessionFilter !== "all" ? 1 : 0) + (fedFilter !== "all" ? 1 : 0);
+
   return (
-    <div className="space-y-5">
+    <div className="space-y-4 pb-24">
 
       {/* ── header ── */}
       <div className="flex items-start justify-between gap-3">
@@ -104,65 +129,95 @@ function History() {
           <h1 className="text-2xl font-bold">{t("hist.title")}</h1>
           <p className="text-sm text-muted-foreground">{t("hist.sub")}</p>
         </div>
-        {dives.length > 0 && (
-          <Button variant="outline" size="sm" onClick={handleExport} className="shrink-0 gap-1.5">
-            <Download className="size-4" /> {t("common.export")}
-          </Button>
-        )}
+        <div className="flex shrink-0 gap-2">
+          {dives.length > 0 && (
+            <Button variant="outline" size="sm" onClick={handleExport} className="gap-1.5">
+              <Download className="size-4" />
+            </Button>
+          )}
+          {dives.length > 0 && (
+            <button
+              onClick={() => setFilterOpen(true)}
+              className="relative flex size-9 items-center justify-center rounded-xl transition-colors"
+              style={{ background: "#0d1320", border: "1px solid rgba(255,255,255,0.08)" }}
+            >
+              <SlidersHorizontal className="size-4 text-white/60" />
+              {activeFilters > 0 && (
+                <span
+                  className="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full text-[0.55rem] font-bold text-white"
+                  style={{ background: "#1D9E75" }}
+                >
+                  {activeFilters}
+                </span>
+              )}
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* ── filter chips ── */}
+      {/* ── segment control ── */}
       {dives.length > 0 && (
-        <div className="flex gap-1.5 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {CHIPS.map((chip) => (
-            <div key={chip.value} className="flex shrink-0 items-center gap-1.5">
-              {chip.sep && (
-                <div style={{ width: 1, height: 20, background: "rgba(255,255,255,0.1)", borderRadius: 1 }} />
-              )}
-              <button
-                onClick={() => setFilter(chip.value)}
-                className="shrink-0 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-all"
-                style={
-                  filter === chip.value
-                    ? { background: "#1D9E75", color: "#fff" }
-                    : { background: "#0d1320", color: "#5DCAA5", border: "1px solid rgba(93,202,165,0.25)" }
-                }
-              >
-                {chip.label}
-              </button>
-            </div>
+        <div
+          className="flex rounded-full p-1"
+          style={{ background: "#0d1320", border: "1px solid rgba(255,255,255,0.06)" }}
+        >
+          {(["all", "pool", "depth"] as Segment[]).map((s) => (
+            <button
+              key={s}
+              onClick={() => { setSegment(s); setDiscFilter(null); }}
+              className="flex-1 rounded-full py-2 text-xs font-semibold transition-all"
+              style={
+                segment === s
+                  ? { background: "#1D9E75", color: "#fff" }
+                  : { color: "rgba(255,255,255,0.45)" }
+              }
+            >
+              {SEG_LABELS[s]}
+            </button>
           ))}
         </div>
       )}
 
-      {/* ── states ── */}
+      {/* ── content ── */}
       {isLoading ? (
         <p className="text-sm text-muted-foreground">{t("common.loading")}</p>
       ) : dives.length === 0 ? (
         <EmptyState t={t} />
       ) : filtered.length === 0 ? (
-        <FilterEmpty />
+        <FilterEmpty lang={lang} onReset={() => { setSegment("all"); setSessionFilter("all"); setFedFilter("all"); setDiscFilter(null); }} />
       ) : (
-        <div className="space-y-8">
-          {showPool && poolDives.length > 0 && (
-            <Section
+        <div className="space-y-6">
+          {(segment === "all" || segment === "pool") && poolDives.length > 0 && (
+            <EnvironmentSection
               emoji="🏊"
-              label="ΠΙΣΙΝΑ"
+              label={lang === "el" ? "ΠΙΣΙΝΑ" : "POOL"}
+              accentColor="#1D9E75"
+              disciplines={POOL_DISC}
               dives={poolDives}
+              discFilter={discFilter}
+              onDiscFilter={(c) => setDiscFilter(discFilter === c ? null : c)}
               expanded={expanded}
               onToggle={toggleExpand}
+              compareIds={compareIds}
+              onCompare={toggleCompare}
               onDelete={(d) => remove.mutate(d)}
               lang={lang}
               t={t}
             />
           )}
-          {showDepth && depthDives.length > 0 && (
-            <Section
+          {(segment === "all" || segment === "depth") && depthDives.length > 0 && (
+            <EnvironmentSection
               emoji="🌊"
-              label="ΘΑΛΑΣΣΑ"
+              label={lang === "el" ? "ΘΑΛΑΣΣΑ" : "DEPTH"}
+              accentColor="#9FE1CB"
+              disciplines={DEPTH_DISC}
               dives={depthDives}
+              discFilter={discFilter}
+              onDiscFilter={(c) => setDiscFilter(discFilter === c ? null : c)}
               expanded={expanded}
               onToggle={toggleExpand}
+              compareIds={compareIds}
+              onCompare={toggleCompare}
               onDelete={(d) => remove.mutate(d)}
               lang={lang}
               t={t}
@@ -170,95 +225,199 @@ function History() {
           )}
         </div>
       )}
+
+      {/* ── compare bar ── */}
+      {compareDives.length > 0 && (
+        <CompareBar
+          dives={compareDives}
+          onClear={() => setCompareIds([])}
+          lang={lang}
+        />
+      )}
+
+      {/* ── filter sheet ── */}
+      <Drawer open={filterOpen} onOpenChange={setFilterOpen}>
+        <DrawerContent>
+          <DrawerHeader>
+            <DrawerTitle>{lang === "el" ? "Φίλτρα" : "Filters"}</DrawerTitle>
+          </DrawerHeader>
+          <div className="space-y-6 px-4 pb-8 pt-2">
+
+            {/* session type */}
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-[0.15em] text-white/40">
+                {lang === "el" ? "Τύπος" : "Session type"}
+              </p>
+              <div className="flex gap-2">
+                {(["all", "training", "competition"] as SessionFilter[]).map((v) => {
+                  const label = v === "all"
+                    ? (lang === "el" ? "Όλα" : "All")
+                    : v === "training"
+                      ? t("common.training")
+                      : t("common.competition");
+                  return (
+                    <button
+                      key={v}
+                      onClick={() => setSessionFilter(v)}
+                      className="rounded-xl px-4 py-2 text-sm font-semibold transition-all"
+                      style={
+                        sessionFilter === v
+                          ? { background: "#1D9E75", color: "#fff" }
+                          : { background: "#0d1320", color: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.08)" }
+                      }
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* federation */}
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-[0.15em] text-white/40">
+                {lang === "el" ? "Ομοσπονδία" : "Federation"}
+              </p>
+              <div className="flex gap-2">
+                {(["all", "AIDA", "CMAS"] as FedFilter[]).map((v) => (
+                  <button
+                    key={v}
+                    onClick={() => setFedFilter(v)}
+                    className="rounded-xl px-4 py-2 text-sm font-semibold transition-all"
+                    style={
+                      fedFilter === v
+                        ? { background: "#1D9E75", color: "#fff" }
+                        : { background: "#0d1320", color: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.08)" }
+                    }
+                  >
+                    {v === "all" ? (lang === "el" ? "Όλες" : "All") : v}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <Button
+              className="w-full"
+              style={{ background: "#1D9E75", color: "#fff" }}
+              onClick={() => setFilterOpen(false)}
+            >
+              {lang === "el" ? "Εφαρμογή" : "Apply"}
+            </Button>
+          </div>
+        </DrawerContent>
+      </Drawer>
     </div>
   );
 }
 
-// ─── Section ─────────────────────────────────────────────────────────────────
-function Section({
-  emoji, label, dives, expanded, onToggle, onDelete, lang, t,
+// ── EnvironmentSection ────────────────────────────────────────────────────────
+function EnvironmentSection({
+  emoji, label, accentColor, disciplines, dives,
+  discFilter, onDiscFilter, expanded, onToggle,
+  compareIds, onCompare, onDelete, lang, t,
 }: {
-  emoji: string;
-  label: string;
-  dives: Dive[];
-  expanded: Set<string>;
-  onToggle: (id: string) => void;
-  onDelete: (d: { id: string; discipline: Dive["discipline"] }) => void;
-  lang: string;
-  t: (k: string, v?: Record<string, string | number>) => string;
+  emoji: string; label: string; accentColor: string;
+  disciplines: DisciplineCode[]; dives: Dive[];
+  discFilter: DisciplineCode | null; onDiscFilter: (c: DisciplineCode) => void;
+  expanded: Set<string>; onToggle: (id: string) => void;
+  compareIds: string[]; onCompare: (id: string) => void;
+  onDelete: (d: { id: string; discipline: DisciplineCode }) => void;
+  lang: string; t: (k: string, v?: Record<string, string | number>) => string;
 }) {
-  const competition = dives.filter((d) => d.session_type === "competition");
-  const training    = dives.filter((d) => d.session_type !== "competition");
+  const filtered = discFilter ? dives.filter((d) => d.discipline === discFilter) : dives;
+  const competition = filtered.filter((d) => d.session_type === "competition");
+  const training    = filtered.filter((d) => d.session_type !== "competition");
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* section header */}
-      <div className="flex items-center gap-3">
-        <span className="text-base">{emoji}</span>
-        <span className="text-xs font-bold tracking-[0.2em] text-white/70">{label}</span>
-        <div className="h-px flex-1" style={{ background: "linear-gradient(to right, rgba(93,202,165,0.3), transparent)" }} />
+      <div className="flex items-center gap-2">
+        <div className="w-1 rounded-full" style={{ height: 20, background: accentColor }} />
+        <span className="text-xs font-bold tracking-[0.18em]" style={{ color: accentColor }}>
+          {emoji} {label}
+        </span>
+        <span
+          className="rounded-full px-2 py-0.5 text-[0.6rem] font-bold"
+          style={{ background: `${accentColor}20`, color: accentColor }}
+        >
+          {filtered.length}
+        </span>
+        <div className="h-px flex-1" style={{ background: `linear-gradient(to right, ${accentColor}30, transparent)` }} />
       </div>
 
+      {/* discipline chips */}
+      <div className="flex gap-1.5">
+        {disciplines.filter((c) => dives.some((d) => d.discipline === c)).map((c) => (
+          <button
+            key={c}
+            onClick={() => onDiscFilter(c)}
+            className="rounded-lg px-2.5 py-1 text-[0.65rem] font-bold transition-all"
+            style={
+              discFilter === c
+                ? { background: accentColor, color: "#fff" }
+                : { background: "#0d1320", color: accentColor, border: `1px solid ${accentColor}30` }
+            }
+          >
+            {c}
+          </button>
+        ))}
+      </div>
+
+      {/* subsections */}
       {competition.length > 0 && (
         <SubSection
-          label="ΑΓΩΝΕΣ"
-          count={competition.length}
+          label={t("common.competition")}
+          labelEl={lang === "el" ? "ΑΓΩΝΕΣ" : "COMPETITION"}
           dives={competition}
-          expanded={expanded}
-          onToggle={onToggle}
-          onDelete={onDelete}
-          lang={lang}
-          t={t}
+          expanded={expanded} onToggle={onToggle}
+          compareIds={compareIds} onCompare={onCompare}
+          onDelete={onDelete} lang={lang} t={t}
         />
       )}
       {training.length > 0 && (
         <SubSection
-          label="ΠΡΟΠΟΝΗΣΗ"
-          count={training.length}
+          label={t("common.training")}
+          labelEl={lang === "el" ? "ΠΡΟΠΟΝΗΣΗ" : "TRAINING"}
           dives={training}
-          expanded={expanded}
-          onToggle={onToggle}
-          onDelete={onDelete}
-          lang={lang}
-          t={t}
+          expanded={expanded} onToggle={onToggle}
+          compareIds={compareIds} onCompare={onCompare}
+          onDelete={onDelete} lang={lang} t={t}
         />
       )}
     </div>
   );
 }
 
-// ─── SubSection ───────────────────────────────────────────────────────────────
+// ── SubSection ────────────────────────────────────────────────────────────────
 function SubSection({
-  label, count, dives, expanded, onToggle, onDelete, lang, t,
+  labelEl, dives, expanded, onToggle, compareIds, onCompare, onDelete, lang, t,
 }: {
-  label: string;
-  count: number;
-  dives: Dive[];
-  expanded: Set<string>;
-  onToggle: (id: string) => void;
-  onDelete: (d: { id: string; discipline: Dive["discipline"] }) => void;
-  lang: string;
-  t: (k: string, v?: Record<string, string | number>) => string;
+  label: string; labelEl: string; dives: Dive[];
+  expanded: Set<string>; onToggle: (id: string) => void;
+  compareIds: string[]; onCompare: (id: string) => void;
+  onDelete: (d: { id: string; discipline: DisciplineCode }) => void;
+  lang: string; t: (k: string, v?: Record<string, string | number>) => string;
 }) {
   return (
-    <div className="space-y-2">
-      <div className="flex items-center gap-2 pl-1">
-        <span className="text-[0.6rem] font-semibold tracking-[0.2em] text-white/40">{label}</span>
+    <div className="space-y-2 pl-3">
+      <div className="flex items-center gap-2">
+        <span className="text-[0.6rem] font-semibold tracking-[0.18em] text-white/35">{labelEl}</span>
         <span
-          className="rounded-full px-2 py-0.5 text-[0.6rem] font-bold tabular-nums"
-          style={{ background: "rgba(93,202,165,0.12)", color: "#5DCAA5" }}
+          className="rounded-full px-1.5 py-0.5 text-[0.55rem] font-bold"
+          style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.4)" }}
         >
-          {count}
+          {dives.length}
         </span>
       </div>
-
       <ul className="space-y-2">
         {dives.map((dive) => (
           <DiveCard
             key={dive.id}
             dive={dive}
             isExpanded={expanded.has(dive.id)}
+            isComparing={compareIds.includes(dive.id)}
             onToggle={() => onToggle(dive.id)}
+            onCompare={() => onCompare(dive.id)}
             onDelete={() => onDelete({ id: dive.id, discipline: dive.discipline })}
             lang={lang}
             t={t}
@@ -269,127 +428,139 @@ function SubSection({
   );
 }
 
-// ─── DiveCard ─────────────────────────────────────────────────────────────────
-function DiveCard({
-  dive, isExpanded, onToggle, onDelete, lang, t,
-}: {
-  dive: Dive;
-  isExpanded: boolean;
-  onToggle: () => void;
-  onDelete: () => void;
-  lang: string;
-  t: (k: string, v?: Record<string, string | number>) => string;
+// ── DiveCard ──────────────────────────────────────────────────────────────────
+function DiveCard({ dive, isExpanded, isComparing, onToggle, onCompare, onDelete, lang, t }: {
+  dive: Dive; isExpanded: boolean; isComparing: boolean;
+  onToggle: () => void; onCompare: () => void; onDelete: () => void;
+  lang: string; t: (k: string, v?: Record<string, string | number>) => string;
 }) {
+  const border = cardBorder(dive);
+
   return (
     <li
-      className="overflow-hidden rounded-xl"
-      style={{ background: "#0d1320", borderLeft: "3px solid rgba(93,202,165,0.4)", border: "1px solid rgba(255,255,255,0.06)", borderLeftWidth: 3, borderLeftColor: "rgba(93,202,165,0.4)" }}
+      className="overflow-hidden rounded-xl transition-all"
+      style={{
+        background: "#0d1320",
+        border: isComparing ? `1px solid ${border}` : "1px solid rgba(255,255,255,0.06)",
+        borderLeft: `3px solid ${border}`,
+      }}
     >
-      {/* ── collapsed row ── */}
-      <button
-        className="flex w-full items-center gap-3 px-4 py-3 text-left"
-        onClick={onToggle}
-        aria-expanded={isExpanded}
-      >
+      {/* collapsed top row */}
+      <div className="flex items-center gap-2 px-3 pt-3">
         {/* discipline chip */}
         <span
-          className="shrink-0 rounded-md px-2 py-1 text-[0.65rem] font-bold tracking-wide"
+          className="shrink-0 rounded-md px-2 py-0.5 text-[0.6rem] font-bold tracking-wider"
           style={{ background: "rgba(29,158,117,0.15)", color: "#5DCAA5" }}
         >
           {dive.discipline}
         </span>
 
-        {/* result */}
-        <span className="flex-1 text-xl font-bold tabular-nums text-white">
-          {formatResult(dive.discipline, dive.result)}
-        </span>
-
         {/* PB badge */}
         {dive.is_personal_best && (
           <span
-            className="shrink-0 rounded-md px-2 py-1 text-[0.6rem] font-bold"
+            className="shrink-0 rounded-md px-1.5 py-0.5 text-[0.6rem] font-bold"
             style={{ background: "rgba(239,159,39,0.15)", color: "#EF9F27" }}
           >
             🏆 PB
           </span>
         )}
 
-        {/* expand toggle */}
+        {/* federation badge */}
+        {dive.federation && (
+          <span
+            className="shrink-0 rounded-md px-1.5 py-0.5 text-[0.6rem] font-semibold"
+            style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.5)" }}
+          >
+            {dive.federation}
+          </span>
+        )}
+
+        <div className="flex-1" />
+
+        {/* compare button */}
+        <button
+          onClick={(e) => { e.stopPropagation(); onCompare(); }}
+          className="flex items-center gap-1 rounded-lg px-2 py-1 text-[0.6rem] font-semibold transition-all"
+          style={
+            isComparing
+              ? { background: "#1D9E75", color: "#fff" }
+              : { color: "rgba(255,255,255,0.3)" }
+          }
+        >
+          <ArrowLeftRight className="size-3" />
+          {lang === "el" ? "Σύγκριση" : "Compare"}
+        </button>
+      </div>
+
+      {/* result */}
+      <div className="px-3 pb-1 pt-1">
+        <span
+          className="font-bold tabular-nums text-white"
+          style={{ fontFamily: "'Outfit', sans-serif", fontSize: "1.75rem", lineHeight: 1.1 }}
+        >
+          {formatResult(dive.discipline, dive.result)}
+        </span>
+      </div>
+
+      {/* meta + expand toggle */}
+      <button
+        onClick={onToggle}
+        className="flex w-full items-center justify-between px-3 pb-3 text-left"
+      >
+        <span className="text-[0.65rem] text-white/35">
+          {format(new Date(`${dive.dive_date}T${dive.dive_time ?? "00:00"}`), "d MMM yyyy")}
+          {dive.dive_time ? ` · ${dive.dive_time}` : ""}
+        </span>
         {isExpanded
-          ? <ChevronUp className="size-4 shrink-0 text-white/30" />
-          : <ChevronDown className="size-4 shrink-0 text-white/30" />
+          ? <ChevronDown className="size-3.5 text-white/25" />
+          : <ChevronRight className="size-3.5 text-white/25" />
         }
       </button>
 
-      {/* ── meta row (always visible) ── */}
-      <div className="flex flex-wrap items-center gap-2 px-4 pb-3 text-[0.65rem] text-white/40">
-        <span>{format(new Date(`${dive.dive_date}T${dive.dive_time ?? "00:00"}`), "d MMM yyyy")}</span>
-        {dive.dive_time && <><span>·</span><span>{dive.dive_time}</span></>}
-        <span>·</span>
-        <span style={{ color: dive.session_type === "competition" ? "#5DCAA5" : undefined }}>
-          {dive.session_type === "competition" ? t("common.competition") : t("common.training")}
-        </span>
-        {dive.federation && (
-          <>
-            <span>·</span>
-            <span
-              className="rounded px-1.5 py-0.5 font-semibold"
-              style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.6)" }}
-            >
-              {dive.federation}
-            </span>
-          </>
-        )}
-      </div>
-
-      {/* ── expanded details ── */}
+      {/* expanded details */}
       {isExpanded && (
         <div
-          className="space-y-3 border-t px-4 py-3"
+          className="space-y-3 border-t px-3 py-3"
           style={{ borderColor: "rgba(255,255,255,0.06)" }}
         >
-          <div className="flex flex-wrap gap-4 text-xs text-white/50">
-            {dive.sleep_hours != null && (
-              <span className="inline-flex items-center gap-1.5">
-                <Moon className="size-3.5 text-[#5DCAA5]" />
-                {t("hist.sleepShort", { h: dive.sleep_hours })}
-              </span>
-            )}
-            {dive.mental_state != null && (
-              <span className="inline-flex items-center gap-1.5">
-                <Brain className="size-3.5 text-[#5DCAA5]" />
-                {t("hist.mind", { n: dive.mental_state })}
-              </span>
-            )}
-          </div>
-
+          {(dive.sleep_hours != null || dive.mental_state != null) && (
+            <div className="flex flex-wrap gap-4 text-xs text-white/45">
+              {dive.sleep_hours != null && (
+                <span className="inline-flex items-center gap-1.5">
+                  <Moon className="size-3.5 text-[#5DCAA5]" />
+                  {t("hist.sleepShort", { h: dive.sleep_hours })}
+                </span>
+              )}
+              {dive.mental_state != null && (
+                <span className="inline-flex items-center gap-1.5">
+                  <Brain className="size-3.5 text-[#5DCAA5]" />
+                  {t("hist.mind", { n: dive.mental_state })}
+                </span>
+              )}
+            </div>
+          )}
           {dive.food_notes && (
             <p className="text-xs text-white/40">
-              <span className="font-medium text-white/70">{t("hist.foodLabel")}</span>{" "}
-              {dive.food_notes}
+              <span className="font-medium text-white/60">{t("hist.foodLabel")}</span> {dive.food_notes}
             </p>
           )}
           {dive.notes && (
             <p className="text-xs text-white/40">
-              <span className="font-medium text-white/70">{t("hist.notesLabel")}</span>{" "}
-              {dive.notes}
+              <span className="font-medium text-white/60">{t("hist.notesLabel")}</span> {dive.notes}
             </p>
           )}
-
-          {/* action row */}
           <div className="flex items-center justify-end gap-1 pt-1">
-            <Button asChild variant="ghost" size="sm" className="h-8 gap-1.5 text-xs text-white/50">
+            <Button asChild variant="ghost" size="sm" className="h-7 gap-1.5 text-xs text-white/40">
               <Link to="/log" search={{ edit: dive.id }}>
-                <Pencil className="size-3.5" /> {t("common.edit")}
+                <Pencil className="size-3" /> {t("common.edit")}
               </Link>
             </Button>
             <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 gap-1.5 text-xs text-red-400/70 hover:text-red-400"
+              variant="ghost" size="sm"
+              className="h-7 gap-1.5 text-xs text-red-400/60 hover:text-red-400"
               onClick={(e) => { e.stopPropagation(); onDelete(); }}
             >
-              <Trash2 className="size-3.5" /> {t("common.delete")}
+              <Trash2 className="size-3" /> {t("common.delete")}
             </Button>
           </div>
         </div>
@@ -398,28 +569,110 @@ function DiveCard({
   );
 }
 
-// ─── empty states ─────────────────────────────────────────────────────────────
+// ── CompareBar ────────────────────────────────────────────────────────────────
+function CompareBar({ dives, onClear, lang }: {
+  dives: Dive[]; onClear: () => void; lang: string;
+}) {
+  const [a, b] = dives;
+
+  return (
+    <div
+      className="fixed inset-x-0 bottom-16 z-50 mx-auto max-w-2xl px-4"
+    >
+      <div
+        className="rounded-2xl p-4 shadow-2xl"
+        style={{ background: "#0d1320", border: "1px solid rgba(93,202,165,0.25)" }}
+      >
+        {dives.length === 1 ? (
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <ArrowLeftRight className="size-4 text-[#5DCAA5]" />
+              <span className="text-sm text-white/70">
+                {lang === "el"
+                  ? `${a.discipline} · ${formatResult(a.discipline, a.result)} — επέλεξε 2η βουτιά`
+                  : `${a.discipline} · ${formatResult(a.discipline, a.result)} — select 2nd dive`}
+              </span>
+            </div>
+            <button onClick={onClear} className="text-white/30 hover:text-white/60">
+              <X className="size-4" />
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold tracking-[0.15em] text-[#5DCAA5]">
+                {lang === "el" ? "ΣΥΓΚΡΙΣΗ" : "COMPARE"}
+              </span>
+              <button onClick={onClear} className="text-white/30 hover:text-white/60">
+                <X className="size-4" />
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {[a, b].map((dive) => (
+                <div
+                  key={dive.id}
+                  className="rounded-xl p-3"
+                  style={{ background: "rgba(255,255,255,0.04)", borderLeft: `3px solid ${cardBorder(dive)}` }}
+                >
+                  <p className="text-[0.6rem] font-bold tracking-wider text-[#5DCAA5]">{dive.discipline}</p>
+                  <p className="mt-0.5 text-lg font-bold text-white tabular-nums">
+                    {formatResult(dive.discipline, dive.result)}
+                  </p>
+                  <p className="text-[0.6rem] text-white/35">
+                    {dive.session_type === "competition"
+                      ? (lang === "el" ? "Αγώνας" : "Competition")
+                      : (lang === "el" ? "Προπόνηση" : "Training")}
+                  </p>
+                </div>
+              ))}
+            </div>
+            {a.discipline === b.discipline && (
+              <div
+                className="rounded-xl px-3 py-2 text-center text-xs font-semibold"
+                style={{ background: "rgba(29,158,117,0.12)", color: "#5DCAA5" }}
+              >
+                {formatDiff(a, b)}{" "}
+                {lang === "el" ? "διαφορά" : "difference"}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── empty states ──────────────────────────────────────────────────────────────
 function EmptyState({ t }: { t: (k: string) => string }) {
   return (
-    <div className="flex flex-col items-center rounded-2xl border border-white/10 p-10 text-center" style={{ background: "#0d1320" }}>
-      <Waves className="size-10 text-[#5DCAA5] opacity-40" />
+    <div className="flex flex-col items-center rounded-2xl border border-white/08 p-10 text-center" style={{ background: "#0d1320" }}>
+      <Waves className="size-10 opacity-30" style={{ color: "#5DCAA5" }} />
       <p className="mt-4 font-semibold text-white">{t("hist.empty")}</p>
       <p className="mt-1 text-sm text-white/40">{t("hist.emptySub")}</p>
       <Button asChild className="mt-6" style={{ background: "#1D9E75" }}>
-        <Link to="/log">
-          <Plus className="size-4 mr-1.5" /> {t("hist.newDive")}
-        </Link>
+        <Link to="/log"><Plus className="mr-1.5 size-4" />{t("hist.newDive")}</Link>
       </Button>
     </div>
   );
 }
 
-function FilterEmpty() {
+function FilterEmpty({ lang, onReset }: { lang: string; onReset: () => void }) {
   return (
-    <div className="flex flex-col items-center rounded-2xl border border-white/10 p-10 text-center" style={{ background: "#0d1320" }}>
-      <span className="text-4xl opacity-30">🤿</span>
-      <p className="mt-4 text-sm font-semibold text-white/60">Δεν βρέθηκαν βουτιές</p>
-      <p className="mt-1 text-xs text-white/30">Δοκίμασε διαφορετικό φίλτρο</p>
+    <div className="flex flex-col items-center rounded-2xl border border-white/06 p-10 text-center" style={{ background: "#0d1320" }}>
+      <span className="text-4xl opacity-25">🤿</span>
+      <p className="mt-4 text-sm font-semibold text-white/60">
+        {lang === "el" ? "Δεν βρέθηκαν βουτιές" : "No dives found"}
+      </p>
+      <p className="mt-1 text-xs text-white/30">
+        {lang === "el" ? "Δοκίμασε διαφορετικό φίλτρο" : "Try a different filter"}
+      </p>
+      <button
+        onClick={onReset}
+        className="mt-4 text-xs font-semibold"
+        style={{ color: "#5DCAA5" }}
+      >
+        {lang === "el" ? "Καθαρισμός φίλτρων" : "Clear filters"}
+      </button>
     </div>
   );
 }
