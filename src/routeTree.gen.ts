@@ -14,6 +14,7 @@ import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as RulesRouteImport } from './routes/rules'
 import { Route as PlannerRouteImport } from './routes/planner'
 import { Route as LogRouteImport } from './routes/log'
+import { Route as StaTrainerRouteImport } from './routes/sta-trainer'
 import { Route as HistoryRouteImport } from './routes/history'
 import { Route as EquipmentRouteImport } from './routes/equipment'
 import { Route as DashboardRouteImport } from './routes/dashboard'
@@ -44,6 +45,11 @@ const PlannerRoute = PlannerRouteImport.update({
 const LogRoute = LogRouteImport.update({
   id: '/log',
   path: '/log',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StaTrainerRoute = StaTrainerRouteImport.update({
+  id: '/sta-trainer',
+  path: '/sta-trainer',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HistoryRoute = HistoryRouteImport.update({
@@ -88,6 +94,7 @@ export interface FileRoutesByFullPath {
   '/rules': typeof RulesRoute
   '/settings': typeof SettingsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/sta-trainer': typeof StaTrainerRoute
   '/discipline/$code': typeof DisciplineCodeRoute
 }
 export interface FileRoutesByTo {
@@ -101,6 +108,7 @@ export interface FileRoutesByTo {
   '/rules': typeof RulesRoute
   '/settings': typeof SettingsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/sta-trainer': typeof StaTrainerRoute
   '/discipline/$code': typeof DisciplineCodeRoute
 }
 export interface FileRoutesById {
@@ -115,6 +123,7 @@ export interface FileRoutesById {
   '/rules': typeof RulesRoute
   '/settings': typeof SettingsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/sta-trainer': typeof StaTrainerRoute
   '/discipline/$code': typeof DisciplineCodeRoute
 }
 export interface FileRouteTypes {
@@ -130,6 +139,7 @@ export interface FileRouteTypes {
     | '/rules'
     | '/settings'
     | '/sitemap.xml'
+    | '/sta-trainer'
     | '/discipline/$code'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -143,6 +153,7 @@ export interface FileRouteTypes {
     | '/rules'
     | '/settings'
     | '/sitemap.xml'
+    | '/sta-trainer'
     | '/discipline/$code'
   id:
     | '__root__'
@@ -156,6 +167,7 @@ export interface FileRouteTypes {
     | '/rules'
     | '/settings'
     | '/sitemap.xml'
+    | '/sta-trainer'
     | '/discipline/$code'
   fileRoutesById: FileRoutesById
 }
@@ -170,6 +182,7 @@ export interface RootRouteChildren {
   RulesRoute: typeof RulesRoute
   SettingsRoute: typeof SettingsRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  StaTrainerRoute: typeof StaTrainerRoute
   DisciplineCodeRoute: typeof DisciplineCodeRoute
 }
 
@@ -215,6 +228,13 @@ declare module '@tanstack/react-router' {
       path: '/history'
       fullPath: '/history'
       preLoaderRoute: typeof HistoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sta-trainer': {
+      id: '/sta-trainer'
+      path: '/sta-trainer'
+      fullPath: '/sta-trainer'
+      preLoaderRoute: typeof StaTrainerRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/equipment': {
@@ -266,6 +286,7 @@ const rootRouteChildren: RootRouteChildren = {
   RulesRoute: RulesRoute,
   SettingsRoute: SettingsRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  StaTrainerRoute: StaTrainerRoute,
   DisciplineCodeRoute: DisciplineCodeRoute,
 }
 export const routeTree = rootRouteImport

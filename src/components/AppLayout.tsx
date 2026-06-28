@@ -1,6 +1,6 @@
 import { useEffect, type ReactNode } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { LayoutDashboard, Plus, History, LogOut, Timer, MoreHorizontal, Backpack, BookOpen, Settings } from "lucide-react";
+import { LayoutDashboard, Plus, History, LogOut, Timer, MoreHorizontal, Backpack, BookOpen, Settings, Waves } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { useAuth } from "@/hooks/use-auth";
 import { useI18n } from "@/lib/i18n";
@@ -38,6 +38,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
     { to: "/log", label: t("nav.log"), icon: Plus },
     { to: "/planner", label: t("nav.planner"), icon: Timer },
     { to: "/history", label: t("nav.history"), icon: History },
+    { to: "/sta-trainer", label: t("nav.trainer"), icon: Waves },
   ] as const;
 
   const moreItems = [
