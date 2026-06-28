@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { AppLayout } from "@/components/AppLayout";
 import { useAuth } from "@/hooks/use-auth";
 import { deleteDive, divesToCsv, downloadCsv, fetchDives } from "@/lib/dives";
@@ -189,7 +189,13 @@ function History() {
         <div className="space-y-6">
           {(segment === "all" || segment === "pool") && poolDives.length > 0 && (
             <EnvironmentSection
-              emoji="🏊"
+              icon={
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                  <line x1="2" y1="5" x2="14" y2="5" stroke="#5DCAA5" strokeWidth="1.8" strokeLinecap="round"/>
+                  <line x1="2" y1="8" x2="14" y2="8" stroke="#5DCAA5" strokeWidth="1.8" strokeLinecap="round"/>
+                  <line x1="2" y1="11" x2="14" y2="11" stroke="#5DCAA5" strokeWidth="1.8" strokeLinecap="round"/>
+                </svg>
+              }
               label={lang === "el" ? "ΠΙΣΙΝΑ" : "POOL"}
               accentColor="#1D9E75"
               disciplines={POOL_DISC}
@@ -207,7 +213,13 @@ function History() {
           )}
           {(segment === "all" || segment === "depth") && depthDives.length > 0 && (
             <EnvironmentSection
-              emoji="🌊"
+              icon={
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                  <line x1="8" y1="1" x2="8" y2="13" stroke="#1D9E75" strokeWidth="1.8" strokeLinecap="round"/>
+                  <polyline points="5,10 8,13 11,10" stroke="#1D9E75" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+                  <circle cx="8" cy="14.5" r="0.9" fill="#1D9E75"/>
+                </svg>
+              }
               label={lang === "el" ? "ΘΑΛΑΣΣΑ" : "DEPTH"}
               accentColor="#9FE1CB"
               disciplines={DEPTH_DISC}
@@ -312,11 +324,11 @@ function History() {
 
 // ── EnvironmentSection ────────────────────────────────────────────────────────
 function EnvironmentSection({
-  emoji, label, accentColor, disciplines, dives,
+  icon, label, accentColor, disciplines, dives,
   discFilter, onDiscFilter, expanded, onToggle,
   compareIds, onCompare, onDelete, lang, t,
 }: {
-  emoji: string; label: string; accentColor: string;
+  icon: ReactNode; label: string; accentColor: string;
   disciplines: DisciplineCode[]; dives: Dive[];
   discFilter: DisciplineCode | null; onDiscFilter: (c: DisciplineCode) => void;
   expanded: Set<string>; onToggle: (id: string) => void;
@@ -334,7 +346,7 @@ function EnvironmentSection({
       <div className="flex items-center gap-2">
         <div className="w-1 rounded-full" style={{ height: 20, background: accentColor }} />
         <span className="text-xs font-bold tracking-[0.18em]" style={{ color: accentColor }}>
-          {emoji} {label}
+          {icon} {label}
         </span>
         <span
           className="rounded-full px-2 py-0.5 text-[0.6rem] font-bold"
