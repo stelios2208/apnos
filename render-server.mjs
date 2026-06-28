@@ -2,10 +2,32 @@ import { createServer } from "node:http";
 import { createReadStream, existsSync, statSync } from "node:fs";
 import { join, extname } from "node:path";
 import { fileURLToPath } from "node:url";
-import handler from "./dist/server/server.js";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
-const clientDir = join(__dirname, "dist", "client");
+
+// Support both build output layouts:
+//   dist/server/server.js   — old Vinxi/TanStack Start build
+//   .output/server/index.mjs — new Nitro-based build
+const OLD_ENTRY = join(__dirname, "dist", "server", "server.js");
+const NEW_ENTRY = join(__dirname, ".output", "server", "index.mjs");
+
+let serverEntry;
+if (existsSync(NEW_ENTRY)) {
+  serverEntry = NEW_ENTRY;
+  console.log("Using new build output:", NEW_ENTRY);
+} else if (existsSync(OLD_ENTRY)) {
+  serverEntry = OLD_ENTRY;
+  console.log("Using old build output:", OLD_ENTRY);
+} else {
+  console.error("No server entry found. Expected one of:\n  " + OLD_ENTRY + "\n  " + NEW_ENTRY);
+  process.exit(1);
+}
+
+const { default: handler } = await import(serverEntry);
+
+const clientDir = existsSync(join(__dirname, ".output", "public"))
+  ? join(__dirname, ".output", "public")
+  : join(__dirname, "dist", "client");
 const port = parseInt(process.env.PORT || "10000", 10);
 
 const MIME = {
@@ -74,7 +96,11 @@ const server = createServer(async (req, res) => {
     if (serveStatic(req, res)) return;
 
     const webReq = await toWebRequest(req);
-    const webRes = await handler.fetch(webReq, {}, {});
+    // Old build: handler = { fetch(req, env, ctx) }
+    // New build: handler = function(req, env, ctx)
+    const webRes = await (typeof handler === "function"
+      ? handler(webReq, {}, {})
+      : handler.fetch(webReq, {}, {}));
 
     const resHeaders = {};
     webRes.headers.forEach((val, key) => { resHeaders[key] = val; });
