@@ -2,88 +2,162 @@ import { Link } from "@tanstack/react-router";
 import { useI18n } from "@/lib/i18n";
 
 /**
- * Apnos logo — concept: "The Held Breath / Freefall".
+ * Apnos logo — concept: "the grid pun".
  *
- * A near-complete ring with a small gap at the top represents the last breath
- * taken at the surface — the opening you leave behind. The single solid dot
- * resting low inside the ring is the freediver in freefall, sinking on that
- * one breath into stillness. No divers, no waves, no fins, no fish.
+ * The word "apnos" is stacked into a tight 2-row grid:
+ *   row 1: a p p
+ *   row 2: n o s
+ * The letters "pp" and "o" are highlighted in teal, so reading across spells
+ * "apnos" (freediving) while the highlighted letters spell "app" — a hidden
+ * visual pun. To the right runs a dive rope with depth markers (10–40m),
+ * the dots growing as the rope descends: the app's core purpose, depth + time.
  */
-export function Logo({ className, size = 40 }: { className?: string; size?: number }) {
-  const { t } = useI18n();
+
+const TEAL = "bg-gradient-to-br from-[#5DCAA5] to-[#1D9E75] bg-clip-text text-transparent";
+
+/** The stacked letter grid. `size` = cap height of a single row in px. */
+export function LetterGrid({ size = 18, className }: { size?: number; className?: string }) {
+  // column width keeps a/n, p/o, p/s perfectly aligned; rows overlap slightly.
+  const col = size * 0.78;
+  const rowGap = -size * 0.18; // negative => rows tuck together for compactness
+  const cell = (ch: string, teal: boolean) => (
+    <span
+      style={{ width: col, lineHeight: 1 }}
+      className={`inline-block text-center ${teal ? TEAL : "text-white"}`}
+    >
+      {ch}
+    </span>
+  );
   return (
-    <Link to="/" className={className} aria-label="Apnos — breathe, dive, repeat">
-      <span className="flex items-center gap-2.5">
-        <BreathMark size={size} />
-        <span className="block">
-          <span className="block text-2xl font-semibold lowercase leading-none tracking-tight text-white">
-            apnos
-          </span>
-          <span className="mt-1 block text-[0.55rem] font-medium lowercase tracking-[0.28em] text-[#5DCAA5]">
-            {t("tagline")}
-          </span>
-        </span>
+    <span
+      className={`inline-flex flex-col ${className ?? ""}`}
+      style={{
+        fontFamily: "'Nunito', sans-serif",
+        fontWeight: 900,
+        fontSize: size,
+        letterSpacing: "-0.01em",
+      }}
+      aria-hidden="true"
+    >
+      <span className="flex" style={{ marginBottom: rowGap }}>
+        {cell("a", false)}
+        {cell("p", true)}
+        {cell("p", true)}
       </span>
-    </Link>
+      <span className="flex">
+        {cell("n", false)}
+        {cell("o", true)}
+        {cell("s", false)}
+      </span>
+    </span>
   );
 }
 
-/**
- * The brand mark on its own. Defaults to 40px — the mobile-header target size.
- * Crisp and legible at that scale; scales up cleanly for hero use.
- */
-export function BreathMark({ size = 40, className }: { size?: number; className?: string }) {
+/** Vertical dive rope with progressively larger depth markers. */
+export function DepthRope({ height = 36, className }: { height?: number; className?: string }) {
+  const marks = [
+    { label: "10m", r: 0.9 },
+    { label: "20m", r: 1.4 },
+    { label: "30m", r: 2.0 },
+    { label: "40m", r: 2.8 },
+  ];
+  const w = 32;
+  const top = 3;
+  const bottom = height - 3;
+  const showLabels = height >= 64;
   return (
     <svg
-      width={size}
-      height={size}
-      viewBox="0 0 40 40"
+      width={showLabels ? w : 6}
+      height={height}
+      viewBox={`0 0 ${showLabels ? w : 6} ${height}`}
       fill="none"
       className={className}
       aria-hidden="true"
     >
       <defs>
-        <linearGradient id="apnos-breath" x1="6" y1="6" x2="34" y2="34" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#5DCAA5" />
-          <stop offset="1" stopColor="#1D9E75" />
+        <linearGradient id="apnos-rope" x1="0" y1="0" x2="0" y2={height} gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#1D9E75" stopOpacity="0.9" />
+          <stop offset="100%" stopColor="#1D9E75" stopOpacity="0.1" />
         </linearGradient>
-        <radialGradient id="apnos-fall" cx="50%" cy="38%" r="65%">
+        <radialGradient id="apnos-mark" cx="40%" cy="35%" r="70%">
           <stop offset="0%" stopColor="#7BD9B8" />
           <stop offset="100%" stopColor="#1D9E75" />
         </radialGradient>
       </defs>
 
-      {/* The breath: a ring open at the top (the surface you leave behind) */}
-      <path
-        d="M25.47 4.96 A16 16 0 1 1 14.53 4.96"
-        stroke="url(#apnos-breath)"
-        strokeWidth="2.6"
-        strokeLinecap="round"
-        fill="none"
-      />
+      <line x1="3" y1={top} x2="3" y2={bottom} stroke="url(#apnos-rope)" strokeWidth="1.4" strokeLinecap="round" />
 
-      {/* Freefall: the diver sinking on a single breath, settling low and still */}
-      <circle cx="20" cy="25" r="4.2" fill="url(#apnos-fall)" />
-
-      {/* A whisper of descent above the dot — the path down, fading into calm */}
-      <circle cx="20" cy="15.5" r="1.05" fill="#5DCAA5" opacity="0.55" />
-      <circle cx="20" cy="19.2" r="1.5" fill="#5DCAA5" opacity="0.8" />
+      {marks.map((m, i) => {
+        const cy = top + ((bottom - top) * (i + 0.6)) / marks.length;
+        return (
+          <g key={m.label}>
+            <circle cx="3" cy={cy} r={m.r} fill="url(#apnos-mark)" />
+            {showLabels && (
+              <text
+                x="11"
+                y={cy + m.r / 2 + 0.5}
+                fill="#FFFFFF"
+                fillOpacity="0.55"
+                style={{ fontFamily: "'Outfit', sans-serif", fontWeight: 300 }}
+                fontSize="6.5"
+                letterSpacing="0.05em"
+              >
+                {m.label}
+              </text>
+            )}
+          </g>
+        );
+      })}
     </svg>
   );
 }
 
-/** Large centered lockup for the landing hero. */
-export function ApnosHeroLogo({ className }: { className?: string }) {
+/** Tagline lockup. */
+function Tagline({ className }: { className?: string }) {
   const { t } = useI18n();
   return (
+    <span
+      className={`block uppercase text-[#5DCAA5] ${className ?? ""}`}
+      style={{ fontFamily: "'Outfit', sans-serif", fontWeight: 300, letterSpacing: "0.3em" }}
+    >
+      {t("tagline")}
+    </span>
+  );
+}
+
+/** Header logo — horizontal lockup with the rope visible. ~40px tall. */
+export function Logo({ className }: { className?: string }) {
+  return (
+    <Link to="/" className={className} aria-label="Apnos — breathe, dive, repeat">
+      <span className="flex items-center gap-2.5">
+        <LetterGrid size={17} />
+        <DepthRope height={38} />
+      </span>
+    </Link>
+  );
+}
+
+/** Large centered lockup for the landing hero — rope prominent + tagline. */
+export function ApnosHeroLogo({ className }: { className?: string }) {
+  return (
     <div className={`flex flex-col items-center text-center ${className ?? ""}`}>
-      <BreathMark size={132} />
-      <span className="mt-5 text-5xl font-light lowercase tracking-[0.22em] text-white">
-        apnos
+      <span className="flex items-center gap-5">
+        <LetterGrid size={56} />
+        <DepthRope height={150} />
       </span>
-      <span className="mt-3 text-xs font-medium lowercase tracking-[0.3em] text-[#5DCAA5]">
-        {t("tagline")}
-      </span>
+      <Tagline className="mt-7 text-[0.7rem]" />
+    </div>
+  );
+}
+
+/** App-icon mark — just the letter grid, centered. For favicons / store icons. */
+export function ApnosIcon({ size = 512, className }: { size?: number; className?: string }) {
+  return (
+    <div
+      className={`flex items-center justify-center ${className ?? ""}`}
+      style={{ width: size, height: size, background: "#070a10", borderRadius: size * 0.22 }}
+    >
+      <LetterGrid size={size * 0.3} />
     </div>
   );
 }
