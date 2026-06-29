@@ -143,7 +143,7 @@ function Planner() {
       </div>
 
       <div className="glass-card space-y-4 rounded-2xl p-5">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 items-end gap-3">
           <div className="space-y-1.5">
             <Label htmlFor="tt">{t("plan.topTime")}</Label>
             <Input id="tt" type="time" value={topTime} onChange={(e) => setTopTime(e.target.value)} disabled={running} />

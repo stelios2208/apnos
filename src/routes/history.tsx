@@ -214,10 +214,17 @@ function History() {
           {(segment === "all" || segment === "depth") && depthDives.length > 0 && (
             <EnvironmentSection
               icon={
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                  <line x1="8" y1="1" x2="8" y2="13" stroke="#1D9E75" strokeWidth="1.8" strokeLinecap="round"/>
-                  <polyline points="5,10 8,13 11,10" stroke="#1D9E75" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-                  <circle cx="8" cy="14.5" r="0.9" fill="#1D9E75"/>
+                <svg width="16" height="16" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+                  <path
+                    d="M25.47 4.96 A16 16 0 1 1 14.53 4.96"
+                    stroke="#5DCAA5"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    fill="none"
+                  />
+                  <circle cx="20" cy="25" r="4.2" fill="#1D9E75" />
+                  <circle cx="20" cy="15.5" r="1.05" fill="#5DCAA5" opacity="0.55" />
+                  <circle cx="20" cy="19.2" r="1.5" fill="#5DCAA5" opacity="0.8" />
                 </svg>
               }
               label={lang === "el" ? "ΘΑΛΑΣΣΑ" : "DEPTH"}
