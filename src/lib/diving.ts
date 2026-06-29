@@ -63,6 +63,7 @@ export interface Dive {
   wetsuit_mm: number | null;
   buoyancy: string | null;
   fins_type: string | null;
+  fins_brand: string | null;
   water_temp: number | null;
   is_personal_best: boolean;
   created_at: string;

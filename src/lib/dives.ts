@@ -18,6 +18,7 @@ export interface NewDiveInput {
   wetsuit_mm: number | null;
   buoyancy: string | null;
   fins_type: string | null;
+  fins_brand: string | null;
   water_temp: number | null;
 }
 

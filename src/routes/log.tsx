@@ -79,7 +79,16 @@ function LogDive() {
   const [wetsuitMm, setWetsuitMm] = useState<string>("");
   const [buoyancy, setBuoyancy] = useState<string>("");
   const [finsType, setFinsType] = useState<string>("");
+  const [finsBrand, setFinsBrand] = useState("");
   const [waterTemp, setWaterTemp] = useState("");
+
+  // Auto-populate fins_type from discipline (allow manual override)
+  const finsDefault = (d: DisciplineCode): string => {
+    if (["DYN", "CWT"].includes(d))        return "monofin";
+    if (["DYNB", "CWTB"].includes(d))      return "bifins";
+    if (["STA", "DNF", "CNF", "FIM"].includes(d)) return "none";
+    return "";
+  };
 
   useEffect(() => {
     if (!editing) return;
@@ -98,8 +107,16 @@ function LogDive() {
     setWetsuitMm(editing.wetsuit_mm != null ? String(editing.wetsuit_mm) : "");
     setBuoyancy(editing.buoyancy ?? "");
     setFinsType(editing.fins_type ?? "");
+    setFinsBrand(editing.fins_brand ?? "");
     setWaterTemp(editing.water_temp != null ? String(editing.water_temp) : "");
   }, [editing]);
+
+  // On new dives, seed fins from initial discipline
+  useEffect(() => {
+    if (!editing) setFinsType(finsDefault(discipline));
+  // Only on mount (editing is stable null for new dives)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const mutation = useMutation({
     mutationFn: (input: NewDiveInput) =>
@@ -117,6 +134,17 @@ function LogDive() {
     },
     onError: (err) => toast.error(err instanceof Error ? err.message : t("log.couldNotSave")),
   });
+
+  // When discipline changes and user hasn't manually overridden, suggest the default fins
+  const handleDisciplineChange = (v: DisciplineCode) => {
+    setDiscipline(v);
+    setFinsType((prev) => {
+      // Only auto-fill if prev was empty or was itself an auto-default (not a deliberate override)
+      const prevDefault = finsDefault(discipline);
+      if (prev === "" || prev === prevDefault) return finsDefault(v);
+      return prev;
+    });
+  };
 
   const isTime = isTimeDiscipline(discipline);
 
@@ -142,6 +170,7 @@ function LogDive() {
       wetsuit_mm: wetsuitMm ? Number(wetsuitMm) : null,
       buoyancy: buoyancy || null,
       fins_type: finsType || null,
+      fins_brand: finsBrand || null,
       water_temp: waterTemp ? Number(waterTemp) : null,
     });
   };
@@ -157,7 +186,7 @@ function LogDive() {
         <div className="glass-card space-y-4 rounded-2xl p-5">
           <div className="space-y-1.5">
             <Label>{t("log.discipline")}</Label>
-            <Select value={discipline} onValueChange={(v) => setDiscipline(v as DisciplineCode)}>
+            <Select value={discipline} onValueChange={(v) => handleDisciplineChange(v as DisciplineCode)}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -305,6 +334,7 @@ function LogDive() {
 
           {gearOpen && (
             <div className="space-y-4 px-5 pb-5">
+              {/* Row 1: weights */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label htmlFor="neck-weight">{t("log.neckWeight")}</Label>
@@ -334,6 +364,7 @@ function LogDive() {
                 </div>
               </div>
 
+              {/* Row 2: wetsuit + water temp */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label>{t("log.wetsuit")}</Label>
@@ -364,6 +395,7 @@ function LogDive() {
                 </div>
               </div>
 
+              {/* Row 3: buoyancy + fins type */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label>{t("log.buoyancy")}</Label>
@@ -394,6 +426,20 @@ function LogDive() {
                   </Select>
                 </div>
               </div>
+
+              {/* Row 4: fins brand — only when fins are selected */}
+              {(finsType === "monofin" || finsType === "bifins") && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="fins-brand">{t("log.finsBrand")}</Label>
+                  <Input
+                    id="fins-brand"
+                    type="text"
+                    value={finsBrand}
+                    onChange={(e) => setFinsBrand(e.target.value)}
+                    placeholder="Omer, Molchanovs, Salvimar, Cetma, Orama…"
+                  />
+                </div>
+              )}
             </div>
           )}
         </div>
