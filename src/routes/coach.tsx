@@ -1,9 +1,20 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { Plus, Lock, ChevronRight, X, Check } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { BreathMark } from "@/components/Logo";
 import { useI18n } from "@/lib/i18n";
+import {
+  type Athlete,
+  type Level,
+  type DisciplineCode,
+  LEVELS,
+  ALL_DISCIPLINES,
+  levelLabel,
+  levelColor,
+  loadAthletes,
+  saveAthletes,
+} from "@/lib/athletes";
 
 export const Route = createFileRoute("/coach")({
   head: () => ({ meta: [{ title: "Coach — Apnos" }] }),
@@ -14,55 +25,30 @@ export const Route = createFileRoute("/coach")({
   ),
 });
 
-// ── types ──────────────────────────────────────────────────────────────────
-
-type Level = "beginner" | "intermediate" | "advanced" | "competitive";
-type DisciplineCode = "STA" | "DYN" | "DYNB" | "DNF" | "CWT" | "CWTB" | "CNF" | "FIM";
-
-interface Athlete {
-  id: string;
-  name: string;
-  level: Level;
-  disciplines: DisciplineCode[];
-}
-
-const LEVELS: { value: Level; label_el: string; label_en: string; color: string }[] = [
-  { value: "beginner",     label_el: "Αρχάριος",    label_en: "Beginner",     color: "#9FE1CB" },
-  { value: "intermediate", label_el: "Μέσος",       label_en: "Intermediate", color: "#5DCAA5" },
-  { value: "advanced",     label_el: "Προχωρημένος",label_en: "Advanced",     color: "#1D9E75" },
-  { value: "competitive",  label_el: "Αγωνιστικός", label_en: "Competitive",  color: "#EF9F27" },
-];
-
-const ALL_DISCIPLINES: DisciplineCode[] = ["STA", "DYN", "DYNB", "DNF", "CWT", "CWTB", "CNF", "FIM"];
-
-function levelLabel(level: Level, lang: string) {
-  const l = LEVELS.find((x) => x.value === level);
-  return l ? (lang === "el" ? l.label_el : l.label_en) : level;
-}
-
-function levelColor(level: Level) {
-  return LEVELS.find((x) => x.value === level)?.color ?? "#5DCAA5";
-}
-
 // ── component ──────────────────────────────────────────────────────────────
 
 function CoachPage() {
   const { lang } = useI18n();
+  const navigate  = useNavigate();
 
   const [teamName, setTeamName]       = useState(lang === "el" ? "Η Ομάδα μου" : "My Team");
   const [editingName, setEditingName] = useState(false);
-  const [athletes, setAthletes]       = useState<Athlete[]>([]);
+  const [athletes, setAthletes]       = useState<Athlete[]>(loadAthletes);
   const [showModal, setShowModal]     = useState(false);
 
-  // add-athlete form state
   const [newName, setNewName]               = useState("");
   const [newLevel, setNewLevel]             = useState<Level>("beginner");
   const [newDisciplines, setNewDisciplines] = useState<DisciplineCode[]>([]);
 
+  const persist = (updated: Athlete[]) => {
+    setAthletes(updated);
+    saveAthletes(updated);
+  };
+
   const handleAdd = () => {
     if (!newName.trim()) return;
-    setAthletes((prev) => [
-      ...prev,
+    persist([
+      ...athletes,
       { id: crypto.randomUUID(), name: newName.trim(), level: newLevel, disciplines: newDisciplines },
     ]);
     setNewName("");
@@ -71,11 +57,10 @@ function CoachPage() {
     setShowModal(false);
   };
 
-  const toggleDiscipline = (d: DisciplineCode) => {
+  const toggleDiscipline = (d: DisciplineCode) =>
     setNewDisciplines((prev) =>
       prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d]
     );
-  };
 
   return (
     <div className="space-y-5">
@@ -101,19 +86,16 @@ function CoachPage() {
               </button>
             </div>
           ) : (
-            <button
-              onClick={() => setEditingName(true)}
-              className="group flex items-center gap-2"
-            >
+            <button onClick={() => setEditingName(true)} className="group flex items-center gap-2">
               <h1 className="text-2xl font-bold text-white">{teamName}</h1>
-              <span className="text-[0.6rem] text-white/20 group-hover:text-white/50 transition-colors">
+              <span className="text-[0.6rem] text-white/20 transition-colors group-hover:text-white/50">
                 {lang === "el" ? "επεξεργασία" : "edit"}
               </span>
             </button>
           )}
           <p className="mt-1 text-xs text-white/30">
             {athletes.length === 0
-              ? (lang === "el" ? "Καμία αθλητής ακόμα" : "No athletes yet")
+              ? (lang === "el" ? "Κανένας αθλητής ακόμα" : "No athletes yet")
               : `${athletes.length} ${lang === "el" ? "αθλητές" : "athletes"}`}
           </p>
         </div>
@@ -132,7 +114,8 @@ function CoachPage() {
 
       {/* empty state */}
       {athletes.length === 0 && (
-        <div className="flex flex-col items-center gap-5 rounded-2xl py-14 text-center"
+        <div
+          className="flex flex-col items-center gap-5 rounded-2xl py-14 text-center"
           style={{ background: "rgba(255,255,255,0.02)", border: "1px dashed rgba(255,255,255,0.07)" }}
         >
           <div style={{ opacity: 0.25 }}>
@@ -163,7 +146,12 @@ function CoachPage() {
       {athletes.length > 0 && (
         <div className="space-y-3">
           {athletes.map((a) => (
-            <AthleteCard key={a.id} athlete={a} lang={lang} />
+            <AthleteCard
+              key={a.id}
+              athlete={a}
+              lang={lang}
+              onProgram={() => navigate({ to: "/coach/athlete/$id", params: { id: a.id } })}
+            />
           ))}
         </div>
       )}
@@ -172,7 +160,7 @@ function CoachPage() {
       {athletes.length > 0 && (
         <button
           onClick={() => setShowModal(true)}
-          className="fixed bottom-24 right-5 z-30 flex h-14 w-14 items-center justify-center rounded-full shadow-lg transition-all active:scale-95"
+          className="fixed bottom-24 right-5 z-30 flex h-14 w-14 items-center justify-center rounded-full transition-all active:scale-95"
           style={{ background: "#1D9E75", boxShadow: "0 4px 24px rgba(29,158,117,0.45)" }}
           aria-label={lang === "el" ? "Νέος αθλητής" : "New athlete"}
         >
@@ -187,18 +175,14 @@ function CoachPage() {
           style={{ background: "rgba(0,0,0,0.75)" }}
           onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false); }}
         >
-          <div
-            className="w-full rounded-t-2xl px-5 pb-10 pt-5"
-            style={{ background: "#0d1320" }}
-          >
-            {/* handle */}
+          <div className="w-full rounded-t-2xl px-5 pb-10 pt-5" style={{ background: "#0d1320" }}>
             <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-white/10" />
 
             <div className="mb-5 flex items-center justify-between">
               <h2 className="text-base font-bold text-white">
                 {lang === "el" ? "Νέος Αθλητής" : "New Athlete"}
               </h2>
-              <button onClick={() => setShowModal(false)} className="text-white/30 hover:text-white transition-colors">
+              <button onClick={() => setShowModal(false)} className="text-white/30 transition-colors hover:text-white">
                 <X className="size-5" />
               </button>
             </div>
@@ -212,6 +196,7 @@ function CoachPage() {
                 autoFocus
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") handleAdd(); }}
                 placeholder={lang === "el" ? "π.χ. Νίκος Παπαδόπουλος" : "e.g. John Smith"}
                 className="w-full rounded-xl bg-white/5 px-4 py-3 text-sm text-white placeholder-white/20 outline-none focus:ring-1 focus:ring-[#1D9E75]"
               />
@@ -286,14 +271,13 @@ function CoachPage() {
 
 // ── AthleteCard ────────────────────────────────────────────────────────────
 
-function AthleteCard({ athlete, lang }: { athlete: Athlete; lang: string }) {
+function AthleteCard({ athlete, lang, onProgram }: { athlete: Athlete; lang: string; onProgram: () => void }) {
   const color = levelColor(athlete.level);
   return (
     <div
       className="flex items-center gap-4 rounded-2xl px-4 py-4"
       style={{ background: "#0d1320", border: "1px solid rgba(255,255,255,0.05)" }}
     >
-      {/* avatar */}
       <div
         className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-base font-bold"
         style={{ background: `${color}18`, color }}
@@ -327,6 +311,7 @@ function AthleteCard({ athlete, lang }: { athlete: Athlete; lang: string }) {
       </div>
 
       <button
+        onClick={onProgram}
         className="flex shrink-0 items-center gap-1 rounded-xl px-3 py-2 text-xs font-semibold transition-colors"
         style={{ background: "rgba(29,158,117,0.1)", color: "#5DCAA5" }}
       >

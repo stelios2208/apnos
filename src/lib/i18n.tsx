@@ -257,7 +257,7 @@ const el: Dict = {
   "log.beltWeight": "Βάρος ζώνης (kg)",
   "log.wetsuit": "Πάχος στολής",
   "log.wetsuitNone": "Χωρίς στολή",
-  "log.buoyancy": "Άνωση",
+  "log.buoyancy": "Πλευστότητα",
   "log.buoyancyNeg": "Αρνητική",
   "log.buoyancyNeu": "Ουδέτερη",
   "log.buoyancyPos": "Θετική",

@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as CoachRouteImport } from './routes/coach'
+import { Route as CoachAthleteIdRouteImport } from './routes/coach.athlete.$id'
 import { Route as DiveIdRouteImport } from './routes/dive.$id'
 import { Route as StaTrainerRouteImport } from './routes/sta-trainer'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
@@ -33,6 +34,11 @@ const CalendarRoute = CalendarRouteImport.update({
 const CoachRoute = CoachRouteImport.update({
   id: '/coach',
   path: '/coach',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CoachAthleteIdRoute = CoachAthleteIdRouteImport.update({
+  id: '/coach/athlete/$id',
+  path: '/coach/athlete/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DiveIdRoute = DiveIdRouteImport.update({
@@ -106,6 +112,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/calendar': typeof CalendarRoute
   '/coach': typeof CoachRoute
+  '/coach/athlete/$id': typeof CoachAthleteIdRoute
   '/dashboard': typeof DashboardRoute
   '/equipment': typeof EquipmentRoute
   '/history': typeof HistoryRoute
@@ -123,6 +130,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/calendar': typeof CalendarRoute
   '/coach': typeof CoachRoute
+  '/coach/athlete/$id': typeof CoachAthleteIdRoute
   '/dashboard': typeof DashboardRoute
   '/equipment': typeof EquipmentRoute
   '/history': typeof HistoryRoute
@@ -141,6 +149,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/calendar': typeof CalendarRoute
   '/coach': typeof CoachRoute
+  '/coach/athlete/$id': typeof CoachAthleteIdRoute
   '/dashboard': typeof DashboardRoute
   '/equipment': typeof EquipmentRoute
   '/history': typeof HistoryRoute
@@ -160,6 +169,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/calendar'
     | '/coach'
+    | '/coach/athlete/$id'
     | '/dashboard'
     | '/equipment'
     | '/history'
@@ -177,6 +187,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/calendar'
     | '/coach'
+    | '/coach/athlete/$id'
     | '/dashboard'
     | '/equipment'
     | '/history'
@@ -194,6 +205,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/calendar'
     | '/coach'
+    | '/coach/athlete/$id'
     | '/dashboard'
     | '/equipment'
     | '/history'
@@ -212,6 +224,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   CalendarRoute: typeof CalendarRoute
   CoachRoute: typeof CoachRoute
+  CoachAthleteIdRoute: typeof CoachAthleteIdRoute
   DashboardRoute: typeof DashboardRoute
   EquipmentRoute: typeof EquipmentRoute
   HistoryRoute: typeof HistoryRoute
@@ -318,6 +331,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CoachRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/coach/athlete/$id': {
+      id: '/coach/athlete/$id'
+      path: '/coach/athlete/$id'
+      fullPath: '/coach/athlete/$id'
+      preLoaderRoute: typeof CoachAthleteIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/dive/$id': {
       id: '/dive/$id'
       path: '/dive/$id'
@@ -340,6 +360,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   CalendarRoute: CalendarRoute,
   CoachRoute: CoachRoute,
+  CoachAthleteIdRoute: CoachAthleteIdRoute,
   DashboardRoute: DashboardRoute,
   EquipmentRoute: EquipmentRoute,
   HistoryRoute: HistoryRoute,

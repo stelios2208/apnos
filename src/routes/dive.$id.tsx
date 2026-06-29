@@ -39,6 +39,132 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
+// ── STASessionNotes ────────────────────────────────────────────────────────────
+
+interface STARound { breathe: string; hold: string; recovery: string; contractions: number }
+
+function fmtSecs(mmss: string): string {
+  // already formatted as MM:SS, strip leading zero from minutes
+  const [m, s] = mmss.split(":");
+  return `${parseInt(m, 10)}:${s ?? "00"}`;
+}
+
+function parseHMS(mmss: string): number {
+  const [m, s] = mmss.split(":").map(Number);
+  return (m ?? 0) * 60 + (s ?? 0);
+}
+
+function STASessionNotes({ notes, lang }: { notes: string; lang: string }) {
+  // extract JSON array after "Rounds:"
+  const match = notes.match(/Rounds:\s*(\[[\s\S]*?\])/);
+  if (!match) {
+    return (
+      <Section title={lang === "el" ? "ΣΗΜΕΙΩΣΕΙΣ" : "NOTES"}>
+        <p className="text-sm text-white/60 leading-relaxed whitespace-pre-line">{notes}</p>
+      </Section>
+    );
+  }
+
+  let rounds: STARound[] = [];
+  try { rounds = JSON.parse(match[1]); } catch { /* ignore */ }
+
+  if (rounds.length === 0) {
+    return (
+      <Section title={lang === "el" ? "ΣΗΜΕΙΩΣΕΙΣ" : "NOTES"}>
+        <p className="text-sm text-white/60 leading-relaxed whitespace-pre-line">{notes}</p>
+      </Section>
+    );
+  }
+
+  const holds    = rounds.map((r) => parseHMS(r.hold));
+  const best     = Math.max(...holds);
+  const avg      = Math.round(holds.reduce((a, b) => a + b, 0) / holds.length);
+  const fmtTime  = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+
+  return (
+    <div className="glass-card rounded-2xl p-5 space-y-4">
+      <p className="text-[0.65rem] font-bold tracking-[0.2em] text-white/30">
+        {lang === "el" ? "ΑΝΑΛΥΣΗ SESSION" : "SESSION BREAKDOWN"}
+      </p>
+
+      {/* stat strip */}
+      <div className="grid grid-cols-3 gap-2">
+        {[
+          { label: lang === "el" ? "Καλύτερο Hold" : "Best Hold", value: fmtTime(best), color: "#EF9F27" },
+          { label: lang === "el" ? "Μέσος Όρος" : "Average",     value: fmtTime(avg),  color: "#5DCAA5" },
+          { label: lang === "el" ? "Γύροι" : "Rounds",           value: String(rounds.length), color: "#9FE1CB" },
+        ].map(({ label, value, color }) => (
+          <div
+            key={label}
+            className="flex flex-col items-center gap-1 rounded-xl py-2.5"
+            style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}
+          >
+            <span className="font-mono text-sm font-bold tabular-nums" style={{ color }}>{value}</span>
+            <span className="text-center text-[0.5rem] font-medium tracking-wider text-white/25">{label}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* table header */}
+      <div>
+        <div
+          className="grid gap-1 rounded-t-lg px-3 py-2"
+          style={{ gridTemplateColumns: "1.5rem 1fr 1fr 1fr 1.5rem", background: "rgba(255,255,255,0.03)" }}
+        >
+          {["#", lang === "el" ? "Αναπνοή" : "Breathe", "Hold", lang === "el" ? "Ανάκαμψη" : "Recovery", lang === "el" ? "Σ" : "C"].map((h, i) => (
+            <span key={i} className="text-center text-[0.55rem] font-bold tracking-wider text-white/25">{h}</span>
+          ))}
+        </div>
+
+        {rounds.map((r, i) => {
+          const isBest = parseHMS(r.hold) === best;
+          return (
+            <div
+              key={i}
+              className="grid items-center gap-1 border-t px-3 py-2.5"
+              style={{
+                gridTemplateColumns: "1.5rem 1fr 1fr 1fr 1.5rem",
+                borderColor: "rgba(255,255,255,0.04)",
+                background: isBest ? "rgba(239,159,39,0.04)" : "transparent",
+              }}
+            >
+              <span className="text-center text-xs font-bold text-white/20">{i + 1}</span>
+              <span className="text-center font-mono text-xs" style={{ color: "#5DCAA5" }}>{fmtSecs(r.breathe)}</span>
+              <div className="flex flex-col items-center">
+                <span className="font-mono text-xs font-bold" style={{ color: isBest ? "#EF9F27" : "#1D9E75" }}>
+                  {fmtSecs(r.hold)}
+                </span>
+                {isBest && <span className="text-[0.45rem] font-bold tracking-widest" style={{ color: "#EF9F2770" }}>BEST</span>}
+              </div>
+              <span className="text-center font-mono text-xs" style={{ color: "#9FE1CB" }}>{fmtSecs(r.recovery)}</span>
+              <span className="text-center text-xs text-white/30">{r.contractions > 0 ? r.contractions : "—"}</span>
+            </div>
+          );
+        })}
+
+        {/* totals */}
+        <div
+          className="grid items-center gap-1 rounded-b-lg border-t px-3 py-2.5"
+          style={{
+            gridTemplateColumns: "1.5rem 1fr 1fr 1fr 1.5rem",
+            borderColor: "rgba(29,158,117,0.2)",
+            background: "rgba(29,158,117,0.05)",
+          }}
+        >
+          <span className="text-center text-[0.55rem] font-bold tracking-wider text-white/25">
+            {lang === "el" ? "ΣΥΝ" : "TOT"}
+          </span>
+          <span />
+          <span className="text-center font-mono text-xs font-bold" style={{ color: "#1D9E75" }}>
+            {fmtTime(holds.reduce((a, b) => a + b, 0))}
+          </span>
+          <span /><span />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── component ──────────────────────────────────────────────────────────────────
 
 function DiveDetail() {
@@ -177,11 +303,15 @@ function DiveDetail() {
         </Section>
       )}
 
-      {/* notes */}
+      {/* notes — STA sessions get structured display; plain text is shown as-is */}
       {dive.notes && (
-        <Section title={lang === "el" ? "ΣΗΜΕΙΩΣΕΙΣ" : "NOTES"}>
-          <p className="text-sm text-white/60 leading-relaxed">{dive.notes}</p>
-        </Section>
+        dive.discipline === "STA" && dive.notes.includes("Rounds:")
+          ? <STASessionNotes notes={dive.notes} lang={lang} />
+          : (
+            <Section title={lang === "el" ? "ΣΗΜΕΙΩΣΕΙΣ" : "NOTES"}>
+              <p className="text-sm text-white/60 leading-relaxed whitespace-pre-line">{dive.notes}</p>
+            </Section>
+          )
       )}
 
       {/* actions */}
