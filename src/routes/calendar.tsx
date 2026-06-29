@@ -230,8 +230,24 @@ function Calendar() {
 
 // ── DayDiveRow ─────────────────────────────────────────────────────────────────
 
+function parseSTANotes(notes: string | null): { best: string; rounds: number } | null {
+  if (!notes) return null;
+  const roundsMatch = notes.match(/Total rounds:\s*(\d+)/i) ?? notes.match(/"total_rounds":\s*(\d+)/);
+  const bestMatch   = notes.match(/Best:\s*([\d:]+)/i);
+  if (!bestMatch) return null;
+  return {
+    best:   bestMatch[1],
+    rounds: roundsMatch ? Number(roundsMatch[1]) : 0,
+  };
+}
+
 function DayDiveRow({ dive, lang }: { dive: Dive; lang: "el" | "en" }) {
   const border = dive.session_type === "competition" ? "#EF9F27" : "#1D9E75";
+
+  // STA training: show structured summary instead of raw result
+  const isSTATraining = dive.discipline === "STA" && dive.session_type === "training";
+  const staParsed = isSTATraining ? parseSTANotes(dive.notes) : null;
+
   return (
     <Link
       to="/dive/$id"
@@ -245,10 +261,33 @@ function DayDiveRow({ dive, lang }: { dive: Dive; lang: "el" | "en" }) {
       >
         {dive.discipline}
       </span>
-      <span className="text-xs text-white/40">{disciplineName(dive.discipline, lang)}</span>
-      <span className="ml-auto font-mono text-sm font-bold text-white">
-        {formatResult(dive.discipline, dive.result)}
-      </span>
+
+      {isSTATraining && staParsed ? (
+        <div className="flex flex-col gap-0.5">
+          <span className="text-xs font-semibold text-white/80">
+            {lang === "el" ? "STA Προπόνηση" : "STA Training"}
+          </span>
+          <span className="text-[0.6rem] text-white/35">
+            {lang === "el"
+              ? `Best hold: ${staParsed.best} · ${staParsed.rounds} γύροι`
+              : `Best hold: ${staParsed.best} · ${staParsed.rounds} rounds`}
+          </span>
+        </div>
+      ) : (
+        <>
+          <span className="text-xs text-white/40">{disciplineName(dive.discipline, lang)}</span>
+          <span className="ml-auto font-mono text-sm font-bold text-white">
+            {formatResult(dive.discipline, dive.result)}
+          </span>
+        </>
+      )}
+
+      {isSTATraining && staParsed && (
+        <span className="ml-auto font-mono text-sm font-bold" style={{ color: "#5DCAA5" }}>
+          {staParsed.best}
+        </span>
+      )}
+
       {dive.is_personal_best && (
         <span className="text-[0.6rem]" style={{ color: "#EF9F27" }}>🏆</span>
       )}
