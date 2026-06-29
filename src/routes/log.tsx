@@ -78,19 +78,18 @@ function LogDive() {
   const [beltWeight, setBeltWeight] = useState("");
   const [wetsuitMm, setWetsuitMm] = useState<string>("");
   const [buoyancy, setBuoyancy] = useState<string>("");
-  const [finsType, setFinsType] = useState<string>("");
   const [finsBrand, setFinsBrand] = useState("");
   const [finsModel, setFinsModel] = useState("");
   const [footPocket, setFootPocket] = useState("");
   const [waterTemp, setWaterTemp] = useState("");
 
-  // Auto-populate fins_type from discipline (allow manual override)
-  const finsDefault = (d: DisciplineCode): string => {
-    if (["DYN", "CWT"].includes(d))        return "monofin";
-    if (["DYNB", "CWTB"].includes(d))      return "bifins";
-    if (["STA", "DNF", "CNF", "FIM"].includes(d)) return "none";
-    return "";
+  // Derive fins category from discipline — no manual override needed
+  const finsCategory = (d: DisciplineCode): "monofin" | "bifins" | "none" => {
+    if (["DYN", "CWT"].includes(d))   return "monofin";
+    if (["DYNB", "CWTB"].includes(d)) return "bifins";
+    return "none";
   };
+  const finsCat = finsCategory(discipline);
 
   useEffect(() => {
     if (!editing) return;
@@ -108,19 +107,11 @@ function LogDive() {
     setBeltWeight(editing.belt_weight != null ? String(editing.belt_weight) : "");
     setWetsuitMm(editing.wetsuit_mm != null ? String(editing.wetsuit_mm) : "");
     setBuoyancy(editing.buoyancy ?? "");
-    setFinsType(editing.fins_type ?? "");
     setFinsBrand(editing.fins_brand ?? "");
     setFinsModel(editing.fins_model ?? "");
     setFootPocket(editing.foot_pocket ?? "");
     setWaterTemp(editing.water_temp != null ? String(editing.water_temp) : "");
   }, [editing]);
-
-  // On new dives, seed fins from initial discipline
-  useEffect(() => {
-    if (!editing) setFinsType(finsDefault(discipline));
-  // Only on mount (editing is stable null for new dives)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const mutation = useMutation({
     mutationFn: (input: NewDiveInput) =>
@@ -138,17 +129,6 @@ function LogDive() {
     },
     onError: (err) => toast.error(err instanceof Error ? err.message : t("log.couldNotSave")),
   });
-
-  // When discipline changes and user hasn't manually overridden, suggest the default fins
-  const handleDisciplineChange = (v: DisciplineCode) => {
-    setDiscipline(v);
-    setFinsType((prev) => {
-      // Only auto-fill if prev was empty or was itself an auto-default (not a deliberate override)
-      const prevDefault = finsDefault(discipline);
-      if (prev === "" || prev === prevDefault) return finsDefault(v);
-      return prev;
-    });
-  };
 
   const isTime = isTimeDiscipline(discipline);
 
@@ -173,7 +153,7 @@ function LogDive() {
       belt_weight: beltWeight ? Number(beltWeight) : null,
       wetsuit_mm: wetsuitMm ? Number(wetsuitMm) : null,
       buoyancy: buoyancy || null,
-      fins_type: finsType || null,
+      fins_type: finsCat !== "none" ? finsCat : null,
       fins_brand: finsBrand || null,
       fins_model: finsModel || null,
       foot_pocket: footPocket || null,
@@ -192,7 +172,7 @@ function LogDive() {
         <div className="glass-card space-y-4 rounded-2xl p-5">
           <div className="space-y-1.5">
             <Label>{t("log.discipline")}</Label>
-            <Select value={discipline} onValueChange={(v) => handleDisciplineChange(v as DisciplineCode)}>
+            <Select value={discipline} onValueChange={(v) => setDiscipline(v as DisciplineCode)}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -376,7 +356,7 @@ function LogDive() {
                 </div>
               </div>
 
-              {/* Row 3: buoyancy + fins type */}
+              {/* Row 3: buoyancy (full row — fins type removed) */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label>{t("log.buoyancy")}</Label>
@@ -390,37 +370,35 @@ function LogDive() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-1.5">
-                  <Label>{t("log.fins")}</Label>
-                  <Select value={finsType} onValueChange={setFinsType}>
-                    <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">{" — "}</SelectItem>
-                      <SelectItem value="monofin">{t("log.finsMono")}</SelectItem>
-                      <SelectItem value="bifins">{t("log.finsBi")}</SelectItem>
-                      <SelectItem value="none">{t("log.finsNone")}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                <div />
               </div>
 
-              {/* Fins detail rows — only for monofin / bifins */}
-              {(finsType === "monofin" || finsType === "bifins") && (
+              {/* Fins fields — derived from discipline, no dropdown */}
+              {finsCat !== "none" && (
                 <>
-                  {/* Row: brand + model */}
+                  {/* Row: brand (combobox) + model */}
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1.5">
-                      <Label htmlFor="fins-brand">{t("log.finsBrand")}</Label>
-                      <Select value={finsBrand} onValueChange={setFinsBrand}>
-                        <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="">{" — "}</SelectItem>
-                          <SelectItem value="Cetma">Cetma</SelectItem>
-                          <SelectItem value="Sectus">Sectus</SelectItem>
-                          <SelectItem value="Orama">Orama</SelectItem>
-                          <SelectItem value="C4">C4</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <Label htmlFor="fins-brand">
+                        {finsCat === "monofin"
+                          ? lang === "el" ? "Μονοπέδιλο — Μάρκα" : "Monofin — Brand"
+                          : lang === "el" ? "Διπλά πέδιλα — Μάρκα" : "Bifins — Brand"}
+                      </Label>
+                      {/* Native combobox: datalist gives suggestions, user can type freely */}
+                      <input
+                        id="fins-brand"
+                        list="fins-brand-list"
+                        value={finsBrand}
+                        onChange={(e) => setFinsBrand(e.target.value)}
+                        placeholder="Cetma, Orama, C4, Sectus…"
+                        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      />
+                      <datalist id="fins-brand-list">
+                        <option value="Cetma" />
+                        <option value="Orama" />
+                        <option value="C4" />
+                        <option value="Sectus" />
+                      </datalist>
                     </div>
                     <div className="space-y-1.5">
                       <Label htmlFor="fins-model">{t("log.finsModel")}</Label>
@@ -430,8 +408,8 @@ function LogDive() {
                     </div>
                   </div>
 
-                  {/* Row: foot pocket (bifins only) — left cell only, right stays empty */}
-                  {finsType === "bifins" && (
+                  {/* Row: foot pocket — bifins only */}
+                  {finsCat === "bifins" && (
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1.5">
                         <Label htmlFor="foot-pocket">{t("log.footPocket")}</Label>
