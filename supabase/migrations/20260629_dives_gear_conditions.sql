@@ -4,4 +4,6 @@ alter table dives add column if not exists wetsuit_mm  numeric(4,1);
 alter table dives add column if not exists buoyancy    text check (buoyancy in ('negative','neutral','positive'));
 alter table dives add column if not exists fins_type   text check (fins_type in ('monofin','bifins','none'));
 alter table dives add column if not exists fins_brand  text;
+alter table dives add column if not exists fins_model  text;
+alter table dives add column if not exists foot_pocket text;
 alter table dives add column if not exists water_temp  numeric(4,1);

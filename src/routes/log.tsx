@@ -80,6 +80,8 @@ function LogDive() {
   const [buoyancy, setBuoyancy] = useState<string>("");
   const [finsType, setFinsType] = useState<string>("");
   const [finsBrand, setFinsBrand] = useState("");
+  const [finsModel, setFinsModel] = useState("");
+  const [footPocket, setFootPocket] = useState("");
   const [waterTemp, setWaterTemp] = useState("");
 
   // Auto-populate fins_type from discipline (allow manual override)
@@ -108,6 +110,8 @@ function LogDive() {
     setBuoyancy(editing.buoyancy ?? "");
     setFinsType(editing.fins_type ?? "");
     setFinsBrand(editing.fins_brand ?? "");
+    setFinsModel(editing.fins_model ?? "");
+    setFootPocket(editing.foot_pocket ?? "");
     setWaterTemp(editing.water_temp != null ? String(editing.water_temp) : "");
   }, [editing]);
 
@@ -171,6 +175,8 @@ function LogDive() {
       buoyancy: buoyancy || null,
       fins_type: finsType || null,
       fins_brand: finsBrand || null,
+      fins_model: finsModel || null,
+      foot_pocket: footPocket || null,
       water_temp: waterTemp ? Number(waterTemp) : null,
     });
   };
@@ -333,34 +339,18 @@ function LogDive() {
           </button>
 
           {gearOpen && (
-            <div className="space-y-4 px-5 pb-5">
+            <div className="space-y-3 px-5 pb-5">
               {/* Row 1: weights */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label htmlFor="neck-weight">{t("log.neckWeight")}</Label>
-                  <Input
-                    id="neck-weight"
-                    type="number"
-                    inputMode="decimal"
-                    step="0.1"
-                    min="0"
-                    value={neckWeight}
-                    onChange={(e) => setNeckWeight(e.target.value)}
-                    placeholder="0.0"
-                  />
+                  <Input id="neck-weight" type="number" inputMode="decimal" step="0.1" min="0"
+                    value={neckWeight} onChange={(e) => setNeckWeight(e.target.value)} placeholder="0.0" />
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="belt-weight">{t("log.beltWeight")}</Label>
-                  <Input
-                    id="belt-weight"
-                    type="number"
-                    inputMode="decimal"
-                    step="0.1"
-                    min="0"
-                    value={beltWeight}
-                    onChange={(e) => setBeltWeight(e.target.value)}
-                    placeholder="0.0"
-                  />
+                  <Input id="belt-weight" type="number" inputMode="decimal" step="0.1" min="0"
+                    value={beltWeight} onChange={(e) => setBeltWeight(e.target.value)} placeholder="0.0" />
                 </div>
               </div>
 
@@ -369,9 +359,7 @@ function LogDive() {
                 <div className="space-y-1.5">
                   <Label>{t("log.wetsuit")}</Label>
                   <Select value={wetsuitMm} onValueChange={setWetsuitMm}>
-                    <SelectTrigger>
-                      <SelectValue placeholder={t("log.wetsuitNone")} />
-                    </SelectTrigger>
+                    <SelectTrigger><SelectValue placeholder={t("log.wetsuitNone")} /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="">{t("log.wetsuitNone")}</SelectItem>
                       <SelectItem value="1.5">1.5 mm</SelectItem>
@@ -383,15 +371,8 @@ function LogDive() {
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="water-temp">{t("log.waterTemp")}</Label>
-                  <Input
-                    id="water-temp"
-                    type="number"
-                    inputMode="decimal"
-                    step="0.5"
-                    value={waterTemp}
-                    onChange={(e) => setWaterTemp(e.target.value)}
-                    placeholder="e.g. 22"
-                  />
+                  <Input id="water-temp" type="number" inputMode="decimal" step="0.5"
+                    value={waterTemp} onChange={(e) => setWaterTemp(e.target.value)} placeholder="e.g. 22" />
                 </div>
               </div>
 
@@ -400,9 +381,7 @@ function LogDive() {
                 <div className="space-y-1.5">
                   <Label>{t("log.buoyancy")}</Label>
                   <Select value={buoyancy} onValueChange={setBuoyancy}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="—" />
-                    </SelectTrigger>
+                    <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="">{" — "}</SelectItem>
                       <SelectItem value="negative">{t("log.buoyancyNeg")}</SelectItem>
@@ -414,9 +393,7 @@ function LogDive() {
                 <div className="space-y-1.5">
                   <Label>{t("log.fins")}</Label>
                   <Select value={finsType} onValueChange={setFinsType}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="—" />
-                    </SelectTrigger>
+                    <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="">{" — "}</SelectItem>
                       <SelectItem value="monofin">{t("log.finsMono")}</SelectItem>
@@ -427,18 +404,45 @@ function LogDive() {
                 </div>
               </div>
 
-              {/* Row 4: fins brand — only when fins are selected */}
+              {/* Fins detail rows — only for monofin / bifins */}
               {(finsType === "monofin" || finsType === "bifins") && (
-                <div className="space-y-1.5">
-                  <Label htmlFor="fins-brand">{t("log.finsBrand")}</Label>
-                  <Input
-                    id="fins-brand"
-                    type="text"
-                    value={finsBrand}
-                    onChange={(e) => setFinsBrand(e.target.value)}
-                    placeholder="Omer, Molchanovs, Salvimar, Cetma, Orama…"
-                  />
-                </div>
+                <>
+                  {/* Row: brand + model */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="fins-brand">{t("log.finsBrand")}</Label>
+                      <Select value={finsBrand} onValueChange={setFinsBrand}>
+                        <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">{" — "}</SelectItem>
+                          <SelectItem value="Cetma">Cetma</SelectItem>
+                          <SelectItem value="Sectus">Sectus</SelectItem>
+                          <SelectItem value="Orama">Orama</SelectItem>
+                          <SelectItem value="C4">C4</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="fins-model">{t("log.finsModel")}</Label>
+                      <Input id="fins-model" type="text"
+                        value={finsModel} onChange={(e) => setFinsModel(e.target.value)}
+                        placeholder="e.g. Carbon 500" />
+                    </div>
+                  </div>
+
+                  {/* Row: foot pocket (bifins only) — left cell only, right stays empty */}
+                  {finsType === "bifins" && (
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="foot-pocket">{t("log.footPocket")}</Label>
+                        <Input id="foot-pocket" type="text"
+                          value={footPocket} onChange={(e) => setFootPocket(e.target.value)}
+                          placeholder="e.g. Omer Stingray" />
+                      </div>
+                      <div />
+                    </div>
+                  )}
+                </>
               )}
             </div>
           )}

@@ -19,6 +19,8 @@ export interface NewDiveInput {
   buoyancy: string | null;
   fins_type: string | null;
   fins_brand: string | null;
+  fins_model: string | null;
+  foot_pocket: string | null;
   water_temp: number | null;
 }
 
