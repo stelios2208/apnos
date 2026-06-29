@@ -58,6 +58,12 @@ export interface Dive {
   food_notes: string | null;
   mental_state: number | null;
   notes: string | null;
+  neck_weight: number | null;
+  belt_weight: number | null;
+  wetsuit_mm: number | null;
+  buoyancy: string | null;
+  fins_type: string | null;
+  water_temp: number | null;
   is_personal_best: boolean;
   created_at: string;
 }

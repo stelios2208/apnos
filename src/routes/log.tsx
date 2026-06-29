@@ -3,6 +3,7 @@ import { zodValidator, fallback } from "@tanstack/zod-adapter";
 import { z } from "zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { AppLayout } from "@/components/AppLayout";
 import { useAuth } from "@/hooks/use-auth";
@@ -72,6 +73,13 @@ function LogDive() {
   const [foodNotes, setFoodNotes] = useState("");
   const [mentalState, setMentalState] = useState(3);
   const [notes, setNotes] = useState("");
+  const [gearOpen, setGearOpen] = useState(false);
+  const [neckWeight, setNeckWeight] = useState("");
+  const [beltWeight, setBeltWeight] = useState("");
+  const [wetsuitMm, setWetsuitMm] = useState<string>("");
+  const [buoyancy, setBuoyancy] = useState<string>("");
+  const [finsType, setFinsType] = useState<string>("");
+  const [waterTemp, setWaterTemp] = useState("");
 
   useEffect(() => {
     if (!editing) return;
@@ -85,6 +93,12 @@ function LogDive() {
     setFoodNotes(editing.food_notes ?? "");
     setMentalState(editing.mental_state ?? 3);
     setNotes(editing.notes ?? "");
+    setNeckWeight(editing.neck_weight != null ? String(editing.neck_weight) : "");
+    setBeltWeight(editing.belt_weight != null ? String(editing.belt_weight) : "");
+    setWetsuitMm(editing.wetsuit_mm != null ? String(editing.wetsuit_mm) : "");
+    setBuoyancy(editing.buoyancy ?? "");
+    setFinsType(editing.fins_type ?? "");
+    setWaterTemp(editing.water_temp != null ? String(editing.water_temp) : "");
   }, [editing]);
 
   const mutation = useMutation({
@@ -123,6 +137,12 @@ function LogDive() {
       food_notes: foodNotes || null,
       mental_state: mentalState,
       notes: notes || null,
+      neck_weight: neckWeight ? Number(neckWeight) : null,
+      belt_weight: beltWeight ? Number(beltWeight) : null,
+      wetsuit_mm: wetsuitMm ? Number(wetsuitMm) : null,
+      buoyancy: buoyancy || null,
+      fins_type: finsType || null,
+      water_temp: waterTemp ? Number(waterTemp) : null,
     });
   };
 
@@ -265,6 +285,117 @@ function LogDive() {
               rows={3}
             />
           </div>
+        </div>
+
+        {/* Equipment & Conditions — collapsible */}
+        <div className="glass-card rounded-2xl overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setGearOpen((o) => !o)}
+            className="flex w-full items-center justify-between p-5 text-left"
+          >
+            <span className="text-sm font-semibold" style={{ color: "#5DCAA5" }}>
+              {t("log.gear")}
+            </span>
+            <ChevronDown
+              className="size-4 transition-transform duration-200"
+              style={{ color: "#5DCAA5", transform: gearOpen ? "rotate(180deg)" : "rotate(0deg)" }}
+            />
+          </button>
+
+          {gearOpen && (
+            <div className="space-y-4 px-5 pb-5">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="neck-weight">{t("log.neckWeight")}</Label>
+                  <Input
+                    id="neck-weight"
+                    type="number"
+                    inputMode="decimal"
+                    step="0.1"
+                    min="0"
+                    value={neckWeight}
+                    onChange={(e) => setNeckWeight(e.target.value)}
+                    placeholder="0.0"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="belt-weight">{t("log.beltWeight")}</Label>
+                  <Input
+                    id="belt-weight"
+                    type="number"
+                    inputMode="decimal"
+                    step="0.1"
+                    min="0"
+                    value={beltWeight}
+                    onChange={(e) => setBeltWeight(e.target.value)}
+                    placeholder="0.0"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>{t("log.wetsuit")}</Label>
+                  <Select value={wetsuitMm} onValueChange={setWetsuitMm}>
+                    <SelectTrigger>
+                      <SelectValue placeholder={t("log.wetsuitNone")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">{t("log.wetsuitNone")}</SelectItem>
+                      <SelectItem value="1.5">1.5 mm</SelectItem>
+                      <SelectItem value="3">3 mm</SelectItem>
+                      <SelectItem value="5">5 mm</SelectItem>
+                      <SelectItem value="7">7 mm</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="water-temp">{t("log.waterTemp")}</Label>
+                  <Input
+                    id="water-temp"
+                    type="number"
+                    inputMode="decimal"
+                    step="0.5"
+                    value={waterTemp}
+                    onChange={(e) => setWaterTemp(e.target.value)}
+                    placeholder="e.g. 22"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>{t("log.buoyancy")}</Label>
+                  <Select value={buoyancy} onValueChange={setBuoyancy}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="—" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">{" — "}</SelectItem>
+                      <SelectItem value="negative">{t("log.buoyancyNeg")}</SelectItem>
+                      <SelectItem value="neutral">{t("log.buoyancyNeu")}</SelectItem>
+                      <SelectItem value="positive">{t("log.buoyancyPos")}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>{t("log.fins")}</Label>
+                  <Select value={finsType} onValueChange={setFinsType}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="—" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">{" — "}</SelectItem>
+                      <SelectItem value="monofin">{t("log.finsMono")}</SelectItem>
+                      <SelectItem value="bifins">{t("log.finsBi")}</SelectItem>
+                      <SelectItem value="none">{t("log.finsNone")}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         <Button type="submit" variant="hero" size="lg" className="w-full" disabled={mutation.isPending}>
