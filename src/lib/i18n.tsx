@@ -11,6 +11,7 @@ const en: Dict = {
   "tagline": "breathe · dive · repeat",
   // nav
   "nav.dashboard": "Dashboard",
+  "nav.calendar": "Calendar",
   "nav.log": "New Dive",
   "nav.history": "History",
   "nav.planner": "Planner",
@@ -176,6 +177,7 @@ const en: Dict = {
 const el: Dict = {
   "tagline": "breathe · dive · repeat",
   "nav.dashboard": "Πίνακας",
+  "nav.calendar": "Ημερολόγιο",
   "nav.log": "Νέα Βουτιά",
   "nav.history": "Ιστορικό",
   "nav.planner": "Πρόγραμμα",

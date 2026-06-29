@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as DiveIdRouteImport } from './routes/dive.$id'
 import { Route as StaTrainerRouteImport } from './routes/sta-trainer'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
@@ -23,6 +24,11 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DisciplineCodeRouteImport } from './routes/discipline.$code'
 
+const CalendarRoute = CalendarRouteImport.update({
+  id: '/calendar',
+  path: '/calendar',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DiveIdRoute = DiveIdRouteImport.update({
   id: '/dive/$id',
   path: '/dive/$id',
@@ -92,6 +98,7 @@ const DisciplineCodeRoute = DisciplineCodeRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/calendar': typeof CalendarRoute
   '/dashboard': typeof DashboardRoute
   '/equipment': typeof EquipmentRoute
   '/history': typeof HistoryRoute
@@ -107,6 +114,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/calendar': typeof CalendarRoute
   '/dashboard': typeof DashboardRoute
   '/equipment': typeof EquipmentRoute
   '/history': typeof HistoryRoute
@@ -123,6 +131,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/calendar': typeof CalendarRoute
   '/dashboard': typeof DashboardRoute
   '/equipment': typeof EquipmentRoute
   '/history': typeof HistoryRoute
@@ -140,6 +149,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/calendar'
     | '/dashboard'
     | '/equipment'
     | '/history'
@@ -155,6 +165,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/calendar'
     | '/dashboard'
     | '/equipment'
     | '/history'
@@ -170,6 +181,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/auth'
+    | '/calendar'
     | '/dashboard'
     | '/equipment'
     | '/history'
@@ -186,6 +198,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
+  CalendarRoute: typeof CalendarRoute
   DashboardRoute: typeof DashboardRoute
   EquipmentRoute: typeof EquipmentRoute
   HistoryRoute: typeof HistoryRoute
@@ -278,6 +291,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/calendar': {
+      id: '/calendar'
+      path: '/calendar'
+      fullPath: '/calendar'
+      preLoaderRoute: typeof CalendarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/dive/$id': {
       id: '/dive/$id'
       path: '/dive/$id'
@@ -298,6 +318,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
+  CalendarRoute: CalendarRoute,
   DashboardRoute: DashboardRoute,
   EquipmentRoute: EquipmentRoute,
   HistoryRoute: HistoryRoute,

@@ -1,6 +1,6 @@
 import React, { useEffect, type ReactNode } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { LayoutDashboard, Plus, History, LogOut, Timer, MoreHorizontal, Backpack, BookOpen, Settings, Waves } from "lucide-react";
+import { LayoutDashboard, Plus, History, LogOut, Timer, MoreHorizontal, Backpack, BookOpen, Settings, Waves, CalendarDays } from "lucide-react";
 
 const NAV_ITEM_STYLE: React.CSSProperties = {
   height: 56,
@@ -45,12 +45,13 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
   const nav = [
     { to: "/dashboard", label: t("nav.dashboard"), icon: LayoutDashboard },
-    { to: "/history",   label: t("nav.history"),   icon: History },
+    { to: "/calendar",  label: t("nav.calendar"),  icon: CalendarDays },
     { to: "/log",       label: t("nav.log"),        icon: Plus },
-    { to: "/planner",   label: t("nav.planner"),    icon: Timer },
+    { to: "/history",   label: t("nav.history"),    icon: History },
   ] as const;
 
   const moreItems = [
+    { to: "/planner",     label: t("nav.planner"),   icon: Timer },
     { to: "/sta-trainer", label: t("nav.trainer"),   icon: Waves },
     { to: "/equipment",   label: t("nav.equipment"), icon: Backpack },
     { to: "/rules",       label: t("nav.rules"),     icon: BookOpen },
