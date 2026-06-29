@@ -464,9 +464,8 @@ function DiveCard({ dive, isExpanded, isComparing, onToggle, onCompare, onDelete
         borderLeft: `3px solid ${border}`,
       }}
     >
-      {/* collapsed top row */}
+      {/* top row: badges + compare */}
       <div className="flex items-center gap-2 px-3 pt-3">
-        {/* discipline chip */}
         <span
           className="shrink-0 rounded-md px-2 py-0.5 text-[0.6rem] font-bold tracking-wider"
           style={{ background: "rgba(29,158,117,0.15)", color: "#5DCAA5" }}
@@ -474,7 +473,6 @@ function DiveCard({ dive, isExpanded, isComparing, onToggle, onCompare, onDelete
           {dive.discipline}
         </span>
 
-        {/* PB badge */}
         {dive.is_personal_best && (
           <span
             className="shrink-0 rounded-md px-1.5 py-0.5 text-[0.6rem] font-bold"
@@ -484,7 +482,6 @@ function DiveCard({ dive, isExpanded, isComparing, onToggle, onCompare, onDelete
           </span>
         )}
 
-        {/* federation badge */}
         {dive.federation && (
           <span
             className="shrink-0 rounded-md px-1.5 py-0.5 text-[0.6rem] font-semibold"
@@ -496,30 +493,25 @@ function DiveCard({ dive, isExpanded, isComparing, onToggle, onCompare, onDelete
 
         <div className="flex-1" />
 
-        {/* compare button */}
         <button
           onClick={(e) => { e.stopPropagation(); onCompare(); }}
           className="flex items-center gap-1 rounded-lg px-2 py-1 text-[0.6rem] font-semibold transition-all"
-          style={
-            isComparing
-              ? { background: "#1D9E75", color: "#fff" }
-              : { color: "rgba(255,255,255,0.3)" }
-          }
+          style={isComparing ? { background: "#1D9E75", color: "#fff" } : { color: "rgba(255,255,255,0.3)" }}
         >
           <ArrowLeftRight className="size-3" />
           {lang === "el" ? "Σύγκριση" : "Compare"}
         </button>
       </div>
 
-      {/* result */}
-      <div className="px-3 pb-1 pt-1">
+      {/* result — tapping navigates to detail page */}
+      <Link to="/dive/$id" params={{ id: dive.id }} className="block px-3 pb-1 pt-1">
         <span
           className="font-bold tabular-nums text-white"
           style={{ fontFamily: "'Outfit', sans-serif", fontSize: "1.75rem", lineHeight: 1.1 }}
         >
           {formatResult(dive.discipline, dive.result)}
         </span>
-      </div>
+      </Link>
 
       {/* meta + expand toggle */}
       <button

@@ -9,12 +9,13 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as DiveIdRouteImport } from './routes/dive.$id'
+import { Route as StaTrainerRouteImport } from './routes/sta-trainer'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as RulesRouteImport } from './routes/rules'
 import { Route as PlannerRouteImport } from './routes/planner'
 import { Route as LogRouteImport } from './routes/log'
-import { Route as StaTrainerRouteImport } from './routes/sta-trainer'
 import { Route as HistoryRouteImport } from './routes/history'
 import { Route as EquipmentRouteImport } from './routes/equipment'
 import { Route as DashboardRouteImport } from './routes/dashboard'
@@ -22,6 +23,16 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DisciplineCodeRouteImport } from './routes/discipline.$code'
 
+const DiveIdRoute = DiveIdRouteImport.update({
+  id: '/dive/$id',
+  path: '/dive/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StaTrainerRoute = StaTrainerRouteImport.update({
+  id: '/sta-trainer',
+  path: '/sta-trainer',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
   path: '/sitemap.xml',
@@ -45,11 +56,6 @@ const PlannerRoute = PlannerRouteImport.update({
 const LogRoute = LogRouteImport.update({
   id: '/log',
   path: '/log',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const StaTrainerRoute = StaTrainerRouteImport.update({
-  id: '/sta-trainer',
-  path: '/sta-trainer',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HistoryRoute = HistoryRouteImport.update({
@@ -95,6 +101,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/sta-trainer': typeof StaTrainerRoute
+  '/dive/$id': typeof DiveIdRoute
   '/discipline/$code': typeof DisciplineCodeRoute
 }
 export interface FileRoutesByTo {
@@ -109,6 +116,7 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/sta-trainer': typeof StaTrainerRoute
+  '/dive/$id': typeof DiveIdRoute
   '/discipline/$code': typeof DisciplineCodeRoute
 }
 export interface FileRoutesById {
@@ -124,6 +132,7 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/sta-trainer': typeof StaTrainerRoute
+  '/dive/$id': typeof DiveIdRoute
   '/discipline/$code': typeof DisciplineCodeRoute
 }
 export interface FileRouteTypes {
@@ -140,6 +149,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/sitemap.xml'
     | '/sta-trainer'
+    | '/dive/$id'
     | '/discipline/$code'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -154,6 +164,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/sitemap.xml'
     | '/sta-trainer'
+    | '/dive/$id'
     | '/discipline/$code'
   id:
     | '__root__'
@@ -168,6 +179,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/sitemap.xml'
     | '/sta-trainer'
+    | '/dive/$id'
     | '/discipline/$code'
   fileRoutesById: FileRoutesById
 }
@@ -183,11 +195,19 @@ export interface RootRouteChildren {
   SettingsRoute: typeof SettingsRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   StaTrainerRoute: typeof StaTrainerRoute
+  DiveIdRoute: typeof DiveIdRoute
   DisciplineCodeRoute: typeof DisciplineCodeRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/sta-trainer': {
+      id: '/sta-trainer'
+      path: '/sta-trainer'
+      fullPath: '/sta-trainer'
+      preLoaderRoute: typeof StaTrainerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/sitemap.xml': {
       id: '/sitemap.xml'
       path: '/sitemap.xml'
@@ -230,13 +250,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HistoryRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/sta-trainer': {
-      id: '/sta-trainer'
-      path: '/sta-trainer'
-      fullPath: '/sta-trainer'
-      preLoaderRoute: typeof StaTrainerRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/equipment': {
       id: '/equipment'
       path: '/equipment'
@@ -265,6 +278,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/dive/$id': {
+      id: '/dive/$id'
+      path: '/dive/$id'
+      fullPath: '/dive/$id'
+      preLoaderRoute: typeof DiveIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/discipline/$code': {
       id: '/discipline/$code'
       path: '/discipline/$code'
@@ -287,8 +307,19 @@ const rootRouteChildren: RootRouteChildren = {
   SettingsRoute: SettingsRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   StaTrainerRoute: StaTrainerRoute,
+  DiveIdRoute: DiveIdRoute,
   DisciplineCodeRoute: DisciplineCodeRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

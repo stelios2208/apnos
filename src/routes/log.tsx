@@ -319,98 +319,96 @@ function LogDive() {
           </button>
 
           {gearOpen && (
-            <div className="space-y-3 px-5 pb-5">
-              {/* Row 1: weights */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="neck-weight">{t("log.neckWeight")}</Label>
-                  <Input id="neck-weight" type="number" inputMode="decimal" step="0.1" min="0"
-                    value={neckWeight} onChange={(e) => setNeckWeight(e.target.value)} placeholder="0.0" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="belt-weight">{t("log.beltWeight")}</Label>
-                  <Input id="belt-weight" type="number" inputMode="decimal" step="0.1" min="0"
-                    value={beltWeight} onChange={(e) => setBeltWeight(e.target.value)} placeholder="0.0" />
-                </div>
+            <div
+              className="px-5 pb-5"
+              style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, alignItems: "start" }}
+            >
+              {/* col 1: neck weight */}
+              <div className="space-y-1.5">
+                <Label htmlFor="neck-weight">{t("log.neckWeight")}</Label>
+                <Input id="neck-weight" type="number" inputMode="decimal" step="0.1" min="0"
+                  value={neckWeight} onChange={(e) => setNeckWeight(e.target.value)} placeholder="0.0" />
+              </div>
+              {/* col 2: belt weight */}
+              <div className="space-y-1.5">
+                <Label htmlFor="belt-weight">{t("log.beltWeight")}</Label>
+                <Input id="belt-weight" type="number" inputMode="decimal" step="0.1" min="0"
+                  value={beltWeight} onChange={(e) => setBeltWeight(e.target.value)} placeholder="0.0" />
               </div>
 
-              {/* Row 2: wetsuit + water temp */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label>{t("log.wetsuit")}</Label>
-                  <Select value={wetsuitMm} onValueChange={setWetsuitMm}>
-                    <SelectTrigger><SelectValue placeholder={t("log.wetsuitNone")} /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">{t("log.wetsuitNone")}</SelectItem>
-                      <SelectItem value="1.5">1.5 mm</SelectItem>
-                      <SelectItem value="3">3 mm</SelectItem>
-                      <SelectItem value="5">5 mm</SelectItem>
-                      <SelectItem value="7">7 mm</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="water-temp">{t("log.waterTemp")}</Label>
-                  <Input id="water-temp" type="number" inputMode="decimal" step="0.5"
-                    value={waterTemp} onChange={(e) => setWaterTemp(e.target.value)} placeholder="e.g. 22" />
-                </div>
+              {/* col 1: wetsuit */}
+              <div className="space-y-1.5">
+                <Label>{t("log.wetsuit")}</Label>
+                <Select value={wetsuitMm} onValueChange={setWetsuitMm}>
+                  <SelectTrigger><SelectValue placeholder={t("log.wetsuitNone")} /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">{t("log.wetsuitNone")}</SelectItem>
+                    <SelectItem value="1.5">1.5 mm</SelectItem>
+                    <SelectItem value="3">3 mm</SelectItem>
+                    <SelectItem value="5">5 mm</SelectItem>
+                    <SelectItem value="7">7 mm</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {/* col 2: water temp — same row as wetsuit */}
+              <div className="space-y-1.5">
+                <Label htmlFor="water-temp">{t("log.waterTemp")}</Label>
+                <Input id="water-temp" type="number" inputMode="decimal" step="0.5"
+                  value={waterTemp} onChange={(e) => setWaterTemp(e.target.value)} placeholder="e.g. 22" />
               </div>
 
-              {/* Row 3: buoyancy (full row — fins type removed) */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label>{t("log.buoyancy")}</Label>
-                  <Select value={buoyancy} onValueChange={setBuoyancy}>
-                    <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">{" — "}</SelectItem>
-                      <SelectItem value="negative">{t("log.buoyancyNeg")}</SelectItem>
-                      <SelectItem value="neutral">{t("log.buoyancyNeu")}</SelectItem>
-                      <SelectItem value="positive">{t("log.buoyancyPos")}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div />
+              {/* col 1: buoyancy */}
+              <div className="space-y-1.5">
+                <Label>{t("log.buoyancy")}</Label>
+                <Select value={buoyancy} onValueChange={setBuoyancy}>
+                  <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">{" — "}</SelectItem>
+                    <SelectItem value="negative">{t("log.buoyancyNeg")}</SelectItem>
+                    <SelectItem value="neutral">{t("log.buoyancyNeu")}</SelectItem>
+                    <SelectItem value="positive">{t("log.buoyancyPos")}</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
+              {/* col 2: empty — keeps buoyancy in left column */}
+              <div />
 
-              {/* Fins fields — derived from discipline, no dropdown */}
+              {/* Fins fields — derived from discipline, spans both cols via nested grid */}
               {finsCat !== "none" && (
                 <>
-                  {/* Row: brand (combobox) + model */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1.5">
-                      <Label htmlFor="fins-brand">
-                        {finsCat === "monofin"
-                          ? lang === "el" ? "Μονοπέδιλο — Μάρκα" : "Monofin — Brand"
-                          : lang === "el" ? "Διπλά πέδιλα — Μάρκα" : "Bifins — Brand"}
-                      </Label>
-                      {/* Native combobox: datalist gives suggestions, user can type freely */}
-                      <input
-                        id="fins-brand"
-                        list="fins-brand-list"
-                        value={finsBrand}
-                        onChange={(e) => setFinsBrand(e.target.value)}
-                        placeholder="Cetma, Orama, C4, Sectus…"
-                        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                      />
-                      <datalist id="fins-brand-list">
-                        <option value="Cetma" />
-                        <option value="Orama" />
-                        <option value="C4" />
-                        <option value="Sectus" />
-                      </datalist>
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="fins-model">{t("log.finsModel")}</Label>
-                      <Input id="fins-model" type="text"
-                        value={finsModel} onChange={(e) => setFinsModel(e.target.value)}
-                        placeholder="e.g. Carbon 500" />
-                    </div>
+                  {/* col 1: brand combobox */}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="fins-brand">
+                      {finsCat === "monofin"
+                        ? lang === "el" ? "Μονοπέδιλο — Μάρκα" : "Monofin — Brand"
+                        : lang === "el" ? "Διπλά πέδιλα — Μάρκα" : "Bifins — Brand"}
+                    </Label>
+                    <input
+                      id="fins-brand"
+                      list="fins-brand-list"
+                      value={finsBrand}
+                      onChange={(e) => setFinsBrand(e.target.value)}
+                      placeholder="Cetma, Orama, C4, Sectus…"
+                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    />
+                    <datalist id="fins-brand-list">
+                      <option value="Cetma" />
+                      <option value="Orama" />
+                      <option value="C4" />
+                      <option value="Sectus" />
+                    </datalist>
+                  </div>
+                  {/* col 2: model */}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="fins-model">{t("log.finsModel")}</Label>
+                    <Input id="fins-model" type="text"
+                      value={finsModel} onChange={(e) => setFinsModel(e.target.value)}
+                      placeholder="e.g. Carbon 500" />
                   </div>
 
-                  {/* Row: foot pocket — bifins only */}
+                  {/* bifins: foot pocket in col 1, col 2 empty */}
                   {finsCat === "bifins" && (
-                    <div className="grid grid-cols-2 gap-3">
+                    <>
                       <div className="space-y-1.5">
                         <Label htmlFor="foot-pocket">{t("log.footPocket")}</Label>
                         <Input id="foot-pocket" type="text"
@@ -418,7 +416,7 @@ function LogDive() {
                           placeholder="e.g. Omer Stingray" />
                       </div>
                       <div />
-                    </div>
+                    </>
                   )}
                 </>
               )}

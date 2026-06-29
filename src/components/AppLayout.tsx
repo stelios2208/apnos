@@ -69,11 +69,13 @@ export function AppLayout({ children }: { children: ReactNode }) {
                 key={to}
                 to={to}
                 className={cn(
-                  "flex flex-1 flex-col items-center gap-1 rounded-lg py-2 text-[0.65rem] font-medium transition-colors",
+                  "flex flex-1 flex-col items-center justify-center gap-1 rounded-lg py-2 text-[0.65rem] font-medium transition-colors",
                   active ? "text-primary" : "text-muted-foreground hover:text-foreground",
                 )}
               >
-                <Icon className={cn("size-5", active && "drop-shadow-[0_0_8px_var(--color-primary)]")} />
+                <span className="flex h-5 w-5 items-center justify-center">
+                  <Icon className={cn("size-5", active && "drop-shadow-[0_0_8px_var(--color-primary)]")} />
+                </span>
                 {label}
               </Link>
             );
@@ -83,11 +85,13 @@ export function AppLayout({ children }: { children: ReactNode }) {
             <DropdownMenuTrigger asChild>
               <button
                 className={cn(
-                  "flex flex-1 flex-col items-center gap-1 rounded-lg py-2 text-[0.65rem] font-medium transition-colors",
+                  "flex flex-1 flex-col items-center justify-center gap-1 rounded-lg py-2 text-[0.65rem] font-medium transition-colors",
                   moreActive ? "text-primary" : "text-muted-foreground hover:text-foreground",
                 )}
               >
-                <MoreHorizontal className="size-5" />
+                <span className="flex h-5 w-5 items-center justify-center">
+                  <MoreHorizontal className="size-5" />
+                </span>
                 {t("nav.more")}
               </button>
             </DropdownMenuTrigger>
