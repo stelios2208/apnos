@@ -1,6 +1,16 @@
-import { useEffect, type ReactNode } from "react";
+import React, { useEffect, type ReactNode } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { LayoutDashboard, Plus, History, LogOut, Timer, MoreHorizontal, Backpack, BookOpen, Settings, Waves } from "lucide-react";
+
+const NAV_ITEM_STYLE: React.CSSProperties = {
+  height: 56,
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  justifyContent: "center",
+  flex: 1,
+  gap: 4,
+};
 import { Logo } from "@/components/Logo";
 import { useAuth } from "@/hooks/use-auth";
 import { useI18n } from "@/lib/i18n";
@@ -35,16 +45,16 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
   const nav = [
     { to: "/dashboard", label: t("nav.dashboard"), icon: LayoutDashboard },
-    { to: "/log", label: t("nav.log"), icon: Plus },
-    { to: "/planner", label: t("nav.planner"), icon: Timer },
-    { to: "/history", label: t("nav.history"), icon: History },
-    { to: "/sta-trainer", label: t("nav.trainer"), icon: Waves },
+    { to: "/history",   label: t("nav.history"),   icon: History },
+    { to: "/log",       label: t("nav.log"),        icon: Plus },
+    { to: "/planner",   label: t("nav.planner"),    icon: Timer },
   ] as const;
 
   const moreItems = [
-    { to: "/equipment", label: t("nav.equipment"), icon: Backpack },
-    { to: "/rules", label: t("nav.rules"), icon: BookOpen },
-    { to: "/settings", label: t("nav.settings"), icon: Settings },
+    { to: "/sta-trainer", label: t("nav.trainer"),   icon: Waves },
+    { to: "/equipment",   label: t("nav.equipment"), icon: Backpack },
+    { to: "/rules",       label: t("nav.rules"),     icon: BookOpen },
+    { to: "/settings",    label: t("nav.settings"),  icon: Settings },
   ] as const;
 
   const moreActive = moreItems.some((m) => pathname === m.to);
@@ -61,15 +71,16 @@ export function AppLayout({ children }: { children: ReactNode }) {
       <main className="flex-1 pt-8">{children}</main>
 
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-background/80 backdrop-blur-lg">
-        <div className="mx-auto flex max-w-2xl items-center justify-around px-2 py-2">
+        <div className="mx-auto flex max-w-2xl justify-around px-2">
           {nav.map(({ to, label, icon: Icon }) => {
             const active = pathname === to;
             return (
               <Link
                 key={to}
                 to={to}
+                style={NAV_ITEM_STYLE}
                 className={cn(
-                  "flex flex-1 flex-col items-center justify-center gap-1 rounded-lg py-2 text-[0.65rem] font-medium transition-colors",
+                  "rounded-lg text-[0.65rem] font-medium transition-colors",
                   active ? "text-primary" : "text-muted-foreground hover:text-foreground",
                 )}
               >
@@ -84,8 +95,9 @@ export function AppLayout({ children }: { children: ReactNode }) {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
+                style={NAV_ITEM_STYLE}
                 className={cn(
-                  "flex flex-1 flex-col items-center justify-center gap-1 rounded-lg py-2 text-[0.65rem] font-medium transition-colors",
+                  "rounded-lg text-[0.65rem] font-medium transition-colors",
                   moreActive ? "text-primary" : "text-muted-foreground hover:text-foreground",
                 )}
               >

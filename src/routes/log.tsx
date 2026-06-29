@@ -321,22 +321,21 @@ function LogDive() {
           {gearOpen && (
             <div
               className="px-5 pb-5"
-              style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, alignItems: "start" }}
+              style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", alignItems: "start" }}
             >
-              {/* col 1: neck weight */}
+              {/* row: neck weight | belt weight */}
               <div className="space-y-1.5">
                 <Label htmlFor="neck-weight">{t("log.neckWeight")}</Label>
                 <Input id="neck-weight" type="number" inputMode="decimal" step="0.1" min="0"
                   value={neckWeight} onChange={(e) => setNeckWeight(e.target.value)} placeholder="0.0" />
               </div>
-              {/* col 2: belt weight */}
               <div className="space-y-1.5">
                 <Label htmlFor="belt-weight">{t("log.beltWeight")}</Label>
                 <Input id="belt-weight" type="number" inputMode="decimal" step="0.1" min="0"
                   value={beltWeight} onChange={(e) => setBeltWeight(e.target.value)} placeholder="0.0" />
               </div>
 
-              {/* col 1: wetsuit */}
+              {/* row: wetsuit | water temp */}
               <div className="space-y-1.5">
                 <Label>{t("log.wetsuit")}</Label>
                 <Select value={wetsuitMm} onValueChange={setWetsuitMm}>
@@ -350,14 +349,13 @@ function LogDive() {
                   </SelectContent>
                 </Select>
               </div>
-              {/* col 2: water temp — same row as wetsuit */}
               <div className="space-y-1.5">
                 <Label htmlFor="water-temp">{t("log.waterTemp")}</Label>
                 <Input id="water-temp" type="number" inputMode="decimal" step="0.5"
                   value={waterTemp} onChange={(e) => setWaterTemp(e.target.value)} placeholder="e.g. 22" />
               </div>
 
-              {/* col 1: buoyancy */}
+              {/* row: buoyancy | (empty) */}
               <div className="space-y-1.5">
                 <Label>{t("log.buoyancy")}</Label>
                 <Select value={buoyancy} onValueChange={setBuoyancy}>
@@ -370,43 +368,47 @@ function LogDive() {
                   </SelectContent>
                 </Select>
               </div>
-              {/* col 2: empty — keeps buoyancy in left column */}
               <div />
 
-              {/* Fins fields — derived from discipline, spans both cols via nested grid */}
+              {/* fins fields — only when discipline has fins */}
               {finsCat !== "none" && (
                 <>
-                  {/* col 1: brand combobox */}
+                  {/* row: brand dropdown | model text */}
                   <div className="space-y-1.5">
                     <Label htmlFor="fins-brand">
                       {finsCat === "monofin"
-                        ? lang === "el" ? "Μονοπέδιλο — Μάρκα" : "Monofin — Brand"
-                        : lang === "el" ? "Διπλά πέδιλα — Μάρκα" : "Bifins — Brand"}
+                        ? (lang === "el" ? "Μονοπέδιλο — Μάρκα" : "Monofin — Brand")
+                        : (lang === "el" ? "Διπλά πέδιλα — Μάρκα" : "Bifins — Brand")}
                     </Label>
-                    <input
-                      id="fins-brand"
-                      list="fins-brand-list"
-                      value={finsBrand}
-                      onChange={(e) => setFinsBrand(e.target.value)}
-                      placeholder="Cetma, Orama, C4, Sectus…"
-                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                    />
-                    <datalist id="fins-brand-list">
-                      <option value="Cetma" />
-                      <option value="Orama" />
-                      <option value="C4" />
-                      <option value="Sectus" />
-                    </datalist>
+                    <Select value={finsBrand} onValueChange={setFinsBrand}>
+                      <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">{" — "}</SelectItem>
+                        <SelectItem value="Cetma">Cetma</SelectItem>
+                        {finsCat === "monofin" && <SelectItem value="C4">C4</SelectItem>}
+                        <SelectItem value="Sectus">Sectus</SelectItem>
+                        <SelectItem value="other">{lang === "el" ? "Άλλη μάρκα…" : "Other brand…"}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {finsBrand === "other" && (
+                      <Input
+                        type="text"
+                        value={finsModel.startsWith("__brand__") ? finsModel.slice(9) : ""}
+                        onChange={(e) => setFinsModel("__brand__" + e.target.value)}
+                        placeholder={lang === "el" ? "Γράψε μάρκα…" : "Type brand…"}
+                        className="mt-1.5"
+                      />
+                    )}
                   </div>
-                  {/* col 2: model */}
                   <div className="space-y-1.5">
                     <Label htmlFor="fins-model">{t("log.finsModel")}</Label>
                     <Input id="fins-model" type="text"
-                      value={finsModel} onChange={(e) => setFinsModel(e.target.value)}
-                      placeholder="e.g. Carbon 500" />
+                      value={finsModel.startsWith("__brand__") ? "" : finsModel}
+                      onChange={(e) => setFinsModel(e.target.value)}
+                      placeholder={lang === "el" ? "π.χ. Orama, Carbon 500" : "e.g. Orama, Carbon 500"} />
                   </div>
 
-                  {/* bifins: foot pocket in col 1, col 2 empty */}
+                  {/* row: foot pocket (bifins only) | (empty) */}
                   {finsCat === "bifins" && (
                     <>
                       <div className="space-y-1.5">
