@@ -150,7 +150,14 @@ function CoachPage() {
               key={a.id}
               athlete={a}
               lang={lang}
-              onProgram={() => navigate({ to: "/coach/athlete/$id", params: { id: a.id } })}
+              onProgram={() => {
+                console.log("[Coach] Πρόγραμμα tapped — athlete id:", a.id, "name:", a.name);
+                try {
+                  navigate({ to: "/coach/athlete/$id", params: { id: a.id } });
+                } catch (err) {
+                  console.error("[Coach] navigate failed:", err);
+                }
+              }}
             />
           ))}
         </div>
