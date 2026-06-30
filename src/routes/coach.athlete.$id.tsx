@@ -52,6 +52,7 @@ function AthletePage() {
     queryKey: ["coach_athletes", user?.id],
     queryFn:  () => fetchAthletes(user!.id),
     enabled:  !!user,
+    staleTime: 5 * 60 * 1000, // keep cached data for 5 min so transient auth flicker doesn't clear it
   });
 
   console.log("[AthletePage] URL id param:", JSON.stringify(id), typeof id);
