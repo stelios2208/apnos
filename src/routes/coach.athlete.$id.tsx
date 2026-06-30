@@ -12,7 +12,7 @@ import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/hooks/use-auth";
 import {
   type Athlete, type DisciplineCode, type ProgramRow,
-  type STARound, type DynSet, type DepthDive,
+  type STARound, type DynSet, type DepthDive, type DynIntensity,
   type TrainingProgram, type TableType, type DynSetType, type BreathingMode,
   templateKind, newRow, levelColor, levelLabel,
   fetchAthletes, updateAthlete, updateAthletePrograms,
@@ -514,13 +514,19 @@ function ProgramBuilder({ program, lang, saved, onChange, onSave, onDelete, onCo
     }
     if (kind === "dyn") {
       const metres = totalDynMetres(program.sets);
-      const tag = dynIntensityTag(program.sets);
-      const tagLabel = tag === "advanced" ? "Advanced" : tag === "high" ? (lang === "el" ? "Υψηλή" : "High") : (lang === "el" ? "Κανονική" : "Normal");
-      const tagColor = tag === "advanced" ? "#EF9F27" : tag === "high" ? "#ef4444" : "#5DCAA5";
+      const tag: DynIntensity = dynIntensityTag(program.sets);
+      const INTENSITY: Record<DynIntensity, { label_el: string; label_en: string; color: string }> = {
+        easy:         { label_el: "Εύκολο",     label_en: "Easy",         color: "#1D9E75" },
+        intermediate: { label_el: "Μέτριο",     label_en: "Intermediate", color: "#5DCAA5" },
+        high:         { label_el: "Υψηλό",      label_en: "High",         color: "#EF9F27" },
+        advanced:     { label_el: "Advanced",   label_en: "Advanced",     color: "#ef4444" },
+      };
+      const { color: iColor } = INTENSITY[tag];
+      const iLabel = lang === "el" ? INTENSITY[tag].label_el : INTENSITY[tag].label_en;
       return [
-        { label: lang === "el" ? "Sets" : "Sets", value: String(program.sets.length), color: "#5DCAA5" },
+        { label: "Sets", value: String(program.sets.length), color: "#5DCAA5" },
         { label: lang === "el" ? "Απόσταση" : "Distance", value: metres > 0 ? `${metres}m` : "—", color: "#1D9E75" },
-        { label: lang === "el" ? "Ένταση" : "Intensity", value: tagLabel, color: tagColor },
+        { label: lang === "el" ? "Ένταση" : "Intensity", value: iLabel, color: iColor },
       ];
     }
     return [];
@@ -546,7 +552,8 @@ function ProgramBuilder({ program, lang, saved, onChange, onSave, onDelete, onCo
         <input
           type="date"
           value={program.date}
-          onChange={(e) => update({ date: e.target.value })}
+          onChange={(e) => { if (e.target.value) update({ date: e.target.value }); }}
+          onInput={(e) => { const v = (e.target as HTMLInputElement).value; if (v) update({ date: v }); }}
           className="rounded-xl bg-white/5 px-3 py-2.5 text-xs text-white/60 outline-none focus:ring-1 focus:ring-[#1D9E75]"
           style={{ colorScheme: "dark" }}
         />
@@ -652,6 +659,29 @@ function RowControls({ accentColor, isFirst, isLast, onMove, onDelete }: {
 const inputCls = "rounded-lg bg-white/5 px-2 py-2 text-sm text-white outline-none focus:ring-1 focus:ring-[#1D9E75]";
 const labelCls = "text-[0.55rem] font-bold tracking-wider text-white/30";
 
+// Numeric input that allows temporary empty state during editing, commits on blur
+function NumericInput({ value, onChange, min = 1, defaultVal, className }: {
+  value: number; onChange: (n: number) => void;
+  min?: number; defaultVal: number; className?: string;
+}) {
+  const [display, setDisplay] = useState(String(value));
+  useEffect(() => { setDisplay(String(value)); }, [value]);
+  return (
+    <input
+      type="text"
+      inputMode="numeric"
+      value={display}
+      onChange={(e) => setDisplay(e.target.value.replace(/[^0-9]/g, ""))}
+      onBlur={() => {
+        const n = Math.max(min, parseInt(display, 10) || defaultVal);
+        setDisplay(String(n));
+        onChange(n);
+      }}
+      className={className ?? `${inputCls} text-center font-bold`}
+    />
+  );
+}
+
 // ── STARow ─────────────────────────────────────────────────────────────────
 
 function STARow({ row, lang, isFirst, isLast, onChange, onDelete, onMove }: {
@@ -733,6 +763,7 @@ function STARow({ row, lang, isFirst, isLast, onChange, onDelete, onMove }: {
 // ── DynRow ─────────────────────────────────────────────────────────────────
 
 const BREATHING_MODES: BreathingMode[] = ["normal", "FRC", "RV"];
+const DYN_CYCLE: DynSetType[] = ["warmup", "mainset", "resistance", "sprint"];
 
 function DynRow({ row, lang, isFirst, isLast, onChange, onDelete, onMove }: {
   row: DynSet; lang: string; isFirst: boolean; isLast: boolean;
@@ -754,12 +785,10 @@ function DynRow({ row, lang, isFirst, isLast, onChange, onDelete, onMove }: {
     >
       {/* header: type badge cycle + breathing pill + controls */}
       <div className="flex items-center gap-2 px-3 pt-2.5 pb-2">
-        {/* type badge — tap to cycle */}
         <button
           onClick={() => {
-            const types: DynSetType[] = ["warmup", "mainset", "sprint", "strength"];
-            const i = types.indexOf(row.setType);
-            upd({ setType: types[(i + 1) % types.length]!, breathingMode: "normal" });
+            const i = DYN_CYCLE.indexOf(row.setType);
+            upd({ setType: DYN_CYCLE[(i + 1) % DYN_CYCLE.length]!, breathingMode: "normal" });
           }}
           className="rounded-lg px-3 py-1 text-[0.65rem] font-black tracking-wider transition-all"
           style={{ background: `${accent}18`, color: accent }}
@@ -767,7 +796,6 @@ function DynRow({ row, lang, isFirst, isLast, onChange, onDelete, onMove }: {
           {dynSetLabel(row.setType)}
         </button>
 
-        {/* FRC/RV pill — only for non-warmup */}
         {showBreathing && (
           <button
             onClick={cycleBreathing}
@@ -785,30 +813,20 @@ function DynRow({ row, lang, isFirst, isLast, onChange, onDelete, onMove }: {
         <RowControls accentColor={accent} isFirst={isFirst} isLast={isLast} onMove={onMove} onDelete={onDelete} />
       </div>
 
-      {/* fields: reps × distance | rest */}
+      {/* fields: reps | distance | rest */}
       <div className="grid grid-cols-3 gap-2 px-3 pb-2.5">
         <div className="flex flex-col gap-1">
           <label className={labelCls}>REPS</label>
-          <input
-            type="number"
-            inputMode="numeric"
-            min={1}
-            value={row.reps}
-            onChange={(e) => upd({ reps: Math.max(1, parseInt(e.target.value) || 1) })}
-            className={`${inputCls} text-center font-bold`}
-          />
+          <NumericInput value={row.reps} onChange={(n) => upd({ reps: n })} defaultVal={1} />
         </div>
         <div className="flex flex-col gap-1">
           <label className={labelCls}>{lang === "el" ? "ΑΠΌΣΤΑΣΗ" : "DISTANCE"}</label>
           <div className="relative">
-            <input
-              type="number"
-              inputMode="numeric"
-              min={1}
+            <NumericInput
               value={row.distance}
-              onChange={(e) => upd({ distance: Math.max(1, parseInt(e.target.value) || 1) })}
+              onChange={(n) => upd({ distance: n })}
+              defaultVal={50}
               className={`${inputCls} w-full text-center font-bold pr-6`}
-              style={{ color: accent }}
             />
             <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[0.6rem] text-white/30">m</span>
           </div>

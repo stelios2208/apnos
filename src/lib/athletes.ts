@@ -4,7 +4,7 @@ export type Level = "beginner" | "intermediate" | "advanced" | "competitive";
 export type DisciplineCode = "STA" | "DYN" | "DYNB" | "DNF" | "CWT" | "CWTB" | "CNF" | "FIM";
 export type TemplateKind = "sta" | "dyn" | "depth";
 export type TableType = "CO2" | "O2" | "FRC" | "RV" | "Classic";
-export type DynSetType = "warmup" | "mainset" | "sprint" | "strength";
+export type DynSetType = "warmup" | "mainset" | "sprint" | "resistance";
 export type BreathingMode = "normal" | "FRC" | "RV";
 
 // ── Program row types ──────────────────────────────────────────────────────
@@ -74,10 +74,10 @@ export const ALL_DISCIPLINES: DisciplineCode[] = [
 
 export const TABLE_TYPES: TableType[] = ["CO2", "O2", "FRC", "RV", "Classic"];
 export const DYN_SET_TYPES: { value: DynSetType; label: string; color: string }[] = [
-  { value: "warmup",   label: "Warm-up",  color: "#1D9E75" },
-  { value: "mainset",  label: "Main Set", color: "#5DCAA5" },
-  { value: "sprint",   label: "Sprint",   color: "#EF9F27" },
-  { value: "strength", label: "Strength", color: "#ef4444" },
+  { value: "warmup",     label: "Warm-up",    color: "#1D9E75" },
+  { value: "mainset",    label: "Main Set",   color: "#1D9E75" },
+  { value: "resistance", label: "Resistance", color: "#EF9F27" },
+  { value: "sprint",     label: "Sprint",     color: "#ef4444" },
 ];
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -119,6 +119,8 @@ export function newDynSet(): DynSet {
   return { id: crypto.randomUUID(), kind: "dyn", reps: 4, distance: 50, rest: "2:00", setType: "mainset", breathingMode: "normal", notes: "" };
 }
 
+export type DynIntensity = "easy" | "intermediate" | "high" | "advanced";
+
 export function dynSetColor(setType: DynSetType): string {
   return DYN_SET_TYPES.find((s) => s.value === setType)?.color ?? "#5DCAA5";
 }
@@ -127,11 +129,25 @@ export function dynSetLabel(setType: DynSetType): string {
   return DYN_SET_TYPES.find((s) => s.value === setType)?.label ?? setType;
 }
 
-export function dynIntensityTag(rows: ProgramRow[]): "advanced" | "high" | "normal" {
-  const dynRows = rows.filter((r): r is DynSet => r.kind === "dyn");
-  if (dynRows.some((r) => r.breathingMode !== "normal")) return "advanced";
-  if (dynRows.some((r) => r.setType === "strength" || r.setType === "sprint")) return "high";
-  return "normal";
+export function dynIntensityTag(rows: ProgramRow[]): DynIntensity {
+  const ds = rows.filter((r): r is DynSet => r.kind === "dyn");
+  if (ds.length === 0) return "easy";
+
+  // Advanced: 100m+ with resistance or FRC, OR >2 reps with resistance
+  if (ds.some((r) => r.distance >= 100 && (r.setType === "resistance" || r.breathingMode === "FRC"))) return "advanced";
+  if (ds.some((r) => r.reps > 2 && r.setType === "resistance")) return "advanced";
+
+  // High: resistance at any distance, OR (>2 reps AND rest <45s), OR 100m+ sets
+  if (ds.some((r) => r.setType === "resistance")) return "high";
+  if (ds.some((r) => r.reps > 2 && parseSeconds(r.rest) < 45)) return "high";
+  if (ds.some((r) => r.distance >= 100)) return "high";
+
+  // Intermediate: 50m with rest ≤45s, OR 75m sets, OR FRC
+  if (ds.some((r) => r.breathingMode === "FRC")) return "intermediate";
+  if (ds.some((r) => r.distance >= 75)) return "intermediate";
+  if (ds.some((r) => r.distance === 50 && parseSeconds(r.rest) <= 45)) return "intermediate";
+
+  return "easy";
 }
 
 export function newDepthDive(): DepthDive {
