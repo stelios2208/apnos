@@ -5,14 +5,13 @@ import { Plus, Lock, ChevronRight, X, Check, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { AppLayout } from "@/components/AppLayout";
 import { BreathMark } from "@/components/Logo";
+import { AthleteFormModal } from "@/components/AthleteFormModal";
 import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/hooks/use-auth";
 import {
   type Athlete,
   type Level,
   type DisciplineCode,
-  LEVELS,
-  ALL_DISCIPLINES,
   levelLabel,
   levelColor,
   fetchAthletes,
@@ -41,10 +40,6 @@ function CoachPage() {
   const [editingName, setEditingName] = useState(false);
   const [showModal, setShowModal]     = useState(false);
 
-  const [newName, setNewName]               = useState("");
-  const [newLevel, setNewLevel]             = useState<Level>("beginner");
-  const [newDisciplines, setNewDisciplines] = useState<DisciplineCode[]>([]);
-
   const { data: athletes = [], isLoading } = useQuery({
     queryKey: ["coach_athletes", user?.id],
     queryFn:  () => fetchAthletes(user!.id),
@@ -52,12 +47,10 @@ function CoachPage() {
   });
 
   const addMutation = useMutation({
-    mutationFn: () => createAthlete(user!.id, { name: newName.trim(), level: newLevel, disciplines: newDisciplines }),
+    mutationFn: (values: { name: string; level: Level; disciplines: DisciplineCode[] }) =>
+      createAthlete(user!.id, values),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["coach_athletes", user?.id] });
-      setNewName("");
-      setNewLevel("beginner");
-      setNewDisciplines([]);
       setShowModal(false);
     },
     onError: () => toast.error(lang === "el" ? "Σφάλμα κατά την προσθήκη" : "Failed to add athlete"),
@@ -68,11 +61,6 @@ function CoachPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["coach_athletes", user?.id] }),
     onError: () => toast.error(lang === "el" ? "Σφάλμα διαγραφής" : "Failed to delete"),
   });
-
-  const toggleDiscipline = (d: DisciplineCode) =>
-    setNewDisciplines((prev) =>
-      prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d]
-    );
 
   return (
     <div className="space-y-5">
@@ -189,108 +177,13 @@ function CoachPage() {
         </button>
       )}
 
-      {/* Add Athlete Modal */}
       {showModal && (
-        <div
-          className="fixed inset-0 z-50 flex flex-col justify-end"
-          style={{ background: "rgba(0,0,0,0.75)" }}
-          onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false); }}
-        >
-          <div className="w-full rounded-t-2xl px-5 pb-10 pt-5" style={{ background: "#0d1320" }}>
-            <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-white/10" />
-
-            <div className="mb-5 flex items-start justify-between">
-              <div className="flex flex-col gap-1">
-                <div style={{ opacity: 0.35 }}>
-                  <BreathMark size={80} />
-                </div>
-                <h2 className="text-base font-bold text-white">
-                  {lang === "el" ? "Νέος Αθλητής" : "New Athlete"}
-                </h2>
-              </div>
-              <button onClick={() => setShowModal(false)} className="mt-1 text-white/30 transition-colors hover:text-white">
-                <X className="size-5" />
-              </button>
-            </div>
-
-            {/* name */}
-            <div className="mb-4 space-y-1.5">
-              <label className="text-[0.65rem] font-bold tracking-wider text-white/40">
-                {lang === "el" ? "ΟΝΟΜΑ" : "NAME"}
-              </label>
-              <input
-                autoFocus
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter" && newName.trim()) addMutation.mutate(); }}
-                placeholder={lang === "el" ? "π.χ. Νίκος Παπαδόπουλος" : "e.g. John Smith"}
-                className="w-full rounded-xl bg-white/5 px-4 py-3 text-sm text-white placeholder-white/20 outline-none focus:ring-1 focus:ring-[#1D9E75]"
-              />
-            </div>
-
-            {/* level */}
-            <div className="mb-4 space-y-2">
-              <label className="text-[0.65rem] font-bold tracking-wider text-white/40">
-                {lang === "el" ? "ΕΠΙΠΕΔΟ" : "LEVEL"}
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                {LEVELS.map((l) => (
-                  <button
-                    key={l.value}
-                    onClick={() => setNewLevel(l.value)}
-                    className="rounded-xl py-2.5 text-xs font-semibold transition-all"
-                    style={{
-                      background: newLevel === l.value ? `${l.color}25` : "rgba(255,255,255,0.04)",
-                      border: `1.5px solid ${newLevel === l.value ? l.color : "transparent"}`,
-                      color: newLevel === l.value ? l.color : "rgba(255,255,255,0.4)",
-                    }}
-                  >
-                    {lang === "el" ? l.label_el : l.label_en}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* disciplines */}
-            <div className="mb-6 space-y-2">
-              <label className="text-[0.65rem] font-bold tracking-wider text-white/40">
-                {lang === "el" ? "ΚΛΑΔΟΙ (προαιρετικό)" : "DISCIPLINES (optional)"}
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {ALL_DISCIPLINES.map((d) => {
-                  const active = newDisciplines.includes(d);
-                  return (
-                    <button
-                      key={d}
-                      onClick={() => toggleDiscipline(d)}
-                      className="rounded-lg px-3 py-1.5 text-xs font-bold transition-all"
-                      style={{
-                        background: active ? "rgba(29,158,117,0.2)" : "rgba(255,255,255,0.04)",
-                        border: `1.5px solid ${active ? "#1D9E75" : "transparent"}`,
-                        color: active ? "#5DCAA5" : "rgba(255,255,255,0.35)",
-                      }}
-                    >
-                      {d}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <button
-              onClick={() => { if (newName.trim()) addMutation.mutate(); }}
-              disabled={!newName.trim() || addMutation.isPending}
-              className="flex w-full items-center justify-center gap-2 rounded-xl py-4 text-sm font-bold transition-all"
-              style={{
-                background: newName.trim() ? "#1D9E75" : "rgba(255,255,255,0.05)",
-                color: newName.trim() ? "#fff" : "rgba(255,255,255,0.25)",
-              }}
-            >
-              {addMutation.isPending && <Loader2 className="size-4 animate-spin" />}
-              {lang === "el" ? "Προσθήκη Αθλητή" : "Add Athlete"}
-            </button>
-          </div>
-        </div>
+        <AthleteFormModal
+          lang={lang}
+          isPending={addMutation.isPending}
+          onSubmit={(values) => addMutation.mutate(values)}
+          onClose={() => setShowModal(false)}
+        />
       )}
     </div>
   );

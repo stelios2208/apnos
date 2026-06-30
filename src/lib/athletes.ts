@@ -178,6 +178,17 @@ export async function createAthlete(
   return rowToAthlete(data as Row);
 }
 
+export async function updateAthlete(
+  athleteId: string,
+  input: { name: string; level: Level; disciplines: DisciplineCode[] }
+): Promise<void> {
+  const { error } = await supabase
+    .from("coach_athletes")
+    .update(input)
+    .eq("id", athleteId);
+  if (error) throw error;
+}
+
 export async function updateAthletePrograms(
   athleteId: string,
   programs: TrainingProgram[]

@@ -1,18 +1,19 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft, ChevronDown, ChevronRight, ChevronUp,
-  Copy, Loader2, Plus, Trash2, X, Zap,
+  Copy, Loader2, Pencil, Plus, Trash2, X, Zap,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AppLayout } from "@/components/AppLayout";
+import { AthleteFormModal } from "@/components/AthleteFormModal";
 import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/hooks/use-auth";
 import {
   type Athlete, type ProgramSet, type TrainingProgram,
   estimatedMinutes, intensityLabel, levelColor, levelLabel,
-  fetchAthletes, updateAthletePrograms, newSet, nextSetType,
+  fetchAthletes, updateAthlete, updateAthletePrograms, newSet, nextSetType,
   setTypeColor, setTypeLabel, todayISO, totalMetres,
 } from "@/lib/athletes";
 
@@ -45,6 +46,7 @@ function AthletePage() {
   const [programs, setPrograms] = useState<TrainingProgram[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [showCopy, setShowCopy] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
   const [saved, setSaved]       = useState(true);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -116,6 +118,19 @@ function AthletePage() {
     flush(updated);
   };
 
+  // ── edit athlete ──────────────────────────────────────────────────────────
+
+  const editMutation = useMutation({
+    mutationFn: (values: { name: string; level: Athlete["level"]; disciplines: Athlete["disciplines"] }) =>
+      updateAthlete(id, values),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["coach_athletes", user?.id] });
+      setShowEdit(false);
+      toast.success(lang === "el" ? "Αποθηκεύτηκε" : "Saved");
+    },
+    onError: () => toast.error(lang === "el" ? "Σφάλμα αποθήκευσης" : "Save failed"),
+  });
+
   // ── copy to athlete ───────────────────────────────────────────────────────
 
   const copyToAthlete = async (targetId: string) => {
@@ -179,7 +194,15 @@ function AthletePage() {
           {athlete.name.charAt(0).toUpperCase()}
         </div>
         <div className="flex-1">
-          <h1 className="text-lg font-bold text-white">{athlete.name}</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-lg font-bold text-white">{athlete.name}</h1>
+            <button
+              onClick={() => setShowEdit(true)}
+              className="rounded-lg p-1.5 text-white/25 transition-colors hover:text-white/60"
+            >
+              <Pencil className="size-3.5" />
+            </button>
+          </div>
           <div className="mt-1 flex flex-wrap items-center gap-2">
             <span className="rounded-md px-2 py-0.5 text-[0.6rem] font-bold tracking-wider" style={{ background: `${color}18`, color }}>
               {levelLabel(athlete.level, lang)}
@@ -298,6 +321,17 @@ function AthletePage() {
             ))
           )}
         </div>
+      )}
+
+      {/* edit modal */}
+      {showEdit && (
+        <AthleteFormModal
+          lang={lang}
+          initial={{ name: athlete.name, level: athlete.level, disciplines: athlete.disciplines }}
+          isPending={editMutation.isPending}
+          onSubmit={(values) => editMutation.mutate(values)}
+          onClose={() => setShowEdit(false)}
+        />
       )}
 
       {/* copy modal */}
