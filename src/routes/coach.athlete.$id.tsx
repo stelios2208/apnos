@@ -13,10 +13,11 @@ import { useAuth } from "@/hooks/use-auth";
 import {
   type Athlete, type DisciplineCode, type ProgramRow,
   type STARound, type DynSet, type DepthDive,
-  type TrainingProgram, type TableType, type DynSetType,
+  type TrainingProgram, type TableType, type DynSetType, type BreathingMode,
   templateKind, newRow, levelColor, levelLabel,
   fetchAthletes, updateAthlete, updateAthletePrograms,
   totalSTAHoldSecs, totalDynMetres, maxDepthMetres,
+  dynSetColor, dynSetLabel, dynIntensityTag,
   fmtSeconds, todayISO,
   TABLE_TYPES, DYN_SET_TYPES,
 } from "@/lib/athletes";
@@ -513,10 +514,13 @@ function ProgramBuilder({ program, lang, saved, onChange, onSave, onDelete, onCo
     }
     if (kind === "dyn") {
       const metres = totalDynMetres(program.sets);
+      const tag = dynIntensityTag(program.sets);
+      const tagLabel = tag === "advanced" ? "Advanced" : tag === "high" ? (lang === "el" ? "Υψηλή" : "High") : (lang === "el" ? "Κανονική" : "Normal");
+      const tagColor = tag === "advanced" ? "#EF9F27" : tag === "high" ? "#ef4444" : "#5DCAA5";
       return [
         { label: lang === "el" ? "Sets" : "Sets", value: String(program.sets.length), color: "#5DCAA5" },
         { label: lang === "el" ? "Απόσταση" : "Distance", value: metres > 0 ? `${metres}m` : "—", color: "#1D9E75" },
-        { label: "Discipline", value: program.discipline ?? "—", color: "#9FE1CB" },
+        { label: lang === "el" ? "Ένταση" : "Intensity", value: tagLabel, color: tagColor },
       ];
     }
     return [];
@@ -728,35 +732,63 @@ function STARow({ row, lang, isFirst, isLast, onChange, onDelete, onMove }: {
 
 // ── DynRow ─────────────────────────────────────────────────────────────────
 
+const BREATHING_MODES: BreathingMode[] = ["normal", "FRC", "RV"];
+
 function DynRow({ row, lang, isFirst, isLast, onChange, onDelete, onMove }: {
   row: DynSet; lang: string; isFirst: boolean; isLast: boolean;
   onChange: (r: ProgramRow) => void; onDelete: () => void; onMove: (d: -1 | 1) => void;
 }) {
   const upd = (p: Partial<DynSet>) => onChange({ ...row, ...p });
-  const accent = "#1D9E75";
+  const accent = dynSetColor(row.setType);
+  const showBreathing = row.setType !== "warmup";
+
+  const cycleBreathing = () => {
+    const i = BREATHING_MODES.indexOf(row.breathingMode ?? "normal");
+    upd({ breathingMode: BREATHING_MODES[(i + 1) % BREATHING_MODES.length] });
+  };
 
   return (
     <div
       className="overflow-hidden rounded-xl"
       style={{ background: "#0d1320", border: "1px solid rgba(255,255,255,0.05)", borderLeft: `3px solid ${accent}` }}
     >
-      {/* header */}
+      {/* header: type badge cycle + breathing pill + controls */}
       <div className="flex items-center gap-2 px-3 pt-2.5 pb-2">
-        <select
-          value={row.setType}
-          onChange={(e) => upd({ setType: e.target.value as DynSetType })}
-          className="rounded-lg bg-white/5 px-2 py-1 text-[0.65rem] font-bold text-white/70 outline-none focus:ring-1 focus:ring-[#1D9E75]"
-          style={{ colorScheme: "dark" }}
+        {/* type badge — tap to cycle */}
+        <button
+          onClick={() => {
+            const types: DynSetType[] = ["warmup", "mainset", "sprint", "strength"];
+            const i = types.indexOf(row.setType);
+            upd({ setType: types[(i + 1) % types.length]!, breathingMode: "normal" });
+          }}
+          className="rounded-lg px-3 py-1 text-[0.65rem] font-black tracking-wider transition-all"
+          style={{ background: `${accent}18`, color: accent }}
         >
-          {DYN_SET_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-        </select>
+          {dynSetLabel(row.setType)}
+        </button>
+
+        {/* FRC/RV pill — only for non-warmup */}
+        {showBreathing && (
+          <button
+            onClick={cycleBreathing}
+            className="rounded-full px-2.5 py-0.5 text-[0.6rem] font-bold tracking-wider transition-all"
+            style={
+              row.breathingMode !== "normal"
+                ? { background: "rgba(239,159,39,0.2)", color: "#EF9F27", border: "1px solid rgba(239,159,39,0.4)" }
+                : { background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.2)", border: "1px solid transparent" }
+            }
+          >
+            {row.breathingMode === "normal" ? (lang === "el" ? "κανονική" : "normal") : row.breathingMode}
+          </button>
+        )}
+
         <RowControls accentColor={accent} isFirst={isFirst} isLast={isLast} onMove={onMove} onDelete={onDelete} />
       </div>
 
-      {/* fields */}
+      {/* fields: reps × distance | rest */}
       <div className="grid grid-cols-3 gap-2 px-3 pb-2.5">
         <div className="flex flex-col gap-1">
-          <label className={labelCls}>{lang === "el" ? "REPS" : "REPS"}</label>
+          <label className={labelCls}>REPS</label>
           <input
             type="number"
             inputMode="numeric"

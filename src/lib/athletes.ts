@@ -4,7 +4,8 @@ export type Level = "beginner" | "intermediate" | "advanced" | "competitive";
 export type DisciplineCode = "STA" | "DYN" | "DYNB" | "DNF" | "CWT" | "CWTB" | "CNF" | "FIM";
 export type TemplateKind = "sta" | "dyn" | "depth";
 export type TableType = "CO2" | "O2" | "FRC" | "RV" | "Classic";
-export type DynSetType = "Main" | "Warm-up" | "Sprint" | "Pyramid";
+export type DynSetType = "warmup" | "mainset" | "sprint" | "strength";
+export type BreathingMode = "normal" | "FRC" | "RV";
 
 // ── Program row types ──────────────────────────────────────────────────────
 
@@ -25,6 +26,7 @@ export interface DynSet {
   distance: number;
   rest: string;
   setType: DynSetType;
+  breathingMode: BreathingMode;
   notes: string;
 }
 
@@ -71,7 +73,12 @@ export const ALL_DISCIPLINES: DisciplineCode[] = [
 ];
 
 export const TABLE_TYPES: TableType[] = ["CO2", "O2", "FRC", "RV", "Classic"];
-export const DYN_SET_TYPES: DynSetType[] = ["Main", "Warm-up", "Sprint", "Pyramid"];
+export const DYN_SET_TYPES: { value: DynSetType; label: string; color: string }[] = [
+  { value: "warmup",   label: "Warm-up",  color: "#1D9E75" },
+  { value: "mainset",  label: "Main Set", color: "#5DCAA5" },
+  { value: "sprint",   label: "Sprint",   color: "#EF9F27" },
+  { value: "strength", label: "Strength", color: "#ef4444" },
+];
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -109,7 +116,22 @@ export function newSTARound(): STARound {
 }
 
 export function newDynSet(): DynSet {
-  return { id: crypto.randomUUID(), kind: "dyn", reps: 4, distance: 50, rest: "2:00", setType: "Main", notes: "" };
+  return { id: crypto.randomUUID(), kind: "dyn", reps: 4, distance: 50, rest: "2:00", setType: "mainset", breathingMode: "normal", notes: "" };
+}
+
+export function dynSetColor(setType: DynSetType): string {
+  return DYN_SET_TYPES.find((s) => s.value === setType)?.color ?? "#5DCAA5";
+}
+
+export function dynSetLabel(setType: DynSetType): string {
+  return DYN_SET_TYPES.find((s) => s.value === setType)?.label ?? setType;
+}
+
+export function dynIntensityTag(rows: ProgramRow[]): "advanced" | "high" | "normal" {
+  const dynRows = rows.filter((r): r is DynSet => r.kind === "dyn");
+  if (dynRows.some((r) => r.breathingMode !== "normal")) return "advanced";
+  if (dynRows.some((r) => r.setType === "strength" || r.setType === "sprint")) return "high";
+  return "normal";
 }
 
 export function newDepthDive(): DepthDive {
