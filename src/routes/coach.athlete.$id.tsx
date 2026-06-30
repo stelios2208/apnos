@@ -522,16 +522,9 @@ function SetRow({ set, lang, isFirst, isLast, onChange, onDelete, onMove }: {
   onDelete: () => void;
   onMove: (dir: -1 | 1) => void;
 }) {
-  const [showCombined, setShowCombined] = useState(set.combined);
   const typeColor = setTypeColor(set.type);
   const typeLabel = setTypeLabel(set.type, lang);
   const update = (partial: Partial<ProgramSet>) => onChange({ ...set, ...partial });
-
-  const toggleCombined = () => {
-    const next = !showCombined;
-    setShowCombined(next);
-    update({ combined: next });
-  };
 
   return (
     <div
@@ -560,71 +553,40 @@ function SetRow({ set, lang, isFirst, isLast, onChange, onDelete, onMove }: {
         </div>
       </div>
 
-      {/* row 2: reps × value | rest + notes */}
-      <div className="flex items-center gap-2 px-3 pb-2.5">
-        {/* reps */}
-        <input
-          type="number"
-          inputMode="numeric"
-          min={1}
-          value={set.reps}
-          onChange={(e) => update({ reps: Math.max(1, parseInt(e.target.value) || 1) })}
-          className="w-14 min-w-[3.5rem] rounded-lg bg-white/5 px-2 py-1.5 text-center text-sm font-bold text-white outline-none focus:ring-1 focus:ring-[#1D9E75]"
-        />
-        <span className="text-xs text-white/25">×</span>
-        {/* value */}
-        <input
-          inputMode="text"
-          value={set.value}
-          onChange={(e) => update({ value: e.target.value })}
-          className="w-20 min-w-[5rem] rounded-lg bg-white/5 px-2 py-1.5 text-sm text-white outline-none focus:ring-1 focus:ring-[#1D9E75]"
-          placeholder="75m"
-        />
-        <span className="text-[0.6rem] text-white/20">REST</span>
-        {/* rest */}
-        <input
-          inputMode="text"
-          value={set.rest}
-          onChange={(e) => update({ rest: e.target.value })}
-          className="w-16 min-w-[4rem] rounded-lg bg-white/5 px-2 py-1.5 text-center text-sm text-white outline-none focus:ring-1 focus:ring-[#1D9E75]"
-          placeholder="2:00"
-        />
-        {/* notes */}
+      {/* row 2: reps × value REST rest | notes wraps on mobile */}
+      <div className="flex flex-wrap items-center gap-2 px-3 pb-2.5">
+        <div className="flex items-center gap-2">
+          <input
+            type="number"
+            inputMode="numeric"
+            min={1}
+            value={set.reps}
+            onChange={(e) => update({ reps: Math.max(1, parseInt(e.target.value) || 1) })}
+            className="w-14 min-w-[3.5rem] rounded-lg bg-white/5 px-2 py-1.5 text-center text-sm font-bold text-white outline-none focus:ring-1 focus:ring-[#1D9E75]"
+          />
+          <span className="text-xs text-white/25">×</span>
+          <input
+            inputMode="text"
+            value={set.value}
+            onChange={(e) => update({ value: e.target.value })}
+            className="w-20 min-w-[5rem] rounded-lg bg-white/5 px-2 py-1.5 text-sm text-white outline-none focus:ring-1 focus:ring-[#1D9E75]"
+            placeholder="75m"
+          />
+          <span className="text-[0.6rem] text-white/20">REST</span>
+          <input
+            inputMode="text"
+            value={set.rest}
+            onChange={(e) => update({ rest: e.target.value })}
+            className="w-16 min-w-[4rem] rounded-lg bg-white/5 px-2 py-1.5 text-center text-sm text-white outline-none focus:ring-1 focus:ring-[#1D9E75]"
+            placeholder="2:00"
+          />
+        </div>
         <input
           value={set.notes}
           onChange={(e) => update({ notes: e.target.value })}
           className="min-w-0 flex-1 rounded-lg bg-white/5 px-2 py-1.5 text-xs text-white/50 outline-none focus:ring-1 focus:ring-[#1D9E75]"
           placeholder={lang === "el" ? "σημειώσεις" : "notes"}
         />
-      </div>
-
-      {/* combined toggle */}
-      <div className="flex items-start gap-3 border-t px-3 py-1.5" style={{ borderColor: "rgba(255,255,255,0.04)" }}>
-        <button
-          onClick={toggleCombined}
-          className="flex items-center gap-1 text-[0.55rem] font-semibold tracking-wider transition-colors"
-          style={{ color: showCombined ? "#5DCAA5" : "rgba(255,255,255,0.2)" }}
-        >
-          {showCombined ? <ChevronDown className="size-3" /> : <ChevronRight className="size-3" />}
-          {lang === "el" ? "Συνδυασμός STA+DYN" : "Combined STA+DYN"}
-        </button>
-        {showCombined && (
-          <div className="flex flex-1 items-center gap-2">
-            <input
-              value={set.staTime}
-              onChange={(e) => update({ staTime: e.target.value })}
-              className="w-20 rounded-lg bg-white/5 px-1.5 py-1 text-center text-xs text-white outline-none focus:ring-1 focus:ring-[#1D9E75]"
-              placeholder="1:30 STA"
-            />
-            <span className="text-[0.6rem] text-white/20">+</span>
-            <input
-              value={set.dynDist}
-              onChange={(e) => update({ dynDist: e.target.value })}
-              className="w-20 rounded-lg bg-white/5 px-1.5 py-1 text-center text-xs text-white outline-none focus:ring-1 focus:ring-[#1D9E75]"
-              placeholder="100m DYN"
-            />
-          </div>
-        )}
       </div>
     </div>
   );

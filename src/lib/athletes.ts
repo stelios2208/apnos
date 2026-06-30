@@ -13,9 +13,6 @@ export interface ProgramSet {
   value: string;
   rest: string;
   notes: string;
-  combined: boolean;
-  staTime: string;
-  dynDist: string;
 }
 
 export interface TrainingProgram {
@@ -98,10 +95,7 @@ export function isTimeValue(value: string): boolean {
 }
 
 export function totalMetres(sets: ProgramSet[]): number {
-  return sets.reduce((sum, s) => {
-    if (s.combined) return sum + s.reps * (parseMetres(s.dynDist) || 0);
-    return sum + s.reps * parseMetres(s.value);
-  }, 0);
+  return sets.reduce((sum, s) => sum + s.reps * parseMetres(s.value), 0);
 }
 
 export function estimatedMinutes(sets: ProgramSet[]): number {
@@ -128,7 +122,7 @@ export function intensityLabel(sets: ProgramSet[], lang: string): string {
 }
 
 export function newSet(): ProgramSet {
-  return { id: crypto.randomUUID(), type: "mainset", reps: 4, value: "50m", rest: "2:00", notes: "", combined: false, staTime: "", dynDist: "" };
+  return { id: crypto.randomUUID(), type: "mainset", reps: 4, value: "50m", rest: "2:00", notes: "" };
 }
 
 export function todayISO(): string {
