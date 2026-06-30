@@ -2,24 +2,49 @@ import { supabase } from "@/integrations/supabase/client";
 
 export type Level = "beginner" | "intermediate" | "advanced" | "competitive";
 export type DisciplineCode = "STA" | "DYN" | "DYNB" | "DNF" | "CWT" | "CWTB" | "CNF" | "FIM";
-export type SetType = "warmup" | "mainset" | "strength" | "surface" | "custom";
+export type TemplateKind = "sta" | "dyn" | "depth";
+export type TableType = "CO2" | "O2" | "FRC" | "RV" | "Classic";
+export type DynSetType = "Main" | "Warm-up" | "Sprint" | "Pyramid";
 
-// ── Program types ──────────────────────────────────────────────────────────
+// ── Program row types ──────────────────────────────────────────────────────
 
-export interface ProgramSet {
+export interface STARound {
   id: string;
-  type: SetType;
-  reps: number;
-  value: string;
-  rest: string;
+  kind: "sta";
+  breathUp: string;
+  holdTime: string;
+  recovery: string;
+  tableType: TableType;
   notes: string;
 }
+
+export interface DynSet {
+  id: string;
+  kind: "dyn";
+  reps: number;
+  distance: number;
+  rest: string;
+  setType: DynSetType;
+  notes: string;
+}
+
+export interface DepthDive {
+  id: string;
+  kind: "depth";
+  targetDepth: number;
+  totalTime: string;
+  surfaceInterval: string;
+  notes: string;
+}
+
+export type ProgramRow = STARound | DynSet | DepthDive;
 
 export interface TrainingProgram {
   id: string;
   name: string;
   date: string;
-  sets: ProgramSet[];
+  discipline?: DisciplineCode;
+  sets: ProgramRow[];
 }
 
 // ── Athlete ────────────────────────────────────────────────────────────────
@@ -45,13 +70,8 @@ export const ALL_DISCIPLINES: DisciplineCode[] = [
   "STA", "DYN", "DYNB", "DNF", "CWT", "CWTB", "CNF", "FIM",
 ];
 
-export const SET_TYPES: { value: SetType; label_el: string; label_en: string; color: string }[] = [
-  { value: "warmup",   label_el: "Θέρμανση",  label_en: "Warm-up",  color: "#9FE1CB" },
-  { value: "mainset",  label_el: "Κύριο",      label_en: "Main",     color: "#1D9E75" },
-  { value: "strength", label_el: "Δύναμη",     label_en: "Strength", color: "#EF9F27" },
-  { value: "surface",  label_el: "Επιφάνεια",  label_en: "Surface",  color: "#5DCAA5" },
-  { value: "custom",   label_el: "Άλλο",        label_en: "Custom",   color: "rgba(255,255,255,0.3)" },
-];
+export const TABLE_TYPES: TableType[] = ["CO2", "O2", "FRC", "RV", "Classic"];
+export const DYN_SET_TYPES: DynSetType[] = ["Main", "Warm-up", "Sprint", "Pyramid"];
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -64,24 +84,10 @@ export function levelColor(level: Level) {
   return LEVELS.find((x) => x.value === level)?.color ?? "#5DCAA5";
 }
 
-export function setTypeLabel(type: SetType, lang: string): string {
-  const t = SET_TYPES.find((x) => x.value === type);
-  return t ? (lang === "el" ? t.label_el : t.label_en) : type;
-}
-
-export function setTypeColor(type: SetType): string {
-  return SET_TYPES.find((x) => x.value === type)?.color ?? "#5DCAA5";
-}
-
-export function nextSetType(type: SetType): SetType {
-  const order: SetType[] = ["warmup", "mainset", "strength", "surface", "custom"];
-  const i = order.indexOf(type);
-  return order[(i + 1) % order.length];
-}
-
-export function parseMetres(value: string): number {
-  const m = value.match(/(\d+)\s*m/i);
-  return m ? parseInt(m[1], 10) : 0;
+export function templateKind(discipline: DisciplineCode): TemplateKind {
+  if (discipline === "STA") return "sta";
+  if (["CWT", "CWTB", "CNF", "FIM"].includes(discipline)) return "depth";
+  return "dyn";
 }
 
 export function parseSeconds(mmss: string): number {
@@ -90,39 +96,51 @@ export function parseSeconds(mmss: string): number {
   return parseInt(mmss, 10) || 0;
 }
 
-export function isTimeValue(value: string): boolean {
-  return /^\d+:\d{2}/.test(value.trim()) || /^STA/i.test(value.trim());
+export function fmtSeconds(totalSecs: number): string {
+  const m = Math.floor(totalSecs / 60);
+  const s = totalSecs % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
 }
 
-export function totalMetres(sets: ProgramSet[]): number {
-  return sets.reduce((sum, s) => sum + s.reps * parseMetres(s.value), 0);
+// ── Template row factories ─────────────────────────────────────────────────
+
+export function newSTARound(): STARound {
+  return { id: crypto.randomUUID(), kind: "sta", breathUp: "2:00", holdTime: "1:30", recovery: "2:00", tableType: "CO2", notes: "" };
 }
 
-export function estimatedMinutes(sets: ProgramSet[]): number {
-  const secs = sets.reduce((sum, s) => {
-    const workSecs = isTimeValue(s.value) ? parseSeconds(s.value) : 60;
-    const restSecs = parseSeconds(s.rest);
-    return sum + s.reps * (workSecs + restSecs);
-  }, 0);
-  return Math.round(secs / 60);
+export function newDynSet(): DynSet {
+  return { id: crypto.randomUUID(), kind: "dyn", reps: 4, distance: 50, rest: "2:00", setType: "Main", notes: "" };
 }
 
-export function intensityLabel(sets: ProgramSet[], lang: string): string {
-  if (sets.length === 0) return "—";
-  const counts = sets.reduce<Record<SetType, number>>(
-    (acc, s) => { acc[s.type] = (acc[s.type] ?? 0) + 1; return acc; },
-    {} as Record<SetType, number>
-  );
-  const total = sets.length;
-  const heavy = (counts.mainset ?? 0) + (counts.strength ?? 0);
-  const light = counts.warmup ?? 0;
-  if (heavy / total > 0.55) return lang === "el" ? "Υψηλή"  : "High";
-  if (light / total > 0.55) return lang === "el" ? "Χαμηλή" : "Low";
-  return lang === "el" ? "Μέτρια" : "Moderate";
+export function newDepthDive(): DepthDive {
+  return { id: crypto.randomUUID(), kind: "depth", targetDepth: 20, totalTime: "1:30", surfaceInterval: "3:00", notes: "" };
 }
 
-export function newSet(): ProgramSet {
-  return { id: crypto.randomUUID(), type: "mainset", reps: 4, value: "50m", rest: "2:00", notes: "" };
+export function newRow(discipline: DisciplineCode): ProgramRow {
+  const k = templateKind(discipline);
+  if (k === "sta") return newSTARound();
+  if (k === "depth") return newDepthDive();
+  return newDynSet();
+}
+
+// ── Summary helpers ────────────────────────────────────────────────────────
+
+export function totalSTAHoldSecs(rows: ProgramRow[]): number {
+  return rows
+    .filter((r): r is STARound => r.kind === "sta")
+    .reduce((sum, r) => sum + parseSeconds(r.holdTime), 0);
+}
+
+export function totalDynMetres(rows: ProgramRow[]): number {
+  return rows
+    .filter((r): r is DynSet => r.kind === "dyn")
+    .reduce((sum, s) => sum + s.reps * s.distance, 0);
+}
+
+export function maxDepthMetres(rows: ProgramRow[]): number {
+  return rows
+    .filter((r): r is DepthDive => r.kind === "depth")
+    .reduce((max, d) => Math.max(max, d.targetDepth), 0);
 }
 
 export function todayISO(): string {

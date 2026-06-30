@@ -11,10 +11,14 @@ import { AthleteFormModal } from "@/components/AthleteFormModal";
 import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/hooks/use-auth";
 import {
-  type Athlete, type ProgramSet, type TrainingProgram,
-  estimatedMinutes, intensityLabel, levelColor, levelLabel,
-  fetchAthletes, updateAthlete, updateAthletePrograms, newSet, nextSetType,
-  setTypeColor, setTypeLabel, todayISO, totalMetres,
+  type Athlete, type DisciplineCode, type ProgramRow,
+  type STARound, type DynSet, type DepthDive,
+  type TrainingProgram, type TableType, type DynSetType,
+  templateKind, newRow, levelColor, levelLabel,
+  fetchAthletes, updateAthlete, updateAthletePrograms,
+  totalSTAHoldSecs, totalDynMetres, maxDepthMetres,
+  fmtSeconds, todayISO,
+  TABLE_TYPES, DYN_SET_TYPES,
 } from "@/lib/athletes";
 
 export const Route = createFileRoute("/coach/athlete/$id")({
@@ -42,24 +46,24 @@ function AthletePage() {
   const { id }    = Route.useParams();
   const qc        = useQueryClient();
 
-  const [tab, setTab]           = useState<Tab>("program");
-  const [programs, setPrograms] = useState<TrainingProgram[]>([]);
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const [showCopy, setShowCopy] = useState(false);
-  const [showEdit, setShowEdit] = useState(false);
-  const [saved, setSaved]       = useState(true);
+  const [tab, setTab]             = useState<Tab>("program");
+  const [programs, setPrograms]   = useState<TrainingProgram[]>([]);
+  const [activeId, setActiveId]   = useState<string | null>(null);
+  const [showCopy, setShowCopy]   = useState(false);
+  const [showEdit, setShowEdit]   = useState(false);
+  const [showPicker, setShowPicker] = useState(false);
+  const [saved, setSaved]         = useState(true);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { data: athletes = [], isLoading } = useQuery({
     queryKey: ["coach_athletes", user?.id],
     queryFn:  () => fetchAthletes(user!.id),
     enabled:  !!user,
-    staleTime: 5 * 60 * 1000, // keep cached data for 5 min so transient auth flicker doesn't clear it
+    staleTime: 5 * 60 * 1000,
   });
 
   const athlete: Athlete | undefined = athletes.find((a) => a.id === id);
 
-  // sync programs from server data into local state once loaded
   useEffect(() => {
     if (athlete) {
       setPrograms(athlete.programs ?? []);
@@ -95,15 +99,17 @@ function AthletePage() {
 
   // ── program CRUD ──────────────────────────────────────────────────────────
 
-  const addProgram = () => {
+  const createProgram = (discipline: DisciplineCode) => {
     const prog: TrainingProgram = {
       id: crypto.randomUUID(),
       name: defaultProgramName(lang),
       date: todayISO(),
-      sets: [newSet()],
+      discipline,
+      sets: [newRow(discipline)],
     };
     const updated = [prog, ...programs];
     setActiveId(prog.id);
+    setShowPicker(false);
     scheduleFlush(updated);
   };
 
@@ -172,6 +178,7 @@ function AthletePage() {
 
   const color = levelColor(athlete.level);
   const otherAthletes = athletes.filter((a) => a.id !== id);
+  const pickerDisciplines = athlete.disciplines.length > 0 ? athlete.disciplines : ["STA", "DYN", "CWT"] as DisciplineCode[];
 
   return (
     <div className="space-y-5">
@@ -249,7 +256,7 @@ function AthletePage() {
                 {lang === "el" ? "Κανένα πρόγραμμα ακόμα" : "No programme yet"}
               </p>
               <button
-                onClick={addProgram}
+                onClick={() => setShowPicker(true)}
                 className="flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold"
                 style={{ background: "#1D9E75", color: "#fff" }}
               >
@@ -278,7 +285,7 @@ function AthletePage() {
                   ))}
                 </div>
                 <button
-                  onClick={addProgram}
+                  onClick={() => setShowPicker(true)}
                   className="shrink-0 flex size-8 items-center justify-center rounded-lg text-white/40 hover:text-white transition-colors"
                   style={{ border: "1px solid rgba(255,255,255,0.1)" }}
                 >
@@ -321,6 +328,16 @@ function AthletePage() {
             ))
           )}
         </div>
+      )}
+
+      {/* discipline picker modal */}
+      {showPicker && (
+        <DisciplinePickerModal
+          disciplines={pickerDisciplines}
+          lang={lang}
+          onPick={createProgram}
+          onClose={() => setShowPicker(false)}
+        />
       )}
 
       {/* edit modal */}
@@ -380,6 +397,68 @@ function AthletePage() {
   );
 }
 
+// ── DisciplinePickerModal ──────────────────────────────────────────────────
+
+const DISCIPLINE_COLORS: Record<string, string> = {
+  STA: "#9FE1CB",
+  DYN: "#1D9E75", DYNB: "#1D9E75", DNF: "#5DCAA5",
+  CWT: "#EF9F27", CWTB: "#EF9F27", CNF: "#e8a020", FIM: "#d4912a",
+};
+
+function DisciplinePickerModal({ disciplines, lang, onPick, onClose }: {
+  disciplines: DisciplineCode[];
+  lang: string;
+  onPick: (d: DisciplineCode) => void;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex flex-col justify-end"
+      style={{ background: "rgba(0,0,0,0.75)" }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="w-full rounded-t-2xl px-5 pb-10 pt-5" style={{ background: "#0d1320" }}>
+        <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-white/10" />
+        <div className="mb-5 flex items-center justify-between">
+          <div>
+            <h2 className="text-base font-bold text-white">
+              {lang === "el" ? "Επιλογή Discipline" : "Choose Discipline"}
+            </h2>
+            <p className="mt-0.5 text-xs text-white/30">
+              {lang === "el" ? "Το template προσαρμόζεται αυτόματα" : "Template adapts automatically"}
+            </p>
+          </div>
+          <button onClick={onClose} className="text-white/30 hover:text-white transition-colors">
+            <X className="size-5" />
+          </button>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          {disciplines.map((d) => {
+            const c = DISCIPLINE_COLORS[d] ?? "#5DCAA5";
+            const kind = templateKind(d);
+            const hint = kind === "sta"
+              ? (lang === "el" ? "Rounds · Breath-up · Hold" : "Rounds · Breath-up · Hold")
+              : kind === "depth"
+              ? (lang === "el" ? "Dives · Βάθος · Interval" : "Dives · Depth · Interval")
+              : (lang === "el" ? "Sets · Reps · Distance" : "Sets · Reps · Distance");
+            return (
+              <button
+                key={d}
+                onClick={() => onPick(d)}
+                className="flex flex-col items-start gap-2 rounded-2xl p-4 text-left transition-all active:scale-95"
+                style={{ background: `${c}10`, border: `1.5px solid ${c}30` }}
+              >
+                <span className="text-lg font-black" style={{ color: c }}>{d}</span>
+                <span className="text-[0.6rem] leading-tight text-white/35">{hint}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── ProgramBuilder ─────────────────────────────────────────────────────────
 
 function ProgramBuilder({ program, lang, saved, onChange, onSave, onDelete, onCopy }: {
@@ -393,25 +472,61 @@ function ProgramBuilder({ program, lang, saved, onChange, onSave, onDelete, onCo
 }) {
   const update = (partial: Partial<TrainingProgram>) => onChange({ ...program, ...partial });
 
-  const updateSet = (set: ProgramSet) =>
-    update({ sets: program.sets.map((s) => s.id === set.id ? set : s) });
+  const updateRow = (row: ProgramRow) =>
+    update({ sets: program.sets.map((s) => s.id === row.id ? row : s) });
 
-  const addSet = () => update({ sets: [...program.sets, newSet()] });
+  const addRow = () => {
+    if (!program.discipline) return;
+    update({ sets: [...program.sets, newRow(program.discipline)] });
+  };
 
-  const deleteSet = (id: string) =>
-    update({ sets: program.sets.filter((s) => s.id !== id) });
+  const deleteRow = (rowId: string) =>
+    update({ sets: program.sets.filter((s) => s.id !== rowId) });
 
-  const moveSet = (id: string, dir: -1 | 1) => {
+  const moveRow = (rowId: string, dir: -1 | 1) => {
     const sets = [...program.sets];
-    const i = sets.findIndex((s) => s.id === id);
+    const i = sets.findIndex((s) => s.id === rowId);
     if (i + dir < 0 || i + dir >= sets.length) return;
-    [sets[i], sets[i + dir]] = [sets[i + dir], sets[i]];
+    [sets[i], sets[i + dir]] = [sets[i + dir]!, sets[i]!];
     update({ sets });
   };
 
-  const dist  = totalMetres(program.sets);
-  const mins  = estimatedMinutes(program.sets);
-  const inten = intensityLabel(program.sets, lang);
+  const kind = program.discipline ? templateKind(program.discipline) : null;
+
+  // summary stats
+  const summary = (() => {
+    if (kind === "sta") {
+      const secs = totalSTAHoldSecs(program.sets);
+      return [
+        { label: lang === "el" ? "Rounds" : "Rounds", value: String(program.sets.length), color: "#9FE1CB" },
+        { label: lang === "el" ? "Σύν. Hold" : "Total Hold", value: secs > 0 ? fmtSeconds(secs) : "—", color: "#5DCAA5" },
+        { label: "Discipline", value: program.discipline ?? "—", color: "#1D9E75" },
+      ];
+    }
+    if (kind === "depth") {
+      const maxD = maxDepthMetres(program.sets);
+      return [
+        { label: lang === "el" ? "Dives" : "Dives", value: String(program.sets.length), color: "#EF9F27" },
+        { label: lang === "el" ? "Μέγ. Βάθος" : "Max Depth", value: maxD > 0 ? `${maxD}m` : "—", color: "#EF9F27" },
+        { label: "Discipline", value: program.discipline ?? "—", color: "#e8a020" },
+      ];
+    }
+    if (kind === "dyn") {
+      const metres = totalDynMetres(program.sets);
+      return [
+        { label: lang === "el" ? "Sets" : "Sets", value: String(program.sets.length), color: "#5DCAA5" },
+        { label: lang === "el" ? "Απόσταση" : "Distance", value: metres > 0 ? `${metres}m` : "—", color: "#1D9E75" },
+        { label: "Discipline", value: program.discipline ?? "—", color: "#9FE1CB" },
+      ];
+    }
+    return [];
+  })();
+
+  const addLabel = kind === "sta"
+    ? (lang === "el" ? "+ Νέο Round" : "+ Add Round")
+    : kind === "depth"
+    ? (lang === "el" ? "+ Νέο Dive" : "+ Add Dive")
+    : (lang === "el" ? "+ Νέο Set" : "+ Add Set");
 
   return (
     <div className="space-y-4">
@@ -434,48 +549,43 @@ function ProgramBuilder({ program, lang, saved, onChange, onSave, onDelete, onCo
       </div>
 
       {/* summary card */}
-      <div
-        className="grid grid-cols-3 gap-2 rounded-xl px-1 py-3"
-        style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}
-      >
-        <SummaryChip label={lang === "el" ? "Απόσταση" : "Distance"} value={dist > 0 ? `${dist}m` : "—"} color="#5DCAA5" />
-        <SummaryChip label={lang === "el" ? "Χρόνος" : "Duration"} value={mins > 0 ? `~${mins}'` : "—"} color="#9FE1CB" />
-        <SummaryChip label={lang === "el" ? "Ένταση" : "Intensity"} value={inten} color={inten === (lang === "el" ? "Υψηλή" : "High") ? "#EF9F27" : "#5DCAA5"} />
-      </div>
-
-
-      {/* set rows */}
-      <div className="space-y-2">
-        {program.sets.map((set, i) => (
-          <SetRow
-            key={set.id}
-            set={set}
-            lang={lang}
-            isFirst={i === 0}
-            isLast={i === program.sets.length - 1}
-            onChange={updateSet}
-            onDelete={() => deleteSet(set.id)}
-            onMove={(dir) => moveSet(set.id, dir)}
-          />
-        ))}
-      </div>
-
-      {/* add set */}
-      <button
-        onClick={addSet}
-        className="flex w-full items-center justify-center gap-2 rounded-xl border py-3 text-sm font-semibold transition-all hover:border-[#1D9E75]/40"
-        style={{ borderColor: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.4)" }}
-      >
-        <Plus className="size-4" />
-        {lang === "el" ? "Νέο Σετ" : "Add Set"}
-      </button>
-
-      {/* total */}
-      {dist > 0 && (
-        <div className="flex items-center justify-end gap-2 px-1">
-          <span className="text-[0.65rem] text-white/25">{lang === "el" ? "Σύνολο:" : "Total:"}</span>
-          <span className="font-mono text-sm font-bold" style={{ color: "#5DCAA5" }}>{dist}m</span>
+      {summary.length > 0 && (
+        <div
+          className="grid grid-cols-3 gap-2 rounded-xl px-1 py-3"
+          style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}
+        >
+          {summary.map((s) => (
+            <div key={s.label} className="flex flex-col items-center gap-1">
+              <span className="font-mono text-sm font-bold tabular-nums" style={{ color: s.color }}>{s.value}</span>
+              <span className="text-[0.5rem] font-bold tracking-widest text-white/25">{s.label}</span>
+            </div>
+          ))}
         </div>
+      )}
+
+      {/* rows */}
+      <div className="space-y-2">
+        {program.sets.map((row, i) => {
+          const isFirst = i === 0;
+          const isLast  = i === program.sets.length - 1;
+          const common  = { lang, isFirst, isLast, onDelete: () => deleteRow(row.id), onMove: (dir: -1 | 1) => moveRow(row.id, dir) };
+          if (row.kind === "sta")    return <STARow    key={row.id} row={row}    {...common} onChange={updateRow} />;
+          if (row.kind === "dyn")    return <DynRow    key={row.id} row={row}    {...common} onChange={updateRow} />;
+          if (row.kind === "depth")  return <DepthRow  key={row.id} row={row}    {...common} onChange={updateRow} />;
+          return null;
+        })}
+      </div>
+
+      {/* add row */}
+      {program.discipline && (
+        <button
+          onClick={addRow}
+          className="flex w-full items-center justify-center gap-2 rounded-xl border py-3 text-sm font-semibold transition-all hover:border-[#1D9E75]/40"
+          style={{ borderColor: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.4)" }}
+        >
+          <Plus className="size-4" />
+          {addLabel}
+        </button>
       )}
 
       {/* actions */}
@@ -511,94 +621,268 @@ function ProgramBuilder({ program, lang, saved, onChange, onSave, onDelete, onCo
   );
 }
 
-// ── SetRow ─────────────────────────────────────────────────────────────────
+// ── Shared row header (up/down/delete) ─────────────────────────────────────
 
-function SetRow({ set, lang, isFirst, isLast, onChange, onDelete, onMove }: {
-  set: ProgramSet;
-  lang: string;
+function RowControls({ accentColor, isFirst, isLast, onMove, onDelete }: {
+  accentColor: string;
   isFirst: boolean;
   isLast: boolean;
-  onChange: (s: ProgramSet) => void;
-  onDelete: () => void;
   onMove: (dir: -1 | 1) => void;
+  onDelete: () => void;
 }) {
-  const typeColor = setTypeColor(set.type);
-  const typeLabel = setTypeLabel(set.type, lang);
-  const update = (partial: Partial<ProgramSet>) => onChange({ ...set, ...partial });
+  return (
+    <div className="flex flex-1 items-center justify-end gap-0.5">
+      <button onClick={() => onMove(-1)} disabled={isFirst} className="rounded p-1.5 text-white/20 hover:text-white/60 disabled:opacity-20">
+        <ChevronUp className="size-3.5" />
+      </button>
+      <button onClick={() => onMove(1)} disabled={isLast} className="rounded p-1.5 text-white/20 hover:text-white/60 disabled:opacity-20">
+        <ChevronDown className="size-3.5" />
+      </button>
+      <button onClick={onDelete} className="rounded p-1.5 text-white/20 hover:text-red-400/70">
+        <Trash2 className="size-3.5" />
+      </button>
+    </div>
+  );
+}
+
+const inputCls = "rounded-lg bg-white/5 px-2 py-2 text-sm text-white outline-none focus:ring-1 focus:ring-[#1D9E75]";
+const labelCls = "text-[0.55rem] font-bold tracking-wider text-white/30";
+
+// ── STARow ─────────────────────────────────────────────────────────────────
+
+function STARow({ row, lang, isFirst, isLast, onChange, onDelete, onMove }: {
+  row: STARound; lang: string; isFirst: boolean; isLast: boolean;
+  onChange: (r: ProgramRow) => void; onDelete: () => void; onMove: (d: -1 | 1) => void;
+}) {
+  const upd = (p: Partial<STARound>) => onChange({ ...row, ...p });
+  const accent = "#9FE1CB";
 
   return (
     <div
       className="overflow-hidden rounded-xl"
-      style={{ background: "#0d1320", border: "1px solid rgba(255,255,255,0.05)", borderLeft: `3px solid ${typeColor}` }}
+      style={{ background: "#0d1320", border: "1px solid rgba(255,255,255,0.05)", borderLeft: `3px solid ${accent}` }}
     >
-      {/* row 1: type chip + up/down/delete */}
-      <div className="flex items-center gap-2 px-3 pt-2.5 pb-1">
-        <button
-          onClick={() => update({ type: nextSetType(set.type) })}
-          className="rounded-lg px-3 py-1.5 text-[0.65rem] font-bold tracking-wider transition-all"
-          style={{ background: `${typeColor}18`, color: typeColor }}
+      {/* header */}
+      <div className="flex items-center gap-2 px-3 pt-2.5 pb-2">
+        <span className="rounded-lg px-3 py-1 text-[0.65rem] font-black tracking-wider" style={{ background: `${accent}18`, color: accent }}>
+          STA
+        </span>
+        <select
+          value={row.tableType}
+          onChange={(e) => upd({ tableType: e.target.value as TableType })}
+          className="rounded-lg bg-white/5 px-2 py-1 text-[0.65rem] font-bold text-white/70 outline-none focus:ring-1 focus:ring-[#1D9E75]"
+          style={{ colorScheme: "dark" }}
         >
-          {typeLabel}
-        </button>
-        <div className="flex flex-1 items-center justify-end gap-0.5">
-          <button onClick={() => onMove(-1)} disabled={isFirst} className="rounded p-1.5 text-white/20 hover:text-white/60 disabled:opacity-20">
-            <ChevronUp className="size-3.5" />
-          </button>
-          <button onClick={() => onMove(1)} disabled={isLast} className="rounded p-1.5 text-white/20 hover:text-white/60 disabled:opacity-20">
-            <ChevronDown className="size-3.5" />
-          </button>
-          <button onClick={onDelete} className="rounded p-1.5 text-white/20 hover:text-red-400/70">
-            <Trash2 className="size-3.5" />
-          </button>
-        </div>
+          {TABLE_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+        </select>
+        <RowControls accentColor={accent} isFirst={isFirst} isLast={isLast} onMove={onMove} onDelete={onDelete} />
       </div>
 
-      {/* row 2: reps × value REST rest | notes wraps on mobile */}
-      <div className="flex flex-wrap items-center gap-2 px-3 pb-2.5">
-        <div className="flex items-center gap-2">
-          <input
-            type="number"
-            inputMode="numeric"
-            min={1}
-            value={set.reps}
-            onChange={(e) => update({ reps: Math.max(1, parseInt(e.target.value) || 1) })}
-            className="w-14 min-w-[3.5rem] rounded-lg bg-white/5 px-2 py-1.5 text-center text-sm font-bold text-white outline-none focus:ring-1 focus:ring-[#1D9E75]"
-          />
-          <span className="text-xs text-white/25">×</span>
+      {/* fields */}
+      <div className="grid grid-cols-3 gap-2 px-3 pb-2.5">
+        <div className="flex flex-col gap-1">
+          <label className={labelCls}>{lang === "el" ? "BREATH-UP" : "BREATH-UP"}</label>
           <input
             inputMode="text"
-            value={set.value}
-            onChange={(e) => update({ value: e.target.value })}
-            className="w-20 min-w-[5rem] rounded-lg bg-white/5 px-2 py-1.5 text-sm text-white outline-none focus:ring-1 focus:ring-[#1D9E75]"
-            placeholder="75m"
-          />
-          <span className="text-[0.6rem] text-white/20">REST</span>
-          <input
-            inputMode="text"
-            value={set.rest}
-            onChange={(e) => update({ rest: e.target.value })}
-            className="w-16 min-w-[4rem] rounded-lg bg-white/5 px-2 py-1.5 text-center text-sm text-white outline-none focus:ring-1 focus:ring-[#1D9E75]"
+            value={row.breathUp}
+            onChange={(e) => upd({ breathUp: e.target.value })}
+            className={`${inputCls} text-center`}
             placeholder="2:00"
           />
         </div>
+        <div className="flex flex-col gap-1">
+          <label className={labelCls}>{lang === "el" ? "HOLD" : "HOLD"}</label>
+          <input
+            inputMode="text"
+            value={row.holdTime}
+            onChange={(e) => upd({ holdTime: e.target.value })}
+            className={`${inputCls} text-center font-bold`}
+            style={{ color: accent }}
+            placeholder="1:30"
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className={labelCls}>{lang === "el" ? "RECOVERY" : "RECOVERY"}</label>
+          <input
+            inputMode="text"
+            value={row.recovery}
+            onChange={(e) => upd({ recovery: e.target.value })}
+            className={`${inputCls} text-center`}
+            placeholder="2:00"
+          />
+        </div>
+      </div>
+
+      {/* notes */}
+      <div className="px-3 pb-3">
         <input
-          value={set.notes}
-          onChange={(e) => update({ notes: e.target.value })}
-          className="min-w-0 flex-1 rounded-lg bg-white/5 px-2 py-1.5 text-xs text-white/50 outline-none focus:ring-1 focus:ring-[#1D9E75]"
-          placeholder={lang === "el" ? "σημειώσεις" : "notes"}
+          value={row.notes}
+          onChange={(e) => upd({ notes: e.target.value })}
+          className={`${inputCls} w-full text-xs text-white/40`}
+          placeholder={lang === "el" ? "σημειώσεις…" : "notes…"}
         />
       </div>
     </div>
   );
 }
 
-// ── SummaryChip ────────────────────────────────────────────────────────────
+// ── DynRow ─────────────────────────────────────────────────────────────────
 
-function SummaryChip({ label, value, color }: { label: string; value: string; color: string }) {
+function DynRow({ row, lang, isFirst, isLast, onChange, onDelete, onMove }: {
+  row: DynSet; lang: string; isFirst: boolean; isLast: boolean;
+  onChange: (r: ProgramRow) => void; onDelete: () => void; onMove: (d: -1 | 1) => void;
+}) {
+  const upd = (p: Partial<DynSet>) => onChange({ ...row, ...p });
+  const accent = "#1D9E75";
+
   return (
-    <div className="flex flex-col items-center gap-1">
-      <span className="font-mono text-sm font-bold tabular-nums" style={{ color }}>{value}</span>
-      <span className="text-[0.5rem] font-bold tracking-widest text-white/25">{label}</span>
+    <div
+      className="overflow-hidden rounded-xl"
+      style={{ background: "#0d1320", border: "1px solid rgba(255,255,255,0.05)", borderLeft: `3px solid ${accent}` }}
+    >
+      {/* header */}
+      <div className="flex items-center gap-2 px-3 pt-2.5 pb-2">
+        <select
+          value={row.setType}
+          onChange={(e) => upd({ setType: e.target.value as DynSetType })}
+          className="rounded-lg bg-white/5 px-2 py-1 text-[0.65rem] font-bold text-white/70 outline-none focus:ring-1 focus:ring-[#1D9E75]"
+          style={{ colorScheme: "dark" }}
+        >
+          {DYN_SET_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+        </select>
+        <RowControls accentColor={accent} isFirst={isFirst} isLast={isLast} onMove={onMove} onDelete={onDelete} />
+      </div>
+
+      {/* fields */}
+      <div className="grid grid-cols-3 gap-2 px-3 pb-2.5">
+        <div className="flex flex-col gap-1">
+          <label className={labelCls}>{lang === "el" ? "REPS" : "REPS"}</label>
+          <input
+            type="number"
+            inputMode="numeric"
+            min={1}
+            value={row.reps}
+            onChange={(e) => upd({ reps: Math.max(1, parseInt(e.target.value) || 1) })}
+            className={`${inputCls} text-center font-bold`}
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className={labelCls}>{lang === "el" ? "ΑΠΌΣΤΑΣΗ" : "DISTANCE"}</label>
+          <div className="relative">
+            <input
+              type="number"
+              inputMode="numeric"
+              min={1}
+              value={row.distance}
+              onChange={(e) => upd({ distance: Math.max(1, parseInt(e.target.value) || 1) })}
+              className={`${inputCls} w-full text-center font-bold pr-6`}
+              style={{ color: accent }}
+            />
+            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[0.6rem] text-white/30">m</span>
+          </div>
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className={labelCls}>REST</label>
+          <input
+            inputMode="text"
+            value={row.rest}
+            onChange={(e) => upd({ rest: e.target.value })}
+            className={`${inputCls} text-center`}
+            placeholder="2:00"
+          />
+        </div>
+      </div>
+
+      {/* notes */}
+      <div className="px-3 pb-3">
+        <input
+          value={row.notes}
+          onChange={(e) => upd({ notes: e.target.value })}
+          className={`${inputCls} w-full text-xs text-white/40`}
+          placeholder={lang === "el" ? "σημειώσεις…" : "notes…"}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ── DepthRow ───────────────────────────────────────────────────────────────
+
+function DepthRow({ row, lang, isFirst, isLast, onChange, onDelete, onMove }: {
+  row: DepthDive; lang: string; isFirst: boolean; isLast: boolean;
+  onChange: (r: ProgramRow) => void; onDelete: () => void; onMove: (d: -1 | 1) => void;
+}) {
+  const upd = (p: Partial<DepthDive>) => onChange({ ...row, ...p });
+  const accent = "#EF9F27";
+
+  return (
+    <div
+      className="overflow-hidden rounded-xl"
+      style={{ background: "#0d1320", border: "1px solid rgba(255,255,255,0.05)", borderLeft: `3px solid ${accent}` }}
+    >
+      {/* header */}
+      <div className="flex items-center gap-2 px-3 pt-2.5 pb-2">
+        <span className="rounded-lg px-3 py-1 text-[0.65rem] font-black tracking-wider" style={{ background: `${accent}18`, color: accent }}>
+          DEPTH
+        </span>
+        <RowControls accentColor={accent} isFirst={isFirst} isLast={isLast} onMove={onMove} onDelete={onDelete} />
+      </div>
+
+      {/* fields */}
+      <div className="grid grid-cols-3 gap-2 px-3 pb-2.5">
+        <div className="flex flex-col gap-1">
+          <label className={labelCls}>{lang === "el" ? "ΒΆΘΟΣ" : "DEPTH"}</label>
+          <div className="relative">
+            <input
+              type="number"
+              inputMode="numeric"
+              min={1}
+              value={row.targetDepth}
+              onChange={(e) => upd({ targetDepth: Math.max(1, parseInt(e.target.value) || 1) })}
+              className={`${inputCls} w-full text-center font-bold pr-6`}
+              style={{ color: accent }}
+            />
+            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[0.6rem] text-white/30">m</span>
+          </div>
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className={labelCls}>{lang === "el" ? "ΣΥΝΟΛ. ΧΡΌΝΟΣ" : "TOTAL TIME"}</label>
+          <input
+            inputMode="text"
+            value={row.totalTime}
+            onChange={(e) => upd({ totalTime: e.target.value })}
+            className={`${inputCls} text-center`}
+            placeholder="1:30"
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className={labelCls}>SURFACE INT.</label>
+          <input
+            inputMode="text"
+            value={row.surfaceInterval}
+            onChange={(e) => upd({ surfaceInterval: e.target.value })}
+            className={`${inputCls} text-center`}
+            placeholder="3:00"
+          />
+        </div>
+      </div>
+
+      {/* surface interval hint */}
+      <div className="px-3 pb-1 -mt-1">
+        <span className="text-[0.55rem] text-white/20">
+          {lang === "el" ? "min 2× χρόνος κατάδυσης" : "min 2× dive time"}
+        </span>
+      </div>
+
+      {/* notes */}
+      <div className="px-3 pb-3">
+        <input
+          value={row.notes}
+          onChange={(e) => upd({ notes: e.target.value })}
+          className={`${inputCls} w-full text-xs text-white/40`}
+          placeholder={lang === "el" ? "σημειώσεις…" : "notes…"}
+        />
+      </div>
     </div>
   );
 }
@@ -608,8 +892,23 @@ function SummaryChip({ label, value, color }: { label: string; value: string; co
 function ProgramHistoryRow({ program, lang, onOpen }: {
   program: TrainingProgram; lang: string; onOpen: () => void;
 }) {
-  const dist = totalMetres(program.sets);
-  const mins = estimatedMinutes(program.sets);
+  const kind = program.discipline ? templateKind(program.discipline) : null;
+  const stat = (() => {
+    if (kind === "sta") {
+      const secs = totalSTAHoldSecs(program.sets);
+      return secs > 0 ? `${fmtSeconds(secs)} hold` : "";
+    }
+    if (kind === "dyn") {
+      const m = totalDynMetres(program.sets);
+      return m > 0 ? `${m}m` : "";
+    }
+    if (kind === "depth") {
+      const d = maxDepthMetres(program.sets);
+      return d > 0 ? `↓${d}m` : "";
+    }
+    return "";
+  })();
+
   return (
     <button
       onClick={onOpen}
@@ -619,9 +918,10 @@ function ProgramHistoryRow({ program, lang, onOpen }: {
       <div>
         <p className="text-sm font-semibold text-white">{program.name}</p>
         <p className="mt-0.5 text-[0.6rem] text-white/30">
-          {program.date} · {program.sets.length} {lang === "el" ? "σετ" : "sets"}
-          {dist > 0 ? ` · ${dist}m` : ""}
-          {mins > 0 ? ` · ~${mins}'` : ""}
+          {program.date}
+          {program.discipline ? ` · ${program.discipline}` : ""}
+          {` · ${program.sets.length} ${kind === "sta" ? "rounds" : kind === "depth" ? "dives" : "sets"}`}
+          {stat ? ` · ${stat}` : ""}
         </p>
       </div>
       <ChevronRight className="size-4 text-white/25" />
