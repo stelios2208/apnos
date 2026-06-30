@@ -443,20 +443,6 @@ function ProgramBuilder({ program, lang, saved, onChange, onSave, onDelete, onCo
         <SummaryChip label={lang === "el" ? "Ένταση" : "Intensity"} value={inten} color={inten === (lang === "el" ? "Υψηλή" : "High") ? "#EF9F27" : "#5DCAA5"} />
       </div>
 
-      {/* column headers */}
-      {program.sets.length > 0 && (
-        <div
-          className="grid items-center gap-1 px-3 py-1.5 text-[0.55rem] font-bold tracking-widest text-white/20"
-          style={{ gridTemplateColumns: "80px 32px 1fr 60px 1fr 56px" }}
-        >
-          <span>{lang === "el" ? "ΤΥΠΟΣ" : "TYPE"}</span>
-          <span className="text-center">{lang === "el" ? "ΕΠΑ" : "REP"}</span>
-          <span className="text-center">{lang === "el" ? "ΤΙΜΗ" : "VALUE"}</span>
-          <span className="text-center">REST</span>
-          <span>{lang === "el" ? "ΣΗΜΕΙΩΣΕΙΣ" : "NOTES"}</span>
-          <span />
-        </div>
-      )}
 
       {/* set rows */}
       <div className="space-y-2">
@@ -552,67 +538,64 @@ function SetRow({ set, lang, isFirst, isLast, onChange, onDelete, onMove }: {
       className="overflow-hidden rounded-xl"
       style={{ background: "#0d1320", border: "1px solid rgba(255,255,255,0.05)", borderLeft: `3px solid ${typeColor}` }}
     >
-      <div
-        className="grid items-center gap-1.5 px-3 py-2.5"
-        style={{ gridTemplateColumns: "76px 32px 1fr 60px 1fr 56px" }}
-      >
-        {/* type — tap to cycle */}
+      {/* row 1: type chip + up/down/delete */}
+      <div className="flex items-center gap-2 px-3 pt-2.5 pb-1">
         <button
           onClick={() => update({ type: nextSetType(set.type) })}
-          className="rounded-lg px-2 py-1 text-[0.6rem] font-bold tracking-wider text-left transition-all"
+          className="rounded-lg px-3 py-1.5 text-[0.65rem] font-bold tracking-wider transition-all"
           style={{ background: `${typeColor}18`, color: typeColor }}
         >
           {typeLabel}
         </button>
+        <div className="flex flex-1 items-center justify-end gap-0.5">
+          <button onClick={() => onMove(-1)} disabled={isFirst} className="rounded p-1.5 text-white/20 hover:text-white/60 disabled:opacity-20">
+            <ChevronUp className="size-3.5" />
+          </button>
+          <button onClick={() => onMove(1)} disabled={isLast} className="rounded p-1.5 text-white/20 hover:text-white/60 disabled:opacity-20">
+            <ChevronDown className="size-3.5" />
+          </button>
+          <button onClick={onDelete} className="rounded p-1.5 text-white/20 hover:text-red-400/70">
+            <Trash2 className="size-3.5" />
+          </button>
+        </div>
+      </div>
 
+      {/* row 2: reps × value | rest + notes */}
+      <div className="flex items-center gap-2 px-3 pb-2.5">
         {/* reps */}
         <input
           type="number"
+          inputMode="numeric"
           min={1}
           value={set.reps}
           onChange={(e) => update({ reps: Math.max(1, parseInt(e.target.value) || 1) })}
-          className="w-full rounded-lg bg-white/5 px-1.5 py-1 text-center text-xs font-bold text-white outline-none focus:ring-1 focus:ring-[#1D9E75]"
+          className="w-14 min-w-[3.5rem] rounded-lg bg-white/5 px-2 py-1.5 text-center text-sm font-bold text-white outline-none focus:ring-1 focus:ring-[#1D9E75]"
         />
-
+        <span className="text-xs text-white/25">×</span>
         {/* value */}
-        <div className="flex items-center gap-1">
-          <span className="text-[0.6rem] text-white/20">×</span>
-          <input
-            value={set.value}
-            onChange={(e) => update({ value: e.target.value })}
-            className="w-full rounded-lg bg-white/5 px-1.5 py-1 text-xs text-white outline-none focus:ring-1 focus:ring-[#1D9E75]"
-            placeholder="75m"
-          />
-        </div>
-
+        <input
+          inputMode="text"
+          value={set.value}
+          onChange={(e) => update({ value: e.target.value })}
+          className="w-20 min-w-[5rem] rounded-lg bg-white/5 px-2 py-1.5 text-sm text-white outline-none focus:ring-1 focus:ring-[#1D9E75]"
+          placeholder="75m"
+        />
+        <span className="text-[0.6rem] text-white/20">REST</span>
         {/* rest */}
         <input
+          inputMode="text"
           value={set.rest}
           onChange={(e) => update({ rest: e.target.value })}
-          className="w-full rounded-lg bg-white/5 px-1.5 py-1 text-center text-xs text-white outline-none focus:ring-1 focus:ring-[#1D9E75]"
+          className="w-16 min-w-[4rem] rounded-lg bg-white/5 px-2 py-1.5 text-center text-sm text-white outline-none focus:ring-1 focus:ring-[#1D9E75]"
           placeholder="2:00"
         />
-
         {/* notes */}
         <input
           value={set.notes}
           onChange={(e) => update({ notes: e.target.value })}
-          className="w-full rounded-lg bg-white/5 px-1.5 py-1 text-xs text-white/60 outline-none focus:ring-1 focus:ring-[#1D9E75]"
+          className="min-w-0 flex-1 rounded-lg bg-white/5 px-2 py-1.5 text-xs text-white/50 outline-none focus:ring-1 focus:ring-[#1D9E75]"
           placeholder={lang === "el" ? "σημειώσεις" : "notes"}
         />
-
-        {/* controls */}
-        <div className="flex items-center justify-end gap-0.5">
-          <button onClick={() => onMove(-1)} disabled={isFirst} className="rounded p-1 text-white/20 hover:text-white/60 disabled:opacity-20">
-            <ChevronUp className="size-3.5" />
-          </button>
-          <button onClick={() => onMove(1)} disabled={isLast} className="rounded p-1 text-white/20 hover:text-white/60 disabled:opacity-20">
-            <ChevronDown className="size-3.5" />
-          </button>
-          <button onClick={onDelete} className="rounded p-1 text-white/20 hover:text-red-400/70">
-            <Trash2 className="size-3.5" />
-          </button>
-        </div>
       </div>
 
       {/* combined toggle */}
