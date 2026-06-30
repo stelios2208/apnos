@@ -55,8 +55,6 @@ function AthletePage() {
     staleTime: 5 * 60 * 1000, // keep cached data for 5 min so transient auth flicker doesn't clear it
   });
 
-  console.log("[AthletePage] URL id param:", JSON.stringify(id), typeof id);
-  console.log("[AthletePage] athletes from Supabase:", athletes.map((a) => ({ id: a.id, name: a.name, match: a.id === id })));
   const athlete: Athlete | undefined = athletes.find((a) => a.id === id);
 
   // sync programs from server data into local state once loaded

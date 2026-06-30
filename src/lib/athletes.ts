@@ -169,8 +169,6 @@ export async function createAthlete(
   userId: string,
   input: { name: string; level: Level; disciplines: DisciplineCode[] }
 ): Promise<Athlete> {
-  const session = await supabase.auth.getSession();
-  console.log("Inserting with userId:", userId, "session:", session);
   const { data, error } = await supabase
     .from("coach_athletes")
     .insert({ user_id: userId, ...input, programs: [] })
