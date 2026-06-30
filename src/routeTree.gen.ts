@@ -9,10 +9,6 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as CalendarRouteImport } from './routes/calendar'
-import { Route as CoachRouteImport } from './routes/coach'
-import { Route as CoachAthleteIdRouteImport } from './routes/coach.athlete.$id'
-import { Route as DiveIdRouteImport } from './routes/dive.$id'
 import { Route as StaTrainerRouteImport } from './routes/sta-trainer'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as SettingsRouteImport } from './routes/settings'
@@ -22,30 +18,15 @@ import { Route as LogRouteImport } from './routes/log'
 import { Route as HistoryRouteImport } from './routes/history'
 import { Route as EquipmentRouteImport } from './routes/equipment'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as CoachRouteImport } from './routes/coach'
+import { Route as CoachIndexRouteImport } from './routes/coach.index'
+import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as DiveIdRouteImport } from './routes/dive.$id'
 import { Route as DisciplineCodeRouteImport } from './routes/discipline.$code'
+import { Route as CoachAthleteIdRouteImport } from './routes/coach.athlete.$id'
 
-const CalendarRoute = CalendarRouteImport.update({
-  id: '/calendar',
-  path: '/calendar',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CoachRoute = CoachRouteImport.update({
-  id: '/coach',
-  path: '/coach',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CoachAthleteIdRoute = CoachAthleteIdRouteImport.update({
-  id: '/coach/athlete/$id',
-  path: '/coach/athlete/$id',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DiveIdRoute = DiveIdRouteImport.update({
-  id: '/dive/$id',
-  path: '/dive/$id',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const StaTrainerRoute = StaTrainerRouteImport.update({
   id: '/sta-trainer',
   path: '/sta-trainer',
@@ -91,6 +72,21 @@ const DashboardRoute = DashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CoachRoute = CoachRouteImport.update({
+  id: '/coach',
+  path: '/coach',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CoachIndexRoute = CoachIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => CoachRoute,
+} as any)
+const CalendarRoute = CalendarRouteImport.update({
+  id: '/calendar',
+  path: '/calendar',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
@@ -101,18 +97,28 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DiveIdRoute = DiveIdRouteImport.update({
+  id: '/dive/$id',
+  path: '/dive/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DisciplineCodeRoute = DisciplineCodeRouteImport.update({
   id: '/discipline/$code',
   path: '/discipline/$code',
   getParentRoute: () => rootRouteImport,
+} as any)
+const CoachAthleteIdRoute = CoachAthleteIdRouteImport.update({
+  id: '/athlete/$id',
+  path: '/athlete/$id',
+  getParentRoute: () => CoachRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/calendar': typeof CalendarRoute
-  '/coach': typeof CoachRoute
-  '/coach/athlete/$id': typeof CoachAthleteIdRoute
+  '/coach': typeof CoachRouteWithChildren
+  '/coach/': typeof CoachIndexRoute
   '/dashboard': typeof DashboardRoute
   '/equipment': typeof EquipmentRoute
   '/history': typeof HistoryRoute
@@ -122,15 +128,15 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/sta-trainer': typeof StaTrainerRoute
-  '/dive/$id': typeof DiveIdRoute
   '/discipline/$code': typeof DisciplineCodeRoute
+  '/dive/$id': typeof DiveIdRoute
+  '/coach/athlete/$id': typeof CoachAthleteIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/calendar': typeof CalendarRoute
-  '/coach': typeof CoachRoute
-  '/coach/athlete/$id': typeof CoachAthleteIdRoute
+  '/coach': typeof CoachIndexRoute
   '/dashboard': typeof DashboardRoute
   '/equipment': typeof EquipmentRoute
   '/history': typeof HistoryRoute
@@ -140,16 +146,17 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/sta-trainer': typeof StaTrainerRoute
-  '/dive/$id': typeof DiveIdRoute
   '/discipline/$code': typeof DisciplineCodeRoute
+  '/dive/$id': typeof DiveIdRoute
+  '/coach/athlete/$id': typeof CoachAthleteIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/calendar': typeof CalendarRoute
-  '/coach': typeof CoachRoute
-  '/coach/athlete/$id': typeof CoachAthleteIdRoute
+  '/coach': typeof CoachRouteWithChildren
+  '/coach/': typeof CoachIndexRoute
   '/dashboard': typeof DashboardRoute
   '/equipment': typeof EquipmentRoute
   '/history': typeof HistoryRoute
@@ -159,8 +166,9 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/sta-trainer': typeof StaTrainerRoute
-  '/dive/$id': typeof DiveIdRoute
   '/discipline/$code': typeof DisciplineCodeRoute
+  '/dive/$id': typeof DiveIdRoute
+  '/coach/athlete/$id': typeof CoachAthleteIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -169,7 +177,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/calendar'
     | '/coach'
-    | '/coach/athlete/$id'
+    | '/coach/'
     | '/dashboard'
     | '/equipment'
     | '/history'
@@ -179,15 +187,15 @@ export interface FileRouteTypes {
     | '/settings'
     | '/sitemap.xml'
     | '/sta-trainer'
-    | '/dive/$id'
     | '/discipline/$code'
+    | '/dive/$id'
+    | '/coach/athlete/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/auth'
     | '/calendar'
     | '/coach'
-    | '/coach/athlete/$id'
     | '/dashboard'
     | '/equipment'
     | '/history'
@@ -197,15 +205,16 @@ export interface FileRouteTypes {
     | '/settings'
     | '/sitemap.xml'
     | '/sta-trainer'
-    | '/dive/$id'
     | '/discipline/$code'
+    | '/dive/$id'
+    | '/coach/athlete/$id'
   id:
     | '__root__'
     | '/'
     | '/auth'
     | '/calendar'
     | '/coach'
-    | '/coach/athlete/$id'
+    | '/coach/'
     | '/dashboard'
     | '/equipment'
     | '/history'
@@ -215,16 +224,16 @@ export interface FileRouteTypes {
     | '/settings'
     | '/sitemap.xml'
     | '/sta-trainer'
-    | '/dive/$id'
     | '/discipline/$code'
+    | '/dive/$id'
+    | '/coach/athlete/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
   CalendarRoute: typeof CalendarRoute
-  CoachRoute: typeof CoachRoute
-  CoachAthleteIdRoute: typeof CoachAthleteIdRoute
+  CoachRoute: typeof CoachRouteWithChildren
   DashboardRoute: typeof DashboardRoute
   EquipmentRoute: typeof EquipmentRoute
   HistoryRoute: typeof HistoryRoute
@@ -234,8 +243,8 @@ export interface RootRouteChildren {
   SettingsRoute: typeof SettingsRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   StaTrainerRoute: typeof StaTrainerRoute
-  DiveIdRoute: typeof DiveIdRoute
   DisciplineCodeRoute: typeof DisciplineCodeRoute
+  DiveIdRoute: typeof DiveIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -303,6 +312,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/coach': {
+      id: '/coach'
+      path: '/coach'
+      fullPath: '/coach'
+      preLoaderRoute: typeof CoachRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/coach/': {
+      id: '/coach/'
+      path: '/'
+      fullPath: '/coach/'
+      preLoaderRoute: typeof CoachIndexRouteImport
+      parentRoute: typeof CoachRoute
+    }
+    '/calendar': {
+      id: '/calendar'
+      path: '/calendar'
+      fullPath: '/calendar'
+      preLoaderRoute: typeof CalendarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth': {
       id: '/auth'
       path: '/auth'
@@ -315,27 +345,6 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/calendar': {
-      id: '/calendar'
-      path: '/calendar'
-      fullPath: '/calendar'
-      preLoaderRoute: typeof CalendarRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/coach': {
-      id: '/coach'
-      path: '/coach'
-      fullPath: '/coach'
-      preLoaderRoute: typeof CoachRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/coach/athlete/$id': {
-      id: '/coach/athlete/$id'
-      path: '/coach/athlete/$id'
-      fullPath: '/coach/athlete/$id'
-      preLoaderRoute: typeof CoachAthleteIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dive/$id': {
@@ -352,15 +361,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DisciplineCodeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/coach/athlete/$id': {
+      id: '/coach/athlete/$id'
+      path: '/athlete/$id'
+      fullPath: '/coach/athlete/$id'
+      preLoaderRoute: typeof CoachAthleteIdRouteImport
+      parentRoute: typeof CoachRoute
+    }
   }
 }
+
+interface CoachRouteChildren {
+  CoachIndexRoute: typeof CoachIndexRoute
+  CoachAthleteIdRoute: typeof CoachAthleteIdRoute
+}
+
+const CoachRouteChildren: CoachRouteChildren = {
+  CoachIndexRoute: CoachIndexRoute,
+  CoachAthleteIdRoute: CoachAthleteIdRoute,
+}
+
+const CoachRouteWithChildren = CoachRoute._addFileChildren(CoachRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
   CalendarRoute: CalendarRoute,
-  CoachRoute: CoachRoute,
-  CoachAthleteIdRoute: CoachAthleteIdRoute,
+  CoachRoute: CoachRouteWithChildren,
   DashboardRoute: DashboardRoute,
   EquipmentRoute: EquipmentRoute,
   HistoryRoute: HistoryRoute,
@@ -370,8 +397,8 @@ const rootRouteChildren: RootRouteChildren = {
   SettingsRoute: SettingsRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   StaTrainerRoute: StaTrainerRoute,
-  DiveIdRoute: DiveIdRoute,
   DisciplineCodeRoute: DisciplineCodeRoute,
+  DiveIdRoute: DiveIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
