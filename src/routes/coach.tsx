@@ -178,11 +178,17 @@ function CoachPage() {
           <div className="w-full rounded-t-2xl px-5 pb-10 pt-5" style={{ background: "#0d1320" }}>
             <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-white/10" />
 
-            <div className="mb-5 flex items-center justify-between">
-              <h2 className="text-base font-bold text-white">
-                {lang === "el" ? "Νέος Αθλητής" : "New Athlete"}
-              </h2>
-              <button onClick={() => setShowModal(false)} className="text-white/30 transition-colors hover:text-white">
+            {/* BreathMark + title */}
+            <div className="mb-5 flex items-start justify-between">
+              <div className="flex flex-col gap-1">
+                <div style={{ opacity: 0.35 }}>
+                  <BreathMark size={80} />
+                </div>
+                <h2 className="text-base font-bold text-white">
+                  {lang === "el" ? "Νέος Αθλητής" : "New Athlete"}
+                </h2>
+              </div>
+              <button onClick={() => setShowModal(false)} className="mt-1 text-white/30 transition-colors hover:text-white">
                 <X className="size-5" />
               </button>
             </div>

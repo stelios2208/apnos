@@ -385,7 +385,6 @@ function LogDive() {
                       <SelectContent>
                         <SelectItem value="">{" — "}</SelectItem>
                         <SelectItem value="Cetma">Cetma</SelectItem>
-                        {finsCat === "monofin" && <SelectItem value="C4">C4</SelectItem>}
                         <SelectItem value="Sectus">Sectus</SelectItem>
                         <SelectItem value="other">{lang === "el" ? "Άλλη μάρκα…" : "Other brand…"}</SelectItem>
                       </SelectContent>
@@ -405,7 +404,7 @@ function LogDive() {
                     <Input id="fins-model" type="text"
                       value={finsModel.startsWith("__brand__") ? "" : finsModel}
                       onChange={(e) => setFinsModel(e.target.value)}
-                      placeholder={lang === "el" ? "π.χ. Orama, Carbon 500" : "e.g. Orama, Carbon 500"} />
+                      placeholder={lang === "el" ? "π.χ. Carbon 500" : "e.g. Carbon 500"} />
                   </div>
 
                   {/* row: foot pocket (bifins only) | (empty) */}

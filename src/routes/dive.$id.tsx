@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Pencil, Trash2 } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { AppLayout } from "@/components/AppLayout";
@@ -180,7 +180,11 @@ function DiveDetail() {
     enabled: !!user,
   });
 
-  const dive = dives.find((d) => d.id === id);
+  const dive    = dives.find((d) => d.id === id);
+  // prev/next in chronological order (dives array is newest-first from fetchDives)
+  const idx     = dives.findIndex((d) => d.id === id);
+  const prevId  = idx < dives.length - 1 ? dives[idx + 1].id : null;
+  const nextId  = idx > 0                 ? dives[idx - 1].id : null;
 
   const remove = useMutation({
     mutationFn: () => deleteDive(id, user!.id, dive!.discipline),
@@ -226,10 +230,39 @@ function DiveDetail() {
 
   return (
     <div className="space-y-5">
-      {/* back */}
-      <Button asChild variant="ghost" size="sm" className="-ml-2 gap-1.5 text-white/50 hover:text-white">
-        <Link to="/history"><ArrowLeft className="size-4" />{t("common.back")}</Link>
-      </Button>
+      {/* back + prev/next */}
+      <div className="flex items-center justify-between">
+        <Button asChild variant="ghost" size="sm" className="-ml-2 gap-1.5 text-white/50 hover:text-white">
+          <Link to="/history"><ArrowLeft className="size-4" />{t("common.back")}</Link>
+        </Button>
+        <div className="flex items-center gap-1">
+          <Button
+            asChild
+            variant="ghost"
+            size="sm"
+            className="size-8 p-0 text-white/40 hover:text-white disabled:opacity-20"
+            disabled={!prevId}
+          >
+            {prevId
+              ? <Link to="/dive/$id" params={{ id: prevId }}><ChevronLeft className="size-4" /></Link>
+              : <span><ChevronLeft className="size-4" /></span>
+            }
+          </Button>
+          <span className="text-[0.6rem] text-white/20">{idx + 1} / {dives.length}</span>
+          <Button
+            asChild
+            variant="ghost"
+            size="sm"
+            className="size-8 p-0 text-white/40 hover:text-white disabled:opacity-20"
+            disabled={!nextId}
+          >
+            {nextId
+              ? <Link to="/dive/$id" params={{ id: nextId }}><ChevronRight className="size-4" /></Link>
+              : <span><ChevronRight className="size-4" /></span>
+            }
+          </Button>
+        </div>
+      </div>
 
       {/* header card */}
       <div

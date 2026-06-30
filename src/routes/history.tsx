@@ -1,12 +1,13 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useSearch } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Trophy, Trash2, Moon, Brain, Waves, Plus, Pencil, Download,
   ChevronRight, ChevronDown, SlidersHorizontal, X, ArrowLeftRight,
+  Search, LayoutList, CalendarDays,
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { AppLayout } from "@/components/AppLayout";
 import { useAuth } from "@/hooks/use-auth";
 import { deleteDive, divesToCsv, downloadCsv, fetchDives } from "@/lib/dives";
@@ -18,6 +19,9 @@ import type { Dive } from "@/lib/diving";
 
 export const Route = createFileRoute("/history")({
   head: () => ({ meta: [{ title: "Ιστορικό — Apnos" }] }),
+  validateSearch: (s: Record<string, unknown>): { disc?: DisciplineCode } => ({
+    disc: typeof s.disc === "string" ? (s.disc as DisciplineCode) : undefined,
+  }),
   component: () => (
     <AppLayout>
       <History />
@@ -29,6 +33,7 @@ export const Route = createFileRoute("/history")({
 type Segment = "all" | "pool" | "depth";
 type SessionFilter = "all" | "training" | "competition";
 type FedFilter = "all" | Federation;
+type ViewMode = "list" | "month";
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 const POOL_DISC  = ["STA", "DYN", "DYNB", "DNF"]  as DisciplineCode[];
@@ -36,6 +41,18 @@ const DEPTH_DISC = ["CWT", "CWTB", "CNF", "FIM"] as DisciplineCode[];
 
 function isPool(d: string)  { return POOL_DISC.includes(d as DisciplineCode); }
 function isDepth(d: string) { return DEPTH_DISC.includes(d as DisciplineCode); }
+
+// month key → "YYYY-MM"
+function monthKey(dive: Dive): string { return dive.dive_date.slice(0, 7); }
+
+const MONTHS_EL = ["Ιανουάριος","Φεβρουάριος","Μάρτιος","Απρίλιος","Μάιος","Ιούνιος","Ιούλιος","Αύγουστος","Σεπτέμβριος","Οκτώβριος","Νοέμβριος","Δεκέμβριος"];
+const MONTHS_EN = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+
+function monthLabel(key: string, lang: string): string {
+  const [y, m] = key.split("-");
+  const names = lang === "el" ? MONTHS_EL : MONTHS_EN;
+  return `${names[parseInt(m, 10) - 1]} ${y}`;
+}
 
 function cardBorder(dive: Dive): string {
   if (dive.is_personal_best) return "#EF9F27";
@@ -58,14 +75,27 @@ function History() {
   const { user } = useAuth();
   const { t, lang } = useI18n();
   const queryClient = useQueryClient();
+  const search = useSearch({ from: "/history" });
 
+  const [viewMode,      setViewMode]     = useState<ViewMode>("month");
   const [segment,       setSegment]      = useState<Segment>("all");
   const [sessionFilter, setSessionFilter] = useState<SessionFilter>("all");
   const [fedFilter,     setFedFilter]    = useState<FedFilter>("all");
-  const [discFilter,    setDiscFilter]   = useState<DisciplineCode | null>(null);
+  const [discFilter,    setDiscFilter]   = useState<DisciplineCode | null>(
+    search.disc ?? null
+  );
+  const [searchQuery,   setSearchQuery]  = useState("");
   const [filterOpen,    setFilterOpen]   = useState(false);
   const [expanded,      setExpanded]     = useState<Set<string>>(new Set());
   const [compareIds,    setCompareIds]   = useState<string[]>([]);
+  // month grouping: latest month open by default, rest collapsed
+  const [openMonths,    setOpenMonths]   = useState<Set<string>>(new Set());
+  const didInitMonths = useRef(false);
+
+  // sync disc URL param
+  useEffect(() => {
+    if (search.disc) setDiscFilter(search.disc);
+  }, [search.disc]);
 
   const { data: dives = [], isLoading } = useQuery({
     queryKey: ["dives", user?.id],
@@ -97,14 +127,40 @@ function History() {
     downloadCsv(`apnos-dives-${new Date().toISOString().slice(0, 10)}.csv`, divesToCsv(dives));
 
   // apply filters
-  const filtered = dives.filter((d) => {
+  const filtered = useMemo(() => dives.filter((d) => {
     if (segment === "pool"  && !isPool(d.discipline))  return false;
     if (segment === "depth" && !isDepth(d.discipline)) return false;
     if (sessionFilter !== "all" && d.session_type !== sessionFilter) return false;
     if (fedFilter !== "all" && d.federation !== fedFilter) return false;
     if (discFilter && d.discipline !== discFilter) return false;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      if (!d.discipline.toLowerCase().includes(q) && !d.notes?.toLowerCase().includes(q)) return false;
+    }
     return true;
-  });
+  }), [dives, segment, sessionFilter, fedFilter, discFilter, searchQuery]);
+
+  // month grouping — sorted newest first
+  const byMonth = useMemo(() => {
+    const map = new Map<string, Dive[]>();
+    for (const d of filtered) {
+      const k = monthKey(d);
+      if (!map.has(k)) map.set(k, []);
+      map.get(k)!.push(d);
+    }
+    return Array.from(map.entries()).sort(([a], [b]) => b.localeCompare(a));
+  }, [filtered]);
+
+  // open latest month by default once data loads
+  useEffect(() => {
+    if (byMonth.length > 0 && !didInitMonths.current) {
+      didInitMonths.current = true;
+      setOpenMonths(new Set([byMonth[0][0]]));
+    }
+  }, [byMonth]);
+
+  const toggleMonth = (key: string) =>
+    setOpenMonths((p) => { const n = new Set(p); n.has(key) ? n.delete(key) : n.add(key); return n; });
 
   const poolDives  = filtered.filter((d) => isPool(d.discipline));
   const depthDives = filtered.filter((d) => isDepth(d.discipline));
@@ -118,7 +174,7 @@ function History() {
     depth: lang === "el" ? "Θάλασσα"  : "Depth",
   };
 
-  const activeFilters = (sessionFilter !== "all" ? 1 : 0) + (fedFilter !== "all" ? 1 : 0);
+  const activeFilters = (sessionFilter !== "all" ? 1 : 0) + (fedFilter !== "all" ? 1 : 0) + (discFilter ? 1 : 0);
 
   return (
     <div className="space-y-4 pb-24">
@@ -130,6 +186,30 @@ function History() {
           <p className="text-sm text-muted-foreground">{t("hist.sub")}</p>
         </div>
         <div className="flex shrink-0 gap-2">
+          {/* view mode toggle */}
+          {dives.length > 0 && (
+            <div
+              className="flex rounded-xl p-0.5"
+              style={{ background: "#0d1320", border: "1px solid rgba(255,255,255,0.08)" }}
+            >
+              <button
+                onClick={() => setViewMode("month")}
+                className="flex size-8 items-center justify-center rounded-lg transition-all"
+                style={{ background: viewMode === "month" ? "#1D9E75" : "transparent" }}
+                title={lang === "el" ? "Ανά μήνα" : "By month"}
+              >
+                <CalendarDays className="size-3.5 text-white/70" />
+              </button>
+              <button
+                onClick={() => setViewMode("list")}
+                className="flex size-8 items-center justify-center rounded-lg transition-all"
+                style={{ background: viewMode === "list" ? "#1D9E75" : "transparent" }}
+                title={lang === "el" ? "Λίστα" : "List"}
+              >
+                <LayoutList className="size-3.5 text-white/70" />
+              </button>
+            </div>
+          )}
           {dives.length > 0 && (
             <Button variant="outline" size="sm" onClick={handleExport} className="gap-1.5">
               <Download className="size-4" />
@@ -154,6 +234,41 @@ function History() {
           )}
         </div>
       </div>
+
+      {/* ── search bar ── */}
+      {dives.length > 0 && (
+        <div
+          className="flex items-center gap-2 rounded-xl px-3 py-2"
+          style={{ background: "#0d1320", border: "1px solid rgba(255,255,255,0.07)" }}
+        >
+          <Search className="size-4 shrink-0 text-white/25" />
+          <input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder={lang === "el" ? "Αναζήτηση (π.χ. STA, AIDA)…" : "Search (e.g. STA, notes)…"}
+            className="flex-1 bg-transparent text-sm text-white outline-none placeholder-white/20"
+          />
+          {searchQuery && (
+            <button onClick={() => setSearchQuery("")} className="text-white/30 hover:text-white/60">
+              <X className="size-3.5" />
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* active disc filter pill */}
+      {discFilter && (
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-white/40">{lang === "el" ? "Φίλτρο:" : "Filter:"}</span>
+          <button
+            onClick={() => setDiscFilter(null)}
+            className="flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold"
+            style={{ background: "rgba(29,158,117,0.15)", color: "#5DCAA5" }}
+          >
+            {discFilter} <X className="size-3" />
+          </button>
+        </div>
+      )}
 
       {/* ── segment control ── */}
       {dives.length > 0 && (
@@ -184,8 +299,55 @@ function History() {
       ) : dives.length === 0 ? (
         <EmptyState t={t} />
       ) : filtered.length === 0 ? (
-        <FilterEmpty lang={lang} onReset={() => { setSegment("all"); setSessionFilter("all"); setFedFilter("all"); setDiscFilter(null); }} />
+        <FilterEmpty lang={lang} onReset={() => { setSegment("all"); setSessionFilter("all"); setFedFilter("all"); setDiscFilter(null); setSearchQuery(""); }} />
+      ) : viewMode === "month" ? (
+        /* ── MONTH VIEW ── */
+        <div className="space-y-3">
+          {byMonth.map(([key, monthDives]) => {
+            const isOpen = openMonths.has(key);
+            return (
+              <div key={key} className="overflow-hidden rounded-2xl" style={{ background: "#0d1320", border: "1px solid rgba(255,255,255,0.05)" }}>
+                <button
+                  onClick={() => toggleMonth(key)}
+                  className="flex w-full items-center justify-between px-4 py-3"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-semibold text-white">{monthLabel(key, lang)}</span>
+                    <span
+                      className="rounded-full px-2 py-0.5 text-[0.6rem] font-bold"
+                      style={{ background: "rgba(29,158,117,0.15)", color: "#5DCAA5" }}
+                    >
+                      {monthDives.length} {lang === "el" ? "βουτιές" : "dives"}
+                    </span>
+                  </div>
+                  {isOpen
+                    ? <ChevronDown className="size-4 text-white/30" />
+                    : <ChevronRight className="size-4 text-white/30" />
+                  }
+                </button>
+                {isOpen && (
+                  <div className="space-y-2 border-t px-3 pb-3 pt-2" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
+                    {monthDives.map((dive) => (
+                      <DiveCard
+                        key={dive.id}
+                        dive={dive}
+                        isExpanded={expanded.has(dive.id)}
+                        isComparing={compareIds.includes(dive.id)}
+                        onToggle={() => toggleExpand(dive.id)}
+                        onCompare={() => toggleCompare(dive.id)}
+                        onDelete={() => remove.mutate({ id: dive.id, discipline: dive.discipline })}
+                        lang={lang}
+                        t={t}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       ) : (
+        /* ── LIST VIEW (by environment) ── */
         <div className="space-y-6">
           {(segment === "all" || segment === "pool") && poolDives.length > 0 && (
             <EnvironmentSection
@@ -243,6 +405,7 @@ function History() {
             />
           )}
         </div>
+      /* end list view */
       )}
 
       {/* ── compare bar ── */}

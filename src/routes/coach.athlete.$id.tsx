@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Save, Clock } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronRight, Save } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { useI18n } from "@/lib/i18n";
 import {
@@ -20,7 +20,20 @@ export const Route = createFileRoute("/coach/athlete/$id")({
   ),
 });
 
+// ── types ──────────────────────────────────────────────────────────────────
+
 type Tab = "program" | "history";
+
+interface ProgramSections {
+  warmup:  string;
+  mainset: string;
+  cooldown: string;
+  notes:   string;
+}
+
+const EMPTY_PROGRAM: ProgramSections = { warmup: "", mainset: "", cooldown: "", notes: "" };
+
+// ── component ──────────────────────────────────────────────────────────────
 
 function AthletePage() {
   const { lang } = useI18n();
@@ -28,35 +41,50 @@ function AthletePage() {
 
   const [athlete, setAthlete] = useState<Athlete | null>(null);
   const [tab, setTab]         = useState<Tab>("program");
-  const [program, setProgram] = useState("");
-  const [saved, setSaved]     = useState(true);
-  const autoSaveTimer         = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [sections, setSections] = useState<ProgramSections>(EMPTY_PROGRAM);
+  const [openSections, setOpenSections] = useState<Set<keyof ProgramSections>>(
+    new Set(["warmup", "mainset", "cooldown", "notes"])
+  );
+  const [savedAt, setSavedAt] = useState<Date | null>(null);
+  const autoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const all = loadAthletes();
     const found = all.find((a) => a.id === id) ?? null;
     setAthlete(found);
-    setProgram(found?.program ?? "");
+    if (found?.program) {
+      try {
+        const parsed = JSON.parse(found.program);
+        if (parsed && typeof parsed === "object") {
+          setSections({ ...EMPTY_PROGRAM, ...parsed });
+          return;
+        }
+      } catch { /* legacy plain text */ }
+      setSections({ ...EMPTY_PROGRAM, mainset: found.program ?? "" });
+    }
   }, [id]);
 
-  const persist = (text: string) => {
+  const persist = (updated: ProgramSections) => {
     const all = loadAthletes();
-    const updated = all.map((a) => a.id === id ? { ...a, program: text } : a);
-    saveAthletes(updated);
-    setSaved(true);
+    const next = all.map((a) => a.id === id ? { ...a, program: JSON.stringify(updated) } : a);
+    saveAthletes(next);
+    setSavedAt(new Date());
   };
 
-  const handleChange = (text: string) => {
-    setProgram(text);
-    setSaved(false);
-    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
-    autoSaveTimer.current = setTimeout(() => persist(text), 1500);
+  const handleChange = (key: keyof ProgramSections, value: string) => {
+    const next = { ...sections, [key]: value };
+    setSections(next);
+    if (autoTimer.current) clearTimeout(autoTimer.current);
+    autoTimer.current = setTimeout(() => persist(next), 1500);
   };
 
-  const handleSave = () => {
-    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
-    persist(program);
+  const handleBlur = (key: keyof ProgramSections) => {
+    if (autoTimer.current) clearTimeout(autoTimer.current);
+    persist(sections);
   };
+
+  const toggleSection = (key: keyof ProgramSections) =>
+    setOpenSections((p) => { const n = new Set(p); n.has(key) ? n.delete(key) : n.add(key); return n; });
 
   if (!athlete) {
     return (
@@ -71,6 +99,33 @@ function AthletePage() {
   }
 
   const color = levelColor(athlete.level);
+
+  const SECTION_DEFS: { key: keyof ProgramSections; label_el: string; label_en: string; placeholder_el: string; placeholder_en: string }[] = [
+    {
+      key: "warmup",
+      label_el: "Προθέρμανση",   label_en: "Warm-up",
+      placeholder_el: "π.χ. 5' ελαφρά STA, αναπνευστικές ασκήσεις…",
+      placeholder_en: "e.g. 5' light STA, breathing exercises…",
+    },
+    {
+      key: "mainset",
+      label_el: "Κύριο Σετ",     label_en: "Main Set",
+      placeholder_el: "π.χ. STA tables 2+2×6, DYN 50m×4 rest 3'…",
+      placeholder_en: "e.g. STA tables 2+2×6, DYN 50m×4 rest 3'…",
+    },
+    {
+      key: "cooldown",
+      label_el: "Αποθεραπεία",   label_en: "Cool-down",
+      placeholder_el: "π.χ. 5' ελεύθερη κολύμβηση, stretching…",
+      placeholder_en: "e.g. 5' easy swim, stretching…",
+    },
+    {
+      key: "notes",
+      label_el: "Σημειώσεις",    label_en: "Notes",
+      placeholder_el: "Τεχνικές παρατηρήσεις, επόμενοι στόχοι…",
+      placeholder_en: "Technical notes, next goals…",
+    },
+  ];
 
   return (
     <div className="space-y-5">
@@ -118,10 +173,7 @@ function AthletePage() {
       </div>
 
       {/* tabs */}
-      <div
-        className="flex rounded-xl p-1"
-        style={{ background: "rgba(255,255,255,0.04)" }}
-      >
+      <div className="flex rounded-xl p-1" style={{ background: "rgba(255,255,255,0.04)" }}>
         {(["program", "history"] as Tab[]).map((t) => {
           const label = t === "program"
             ? (lang === "el" ? "Τρέχον Πρόγραμμα" : "Current Programme")
@@ -132,10 +184,7 @@ function AthletePage() {
               key={t}
               onClick={() => setTab(t)}
               className="flex-1 rounded-lg py-2.5 text-xs font-semibold transition-all"
-              style={{
-                background: active ? "#1D9E75" : "transparent",
-                color: active ? "#fff" : "rgba(255,255,255,0.35)",
-              }}
+              style={{ background: active ? "#1D9E75" : "transparent", color: active ? "#fff" : "rgba(255,255,255,0.35)" }}
             >
               {label}
             </button>
@@ -143,50 +192,74 @@ function AthletePage() {
         })}
       </div>
 
-      {/* tab content */}
+      {/* program tab */}
       {tab === "program" && (
         <div className="space-y-3">
+          {/* save status */}
           <div className="flex items-center justify-between">
-            <p className="text-[0.65rem] font-bold tracking-[0.2em] text-white/30">
+            <p className="text-[0.65rem] font-bold tracking-[0.2em] text-white/25">
               {lang === "el" ? "ΠΡΟΓΡΑΜΜΑ ΠΡΟΠΟΝΗΣΗΣ" : "TRAINING PROGRAMME"}
             </p>
-            <div className="flex items-center gap-2">
-              {!saved && (
-                <span className="flex items-center gap-1 text-[0.6rem] text-white/25">
-                  <Clock className="size-3" />
-                  {lang === "el" ? "αποθήκευση…" : "saving…"}
-                </span>
-              )}
-              {saved && program.length > 0 && (
-                <span className="text-[0.6rem] text-white/20">
-                  {lang === "el" ? "αποθηκεύτηκε" : "saved"}
-                </span>
-              )}
-            </div>
+            {savedAt && (
+              <span className="text-[0.6rem] text-white/20">
+                {lang === "el" ? "Αποθηκεύτηκε" : "Saved"} {savedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+              </span>
+            )}
           </div>
 
-          <textarea
-            value={program}
-            onChange={(e) => handleChange(e.target.value)}
-            placeholder={
-              lang === "el"
-                ? "Γράψε το πρόγραμμα προπόνησης για αυτόν τον αθλητή…\n\nΠαράδειγμα:\nΔευτέρα: STA tables 2+2\nΤετάρτη: DYN 50m × 4\nΠαρασκευή: Στατική με συσπάσεις"
-                : "Write the training programme for this athlete…\n\nExample:\nMonday: STA tables 2+2\nWednesday: DYN 50m × 4\nFriday: Static with contractions"
-            }
-            rows={12}
-            className="w-full resize-none rounded-2xl bg-white/[0.03] px-4 py-4 text-sm leading-relaxed text-white/80 placeholder-white/15 outline-none transition-all focus:bg-white/[0.05] focus:ring-1 focus:ring-[#1D9E75]"
-            style={{ border: "1px solid rgba(255,255,255,0.06)" }}
-          />
+          {/* expandable sections */}
+          {SECTION_DEFS.map(({ key, label_el, label_en, placeholder_el, placeholder_en }) => {
+            const isOpen = openSections.has(key);
+            const label = lang === "el" ? label_el : label_en;
+            const placeholder = lang === "el" ? placeholder_el : placeholder_en;
+            const filled = sections[key].trim().length > 0;
+            return (
+              <div
+                key={key}
+                className="overflow-hidden rounded-xl"
+                style={{ background: "#0d1320", border: "1px solid rgba(255,255,255,0.05)" }}
+              >
+                <button
+                  onClick={() => toggleSection(key)}
+                  className="flex w-full items-center justify-between px-4 py-3"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-white">{label}</span>
+                    {filled && (
+                      <span
+                        className="h-1.5 w-1.5 rounded-full"
+                        style={{ background: "#1D9E75" }}
+                      />
+                    )}
+                  </div>
+                  {isOpen
+                    ? <ChevronDown className="size-4 text-white/30" />
+                    : <ChevronRight className="size-4 text-white/30" />
+                  }
+                </button>
+                {isOpen && (
+                  <div className="border-t px-4 pb-4 pt-3" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
+                    <textarea
+                      value={sections[key]}
+                      onChange={(e) => handleChange(key, e.target.value)}
+                      onBlur={() => handleBlur(key)}
+                      placeholder={placeholder}
+                      rows={4}
+                      className="w-full resize-none bg-transparent text-sm leading-relaxed text-white/75 placeholder-white/15 outline-none"
+                    />
+                  </div>
+                )}
+              </div>
+            );
+          })}
 
           <button
-            onClick={handleSave}
+            onClick={() => persist(sections)}
             className="flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-bold transition-all"
-            style={{ background: saved ? "rgba(29,158,117,0.15)" : "#1D9E75", color: saved ? "#5DCAA5" : "#fff" }}
+            style={{ background: "#1D9E75", color: "#fff" }}
           >
             <Save className="size-4" />
-            {saved
-              ? (lang === "el" ? "Αποθηκεύτηκε" : "Saved")
-              : (lang === "el" ? "Αποθήκευση" : "Save")}
+            {lang === "el" ? "Αποθήκευση" : "Save"}
           </button>
         </div>
       )}
@@ -196,8 +269,7 @@ function AthletePage() {
           className="flex flex-col items-center gap-4 rounded-2xl py-14 text-center"
           style={{ background: "rgba(255,255,255,0.02)", border: "1px dashed rgba(255,255,255,0.06)" }}
         >
-          <Clock className="size-8 text-white/10" />
-          <p className="text-sm text-white/30">
+          <p className="text-sm text-white/25">
             {lang === "el"
               ? "Το ιστορικό προπονήσεων θα εμφανιστεί εδώ σύντομα."
               : "Training history will appear here soon."}

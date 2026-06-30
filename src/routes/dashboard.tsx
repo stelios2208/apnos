@@ -1,13 +1,12 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Plus, Trophy, Waves } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { useAuth } from "@/hooks/use-auth";
 import { fetchDives, personalBests } from "@/lib/dives";
-import { DISCIPLINES, disciplineName, formatResult, DisciplineCode } from "@/lib/diving";
+import { disciplineName, formatResult, type DisciplineCode } from "@/lib/diving";
 import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import { useEffect, useRef } from "react";
 
 export const Route = createFileRoute("/dashboard")({
@@ -19,7 +18,29 @@ export const Route = createFileRoute("/dashboard")({
   ),
 });
 
-/* Animated bubble canvas */
+// ── discipline display order ───────────────────────────────────────────────────
+const POOL_ORDER:  DisciplineCode[] = ["STA", "DYN", "DYNB", "DNF"];
+const DEPTH_ORDER: DisciplineCode[] = ["CWT", "CWTB", "CNF", "FIM"];
+
+// ── helpers ───────────────────────────────────────────────────────────────────
+
+function startOfWeek(): Date {
+  const d = new Date();
+  const day = d.getDay();
+  const diff = (day === 0 ? -6 : 1 - day); // Mon = start
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + diff);
+  return d;
+}
+
+function fmtTime(secs: number) {
+  const m = Math.floor(secs / 60);
+  const s = secs % 60;
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
+// ── BubbleHero ─────────────────────────────────────────────────────────────────
+
 function BubbleHero({ children }: { children: React.ReactNode }) {
   const svgRef = useRef<SVGSVGElement>(null);
 
@@ -47,12 +68,11 @@ function BubbleHero({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-white/10" style={{
-      background: "linear-gradient(160deg, #1a3a5c 0%, #10293f 40%, #070a10 100%)",
-      minHeight: 160,
-    }}>
-      {/* light rays */}
-      <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none" aria-hidden="true">
+    <div
+      className="relative overflow-hidden rounded-2xl border border-white/10"
+      style={{ background: "linear-gradient(160deg, #1a3a5c 0%, #10293f 40%, #070a10 100%)", minHeight: 160 }}
+    >
+      <svg className="absolute inset-0 h-full w-full" preserveAspectRatio="none" aria-hidden="true">
         <defs>
           <radialGradient id="sun-hero" cx="50%" cy="-10%" r="75%">
             <stop offset="0%" stopColor="#5DCAA5" stopOpacity="0.35" />
@@ -64,29 +84,45 @@ function BubbleHero({ children }: { children: React.ReactNode }) {
         <line x1="50%" y1="0" x2="46%" y2="100%" stroke="#5DCAA5" strokeWidth="1" opacity="0.07" />
         <line x1="78%" y1="0" x2="70%" y2="100%" stroke="#5DCAA5" strokeWidth="1" opacity="0.07" />
       </svg>
-      {/* bubbles */}
-      <svg ref={svgRef} className="absolute inset-0 w-full h-full pointer-events-none" aria-hidden="true" />
-      {/* content */}
+      <svg ref={svgRef} className="pointer-events-none absolute inset-0 h-full w-full" aria-hidden="true" />
       <div className="relative z-10 p-5">{children}</div>
     </div>
   );
 }
 
+// ── Dashboard ─────────────────────────────────────────────────────────────────
+
 function Dashboard() {
   const { user } = useAuth();
-  const { t, lang } = useI18n();
+  const { lang } = useI18n();
+  const navigate  = useNavigate();
+
   const { data: dives = [], isLoading } = useQuery({
     queryKey: ["dives", user?.id],
-    queryFn: () => fetchDives(user!.id),
-    enabled: !!user,
+    queryFn:  () => fetchDives(user!.id),
+    enabled:  !!user,
   });
 
-  const bests = personalBests(dives);
-  const totalDives = dives.length;
+  const bests     = personalBests(dives);
   const bestCount = Object.keys(bests).length;
+  const bestDive  = dives.length > 0 ? dives.reduce((a, b) => (a.result > b.result ? a : b)) : null;
 
-  // Best dive of the year (deepest/longest)
-  const bestDive = dives.length > 0 ? dives.reduce((a, b) => (a.result > b.result ? a : b)) : null;
+  // weekly stats
+  const weekStart  = startOfWeek();
+  const weekDives  = dives.filter((d) => new Date(d.dive_date) >= weekStart);
+  const weekSTA    = weekDives.filter((d) => d.discipline === "STA");
+  const totalHold  = weekSTA.reduce((s, d) => s + d.result, 0);
+  const weekDist   = weekDives
+    .filter((d) => !["STA"].includes(d.discipline))
+    .reduce((s, d) => s + d.result, 0);
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-[40vh] items-center justify-center">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5">
@@ -95,10 +131,10 @@ function Dashboard() {
       <BubbleHero>
         {bestDive ? (
           <>
-            <p className="text-[0.6rem] font-semibold uppercase tracking-[0.25em] text-[#5DCAA5] mb-2">
-              {lang === "el" ? "Καλύτερη βουτιά φέτος" : "Best dive this year"}
+            <p className="mb-2 text-[0.6rem] font-semibold uppercase tracking-[0.25em] text-[#5DCAA5]">
+              {lang === "el" ? "Καλύτερη βουτιά" : "Best dive"}
             </p>
-            <p className="text-5xl font-light tracking-tight text-white leading-none">
+            <p className="text-5xl font-light leading-none tracking-tight text-white">
               {formatResult(bestDive.discipline as DisciplineCode, bestDive.result)}
             </p>
             <p className="mt-2 text-xs text-white/50">
@@ -110,7 +146,7 @@ function Dashboard() {
           </>
         ) : (
           <>
-            <p className="text-[0.6rem] font-semibold uppercase tracking-[0.25em] text-[#5DCAA5] mb-2">
+            <p className="mb-2 text-[0.6rem] font-semibold uppercase tracking-[0.25em] text-[#5DCAA5]">
               {lang === "el" ? "Καλωσήρθες στο Apnos" : "Welcome to Apnos"}
             </p>
             <p className="text-2xl font-light text-white">
@@ -120,70 +156,133 @@ function Dashboard() {
         )}
       </BubbleHero>
 
-      {/* SUMMARY */}
+      {/* SUMMARY CARDS */}
       <div className="grid grid-cols-2 gap-3">
         <div className="glass-card rounded-xl p-3">
-          <p className="text-2xl font-bold text-white">{totalDives}</p>
-          <p className="text-xs text-muted-foreground mt-0.5">
+          <p className="text-2xl font-bold text-white">{dives.length}</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
             {lang === "el" ? "Βουτιές φέτος" : "Dives this year"}
           </p>
         </div>
         <div className="glass-card rounded-xl p-3">
           <p className="text-2xl font-bold text-[#5DCAA5]">{bestCount}</p>
-          <p className="text-xs text-muted-foreground mt-0.5">
+          <p className="mt-0.5 text-xs text-muted-foreground">
             {lang === "el" ? "Αγωνίσματα με PB" : "Disciplines with PB"}
           </p>
         </div>
       </div>
 
-      {/* PB GRID */}
-      <div>
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-3">
-          Personal bests
-        </h2>
-        <div className="grid grid-cols-2 gap-3">
-          {DISCIPLINES.map((d) => {
-            const best = bests[d.code];
-            return (
-              <Link
-                key={d.code}
-                to="/discipline/$code"
-                params={{ code: d.code }}
-                className={cn(
-                  "glass-card rounded-2xl p-4 transition-transform hover:scale-[1.02]",
-                  best ? "ring-1 ring-[#1D9E75]/40" : "opacity-60",
-                )}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold uppercase tracking-wide text-[#5DCAA5]">{d.code}</span>
-                  {best ? (
-                    <Trophy className="size-3.5 text-[#EF9F27]" />
-                  ) : (
-                    <Waves className="size-3.5 text-muted-foreground" />
-                  )}
-                </div>
-                <p className="mt-2 text-2xl font-bold tabular-nums text-white">
-                  {best ? formatResult(d.code, best.result) : "—"}
-                </p>
-                {best && (
-                  <span className="inline-flex items-center gap-1 mt-1 text-[0.6rem] font-medium uppercase tracking-wide bg-[#EF9F27]/15 text-[#EF9F27] px-2 py-0.5 rounded-full">
-                    PB
-                  </span>
-                )}
-                <p className="mt-0.5 truncate text-[0.7rem] text-muted-foreground">{disciplineName(d.code, lang)}</p>
-              </Link>
-            );
-          })}
+      {/* WEEKLY SUMMARY */}
+      {weekDives.length > 0 && (
+        <div
+          className="rounded-2xl px-4 py-3"
+          style={{ background: "rgba(29,158,117,0.07)", border: "1px solid rgba(29,158,117,0.15)" }}
+        >
+          <p className="mb-2 text-[0.6rem] font-bold tracking-[0.2em] text-white/30">
+            {lang === "el" ? "ΑΥΤΗ ΤΗΝ ΕΒΔΟΜΑΔΑ" : "THIS WEEK"}
+          </p>
+          <div className="flex items-center gap-5">
+            <div>
+              <span className="text-xl font-bold text-white">{weekDives.length}</span>
+              <span className="ml-1.5 text-xs text-white/40">
+                {lang === "el" ? "βουτιές" : "dives"}
+              </span>
+            </div>
+            {totalHold > 0 && (
+              <div>
+                <span className="text-xl font-bold" style={{ color: "#5DCAA5" }}>{fmtTime(Math.round(totalHold))}</span>
+                <span className="ml-1.5 text-xs text-white/40">
+                  {lang === "el" ? "συνολικό hold" : "total hold"}
+                </span>
+              </div>
+            )}
+            {weekDist > 0 && (
+              <div>
+                <span className="text-xl font-bold" style={{ color: "#9FE1CB" }}>{weekDist}m</span>
+                <span className="ml-1.5 text-xs text-white/40">
+                  {lang === "el" ? "απόσταση" : "distance"}
+                </span>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* PERSONAL BESTS */}
+      {dives.length > 0 && (
+        <div className="space-y-3">
+          <PBGroup
+            label={lang === "el" ? "ΠΙΣΙΝΑ" : "POOL"}
+            codes={POOL_ORDER}
+            bests={bests}
+            lang={lang}
+            onTap={(code) => navigate({ to: "/history", search: { disc: code } })}
+          />
+          <PBGroup
+            label={lang === "el" ? "ΘΑΛΑΣΣΑ" : "DEPTH"}
+            codes={DEPTH_ORDER}
+            bests={bests}
+            lang={lang}
+            onTap={(code) => navigate({ to: "/history", search: { disc: code } })}
+          />
+        </div>
+      )}
 
       {/* LOG NEW */}
-      <Button asChild size="lg" className="w-full bg-[#1D9E75] hover:bg-[#5DCAA5] text-white font-semibold">
+      <Button asChild size="lg" className="w-full font-semibold text-white" style={{ background: "#1D9E75" }}>
         <Link to="/log">
-          <Plus className="size-5" /> {t("dash.logNew")}
+          <Plus className="size-5" />
+          {lang === "el" ? "Νέα Βουτιά" : "New Dive"}
         </Link>
       </Button>
 
+    </div>
+  );
+}
+
+// ── PBGroup ───────────────────────────────────────────────────────────────────
+
+function PBGroup({
+  label, codes, bests, lang, onTap,
+}: {
+  label: string;
+  codes: DisciplineCode[];
+  bests: Record<string, { result: number }>;
+  lang: string;
+  onTap: (code: DisciplineCode) => void;
+}) {
+  return (
+    <div className="space-y-2">
+      <p className="text-[0.6rem] font-bold tracking-[0.2em] text-white/25">{label}</p>
+      <div className="grid grid-cols-4 gap-2">
+        {codes.map((code) => {
+          const best = bests[code];
+          return (
+            <button
+              key={code}
+              onClick={() => onTap(code)}
+              className="flex flex-col items-center gap-1 rounded-2xl px-2 py-3 transition-all active:scale-95"
+              style={{
+                background: best ? "rgba(29,158,117,0.1)" : "rgba(255,255,255,0.02)",
+                border: best ? "1px solid rgba(29,158,117,0.2)" : "1px solid rgba(255,255,255,0.05)",
+              }}
+            >
+              <span className="text-[0.55rem] font-bold tracking-wider" style={{ color: best ? "#5DCAA5" : "rgba(255,255,255,0.2)" }}>
+                {code}
+              </span>
+              <span className="font-mono text-sm font-bold tabular-nums" style={{ color: best ? "#fff" : "rgba(255,255,255,0.15)" }}>
+                {best ? formatResult(code, best.result) : "—"}
+              </span>
+              {best && (
+                <Trophy className="size-2.5" style={{ color: "#EF9F27" }} />
+              )}
+              {!best && (
+                <Waves className="size-2.5 opacity-20" style={{ color: "#5DCAA5" }} />
+              )}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
