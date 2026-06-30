@@ -1,9 +1,12 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Plus, Lock, ChevronRight, X, Check } from "lucide-react";
+import { Plus, Lock, ChevronRight, X, Check, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { AppLayout } from "@/components/AppLayout";
 import { BreathMark } from "@/components/Logo";
 import { useI18n } from "@/lib/i18n";
+import { useAuth } from "@/hooks/use-auth";
 import {
   type Athlete,
   type Level,
@@ -12,8 +15,9 @@ import {
   ALL_DISCIPLINES,
   levelLabel,
   levelColor,
-  loadAthletes,
-  saveAthletes,
+  fetchAthletes,
+  createAthlete,
+  deleteAthlete,
 } from "@/lib/athletes";
 
 export const Route = createFileRoute("/coach")({
@@ -28,34 +32,42 @@ export const Route = createFileRoute("/coach")({
 // ── component ──────────────────────────────────────────────────────────────
 
 function CoachPage() {
-  const { lang } = useI18n();
-  const navigate  = useNavigate();
+  const { lang }    = useI18n();
+  const navigate    = useNavigate();
+  const { user }    = useAuth();
+  const qc          = useQueryClient();
 
   const [teamName, setTeamName]       = useState(lang === "el" ? "Η Ομάδα μου" : "My Team");
   const [editingName, setEditingName] = useState(false);
-  const [athletes, setAthletes]       = useState<Athlete[]>(loadAthletes);
   const [showModal, setShowModal]     = useState(false);
 
   const [newName, setNewName]               = useState("");
   const [newLevel, setNewLevel]             = useState<Level>("beginner");
   const [newDisciplines, setNewDisciplines] = useState<DisciplineCode[]>([]);
 
-  const persist = (updated: Athlete[]) => {
-    setAthletes(updated);
-    saveAthletes(updated);
-  };
+  const { data: athletes = [], isLoading } = useQuery({
+    queryKey: ["coach_athletes", user?.id],
+    queryFn:  () => fetchAthletes(user!.id),
+    enabled:  !!user,
+  });
 
-  const handleAdd = () => {
-    if (!newName.trim()) return;
-    persist([
-      ...athletes,
-      { id: crypto.randomUUID(), name: newName.trim(), level: newLevel, disciplines: newDisciplines },
-    ]);
-    setNewName("");
-    setNewLevel("beginner");
-    setNewDisciplines([]);
-    setShowModal(false);
-  };
+  const addMutation = useMutation({
+    mutationFn: () => createAthlete(user!.id, { name: newName.trim(), level: newLevel, disciplines: newDisciplines }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["coach_athletes", user?.id] });
+      setNewName("");
+      setNewLevel("beginner");
+      setNewDisciplines([]);
+      setShowModal(false);
+    },
+    onError: () => toast.error(lang === "el" ? "Σφάλμα κατά την προσθήκη" : "Failed to add athlete"),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteAthlete,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["coach_athletes", user?.id] }),
+    onError: () => toast.error(lang === "el" ? "Σφάλμα διαγραφής" : "Failed to delete"),
+  });
 
   const toggleDiscipline = (d: DisciplineCode) =>
     setNewDisciplines((prev) =>
@@ -94,13 +106,14 @@ function CoachPage() {
             </button>
           )}
           <p className="mt-1 text-xs text-white/30">
-            {athletes.length === 0
-              ? (lang === "el" ? "Κανένας αθλητής ακόμα" : "No athletes yet")
-              : `${athletes.length} ${lang === "el" ? "αθλητές" : "athletes"}`}
+            {isLoading
+              ? "..."
+              : athletes.length === 0
+                ? (lang === "el" ? "Κανένας αθλητής ακόμα" : "No athletes yet")
+                : `${athletes.length} ${lang === "el" ? "αθλητές" : "athletes"}`}
           </p>
         </div>
 
-        {/* Coach Pro badge */}
         <div
           className="flex items-center gap-1.5 rounded-full px-3 py-1.5"
           style={{ background: "rgba(239,159,39,0.1)", border: "1px solid rgba(239,159,39,0.25)" }}
@@ -112,8 +125,15 @@ function CoachPage() {
         </div>
       </div>
 
+      {/* loading */}
+      {isLoading && (
+        <div className="flex justify-center py-12">
+          <Loader2 className="size-6 animate-spin text-white/20" />
+        </div>
+      )}
+
       {/* empty state */}
-      {athletes.length === 0 && (
+      {!isLoading && athletes.length === 0 && (
         <div
           className="flex flex-col items-center gap-5 rounded-2xl py-14 text-center"
           style={{ background: "rgba(255,255,255,0.02)", border: "1px dashed rgba(255,255,255,0.07)" }}
@@ -143,7 +163,7 @@ function CoachPage() {
       )}
 
       {/* athlete list */}
-      {athletes.length > 0 && (
+      {!isLoading && athletes.length > 0 && (
         <div className="space-y-3">
           {athletes.map((a) => (
             <AthleteCard
@@ -158,13 +178,14 @@ function CoachPage() {
                   console.error("[Coach] navigate failed:", err);
                 }
               }}
+              onDelete={() => deleteMutation.mutate(a.id)}
             />
           ))}
         </div>
       )}
 
       {/* FAB */}
-      {athletes.length > 0 && (
+      {!isLoading && athletes.length > 0 && (
         <button
           onClick={() => setShowModal(true)}
           className="fixed bottom-24 right-5 z-30 flex h-14 w-14 items-center justify-center rounded-full transition-all active:scale-95"
@@ -185,7 +206,6 @@ function CoachPage() {
           <div className="w-full rounded-t-2xl px-5 pb-10 pt-5" style={{ background: "#0d1320" }}>
             <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-white/10" />
 
-            {/* BreathMark + title */}
             <div className="mb-5 flex items-start justify-between">
               <div className="flex flex-col gap-1">
                 <div style={{ opacity: 0.35 }}>
@@ -209,7 +229,7 @@ function CoachPage() {
                 autoFocus
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") handleAdd(); }}
+                onKeyDown={(e) => { if (e.key === "Enter" && newName.trim()) addMutation.mutate(); }}
                 placeholder={lang === "el" ? "π.χ. Νίκος Παπαδόπουλος" : "e.g. John Smith"}
                 className="w-full rounded-xl bg-white/5 px-4 py-3 text-sm text-white placeholder-white/20 outline-none focus:ring-1 focus:ring-[#1D9E75]"
               />
@@ -265,14 +285,15 @@ function CoachPage() {
             </div>
 
             <button
-              onClick={handleAdd}
-              disabled={!newName.trim()}
-              className="w-full rounded-xl py-4 text-sm font-bold transition-all"
+              onClick={() => { if (newName.trim()) addMutation.mutate(); }}
+              disabled={!newName.trim() || addMutation.isPending}
+              className="flex w-full items-center justify-center gap-2 rounded-xl py-4 text-sm font-bold transition-all"
               style={{
                 background: newName.trim() ? "#1D9E75" : "rgba(255,255,255,0.05)",
                 color: newName.trim() ? "#fff" : "rgba(255,255,255,0.25)",
               }}
             >
+              {addMutation.isPending && <Loader2 className="size-4 animate-spin" />}
               {lang === "el" ? "Προσθήκη Αθλητή" : "Add Athlete"}
             </button>
           </div>
@@ -284,7 +305,12 @@ function CoachPage() {
 
 // ── AthleteCard ────────────────────────────────────────────────────────────
 
-function AthleteCard({ athlete, lang, onProgram }: { athlete: Athlete; lang: string; onProgram: () => void }) {
+function AthleteCard({ athlete, lang, onProgram, onDelete }: {
+  athlete: Athlete;
+  lang: string;
+  onProgram: () => void;
+  onDelete: () => void;
+}) {
   const color = levelColor(athlete.level);
   return (
     <div
@@ -323,14 +349,24 @@ function AthleteCard({ athlete, lang, onProgram }: { athlete: Athlete; lang: str
         )}
       </div>
 
-      <button
-        onClick={onProgram}
-        className="flex shrink-0 items-center gap-1 rounded-xl px-3 py-2 text-xs font-semibold transition-colors"
-        style={{ background: "rgba(29,158,117,0.1)", color: "#5DCAA5" }}
-      >
-        {lang === "el" ? "Πρόγραμμα" : "Programme"}
-        <ChevronRight className="size-3.5" />
-      </button>
+      <div className="flex shrink-0 items-center gap-2">
+        <button
+          onClick={onProgram}
+          className="flex items-center gap-1 rounded-xl px-3 py-2 text-xs font-semibold transition-colors"
+          style={{ background: "rgba(29,158,117,0.1)", color: "#5DCAA5" }}
+        >
+          {lang === "el" ? "Πρόγραμμα" : "Programme"}
+          <ChevronRight className="size-3.5" />
+        </button>
+        <button
+          onClick={() => {
+            if (confirm(lang === "el" ? `Διαγραφή ${athlete.name};` : `Delete ${athlete.name}?`)) onDelete();
+          }}
+          className="rounded-lg p-2 text-white/15 transition-colors hover:text-red-400/60"
+        >
+          <X className="size-3.5" />
+        </button>
+      </div>
     </div>
   );
 }

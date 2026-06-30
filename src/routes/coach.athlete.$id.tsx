@@ -1,16 +1,18 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft, ChevronDown, ChevronRight, ChevronUp,
-  Copy, Plus, Trash2, X, Zap,
+  Copy, Loader2, Plus, Trash2, X, Zap,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AppLayout } from "@/components/AppLayout";
 import { useI18n } from "@/lib/i18n";
+import { useAuth } from "@/hooks/use-auth";
 import {
-  type Athlete, type ProgramSet, type SetType, type TrainingProgram,
+  type Athlete, type ProgramSet, type TrainingProgram,
   estimatedMinutes, intensityLabel, levelColor, levelLabel,
-  loadAthletes, newSet, nextSetType, parseMetres, saveAthletes,
+  fetchAthletes, updateAthletePrograms, newSet, nextSetType,
   setTypeColor, setTypeLabel, todayISO, totalMetres,
 } from "@/lib/athletes";
 
@@ -25,8 +27,6 @@ export const Route = createFileRoute("/coach/athlete/$id")({
 
 type Tab = "program" | "history";
 
-// ── helpers ────────────────────────────────────────────────────────────────
-
 function defaultProgramName(lang: string): string {
   const d = new Date();
   const opts: Intl.DateTimeFormatOptions = { day: "numeric", month: "long" };
@@ -36,50 +36,58 @@ function defaultProgramName(lang: string): string {
 // ── AthletePage ────────────────────────────────────────────────────────────
 
 function AthletePage() {
-  const { lang } = useI18n();
-  const { id }   = Route.useParams();
+  const { lang }  = useI18n();
+  const { user }  = useAuth();
+  const { id }    = Route.useParams();
+  const qc        = useQueryClient();
 
-  const [athlete, setAthlete]     = useState<Athlete | null>(null);
-  const [tab, setTab]             = useState<Tab>("program");
-  const [programs, setPrograms]   = useState<TrainingProgram[]>([]);
-  const [activeId, setActiveId]   = useState<string | null>(null);   // which program is open
-  const [showCopy, setShowCopy]   = useState(false);
+  const [tab, setTab]           = useState<Tab>("program");
+  const [programs, setPrograms] = useState<TrainingProgram[]>([]);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [showCopy, setShowCopy] = useState(false);
+  const [saved, setSaved]       = useState(true);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // ── load ──────────────────────────────────────────────────────────────────
+  const { data: athletes = [], isLoading } = useQuery({
+    queryKey: ["coach_athletes", user?.id],
+    queryFn:  () => fetchAthletes(user!.id),
+    enabled:  !!user,
+  });
 
+  const athlete: Athlete | undefined = athletes.find((a) => a.id === id);
+
+  // sync programs from server data into local state once loaded
   useEffect(() => {
-    const all = loadAthletes();
-    const found = all.find((a) => a.id === id) ?? null;
-    setAthlete(found);
-    const progs = found?.programs ?? [];
-    setPrograms(progs);
-    setActiveId(progs[0]?.id ?? null);
-  }, [id]);
+    if (athlete) {
+      setPrograms(athlete.programs ?? []);
+      setActiveId((prev) => prev ?? (athlete.programs?.[0]?.id ?? null));
+    }
+  }, [athlete?.id, isLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const active = programs.find((p) => p.id === activeId) ?? null;
 
   // ── persist ───────────────────────────────────────────────────────────────
 
-  const flush = (updated: TrainingProgram[]) => {
-    const all = loadAthletes();
-    saveAthletes(all.map((a) => a.id === id ? { ...a, programs: updated } : a));
-    setSaved(true);
+  const flush = async (updated: TrainingProgram[]) => {
+    try {
+      await updateAthletePrograms(id, updated);
+      qc.invalidateQueries({ queryKey: ["coach_athletes", user?.id] });
+      setSaved(true);
+    } catch {
+      toast.error(lang === "el" ? "Σφάλμα αποθήκευσης" : "Save failed");
+    }
   };
-
-  const [saved, setSaved] = useState(true);
 
   const scheduleFlush = (updated: TrainingProgram[]) => {
     setPrograms(updated);
     setSaved(false);
     if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => flush(updated), 1200);
+    saveTimer.current = setTimeout(() => flush(updated), 1500);
   };
 
   const manualSave = () => {
     if (saveTimer.current) clearTimeout(saveTimer.current);
-    flush(programs);
-    toast.success(lang === "el" ? "Αποθηκεύτηκε" : "Saved");
+    flush(programs).then(() => toast.success(lang === "el" ? "Αποθηκεύτηκε" : "Saved"));
   };
 
   // ── program CRUD ──────────────────────────────────────────────────────────
@@ -97,8 +105,7 @@ function AthletePage() {
   };
 
   const updateProgram = (prog: TrainingProgram) => {
-    const updated = programs.map((p) => p.id === prog.id ? prog : p);
-    scheduleFlush(updated);
+    scheduleFlush(programs.map((p) => p.id === prog.id ? prog : p));
   };
 
   const deleteProgram = (progId: string) => {
@@ -110,19 +117,30 @@ function AthletePage() {
 
   // ── copy to athlete ───────────────────────────────────────────────────────
 
-  const copyToAthlete = (targetId: string) => {
+  const copyToAthlete = async (targetId: string) => {
     if (!active) return;
-    const all = loadAthletes();
+    const target = athletes.find((a) => a.id === targetId);
+    if (!target) return;
     const copy: TrainingProgram = { ...active, id: crypto.randomUUID(), date: todayISO() };
-    const updated = all.map((a) =>
-      a.id === targetId ? { ...a, programs: [copy, ...(a.programs ?? [])] } : a
-    );
-    saveAthletes(updated);
-    setShowCopy(false);
-    toast.success(lang === "el" ? "Αντιγράφηκε!" : "Copied!");
+    try {
+      await updateAthletePrograms(targetId, [copy, ...(target.programs ?? [])]);
+      qc.invalidateQueries({ queryKey: ["coach_athletes", user?.id] });
+      setShowCopy(false);
+      toast.success(lang === "el" ? "Αντιγράφηκε!" : "Copied!");
+    } catch {
+      toast.error(lang === "el" ? "Σφάλμα αντιγραφής" : "Copy failed");
+    }
   };
 
-  // ── not found ─────────────────────────────────────────────────────────────
+  // ── loading / not found ───────────────────────────────────────────────────
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center py-20">
+        <Loader2 className="size-6 animate-spin text-white/20" />
+      </div>
+    );
+  }
 
   if (!athlete) {
     return (
@@ -137,7 +155,7 @@ function AthletePage() {
   }
 
   const color = levelColor(athlete.level);
-  const otherAthletes = loadAthletes().filter((a) => a.id !== id);
+  const otherAthletes = athletes.filter((a) => a.id !== id);
 
   return (
     <div className="space-y-5">
@@ -180,13 +198,13 @@ function AthletePage() {
           const label = t === "program"
             ? (lang === "el" ? "Πρόγραμμα" : "Programme")
             : (lang === "el" ? "Ιστορικό" : "History");
-          const active = tab === t;
+          const isActive = tab === t;
           return (
             <button
               key={t}
               onClick={() => setTab(t)}
               className="flex-1 rounded-lg py-2.5 text-xs font-semibold transition-all"
-              style={{ background: active ? "#1D9E75" : "transparent", color: active ? "#fff" : "rgba(255,255,255,0.35)" }}
+              style={{ background: isActive ? "#1D9E75" : "transparent", color: isActive ? "#fff" : "rgba(255,255,255,0.35)" }}
             >
               {label}
             </button>
@@ -198,7 +216,6 @@ function AthletePage() {
       {tab === "program" && (
         <div className="space-y-4">
           {programs.length === 0 ? (
-            /* empty state */
             <div
               className="flex flex-col items-center gap-4 rounded-2xl py-12 text-center"
               style={{ background: "rgba(255,255,255,0.02)", border: "1px dashed rgba(255,255,255,0.07)" }}
@@ -218,7 +235,7 @@ function AthletePage() {
             </div>
           ) : (
             <>
-              {/* program selector row */}
+              {/* program selector */}
               <div className="flex items-center gap-2">
                 <div className="flex flex-1 gap-2 overflow-x-auto pb-0.5">
                   {programs.map((p) => (
@@ -240,13 +257,11 @@ function AthletePage() {
                   onClick={addProgram}
                   className="shrink-0 flex size-8 items-center justify-center rounded-lg text-white/40 hover:text-white transition-colors"
                   style={{ border: "1px solid rgba(255,255,255,0.1)" }}
-                  title={lang === "el" ? "Νέο πρόγραμμα" : "New programme"}
                 >
                   <Plus className="size-4" />
                 </button>
               </div>
 
-              {/* active program */}
               {active && (
                 <ProgramBuilder
                   key={active.id}
@@ -273,7 +288,12 @@ function AthletePage() {
             </p>
           ) : (
             programs.map((p) => (
-              <ProgramHistoryRow key={p.id} program={p} lang={lang} onOpen={() => { setActiveId(p.id); setTab("program"); }} />
+              <ProgramHistoryRow
+                key={p.id}
+                program={p}
+                lang={lang}
+                onOpen={() => { setActiveId(p.id); setTab("program"); }}
+              />
             ))
           )}
         </div>
@@ -327,9 +347,7 @@ function AthletePage() {
 
 // ── ProgramBuilder ─────────────────────────────────────────────────────────
 
-function ProgramBuilder({
-  program, lang, saved, onChange, onSave, onDelete, onCopy,
-}: {
+function ProgramBuilder({ program, lang, saved, onChange, onSave, onDelete, onCopy }: {
   program: TrainingProgram;
   lang: string;
   saved: boolean;
@@ -338,8 +356,7 @@ function ProgramBuilder({
   onDelete: () => void;
   onCopy: () => void;
 }) {
-  const update = (partial: Partial<TrainingProgram>) =>
-    onChange({ ...program, ...partial });
+  const update = (partial: Partial<TrainingProgram>) => onChange({ ...program, ...partial });
 
   const updateSet = (set: ProgramSet) =>
     update({ sets: program.sets.map((s) => s.id === set.id ? set : s) });
@@ -391,7 +408,7 @@ function ProgramBuilder({
         <SummaryChip label={lang === "el" ? "Ένταση" : "Intensity"} value={inten} color={inten === (lang === "el" ? "Υψηλή" : "High") ? "#EF9F27" : "#5DCAA5"} />
       </div>
 
-      {/* header row for set columns */}
+      {/* column headers */}
       {program.sets.length > 0 && (
         <div
           className="grid items-center gap-1 px-3 py-1.5 text-[0.55rem] font-bold tracking-widest text-white/20"
@@ -400,7 +417,7 @@ function ProgramBuilder({
           <span>{lang === "el" ? "ΤΥΠΟΣ" : "TYPE"}</span>
           <span className="text-center">{lang === "el" ? "ΕΠΑ" : "REP"}</span>
           <span className="text-center">{lang === "el" ? "ΤΙΜΗ" : "VALUE"}</span>
-          <span className="text-center">{lang === "el" ? "REST" : "REST"}</span>
+          <span className="text-center">REST</span>
           <span>{lang === "el" ? "ΣΗΜΕΙΩΣΕΙΣ" : "NOTES"}</span>
           <span />
         </div>
@@ -432,7 +449,7 @@ function ProgramBuilder({
         {lang === "el" ? "Νέο Σετ" : "Add Set"}
       </button>
 
-      {/* total row */}
+      {/* total */}
       {dist > 0 && (
         <div className="flex items-center justify-end gap-2 px-1">
           <span className="text-[0.65rem] text-white/25">{lang === "el" ? "Σύνολο:" : "Total:"}</span>
@@ -440,7 +457,7 @@ function ProgramBuilder({
         </div>
       )}
 
-      {/* action row */}
+      {/* actions */}
       <div className="flex gap-2">
         <button
           onClick={onCopy}
@@ -487,10 +504,7 @@ function SetRow({ set, lang, isFirst, isLast, onChange, onDelete, onMove }: {
   const [showCombined, setShowCombined] = useState(set.combined);
   const typeColor = setTypeColor(set.type);
   const typeLabel = setTypeLabel(set.type, lang);
-
   const update = (partial: Partial<ProgramSet>) => onChange({ ...set, ...partial });
-
-  const toggleType = () => update({ type: nextSetType(set.type) });
 
   const toggleCombined = () => {
     const next = !showCombined;
@@ -503,17 +517,15 @@ function SetRow({ set, lang, isFirst, isLast, onChange, onDelete, onMove }: {
       className="overflow-hidden rounded-xl"
       style={{ background: "#0d1320", border: "1px solid rgba(255,255,255,0.05)", borderLeft: `3px solid ${typeColor}` }}
     >
-      {/* main row */}
       <div
         className="grid items-center gap-1.5 px-3 py-2.5"
         style={{ gridTemplateColumns: "76px 32px 1fr 60px 1fr 56px" }}
       >
-        {/* type chip — tap to cycle */}
+        {/* type — tap to cycle */}
         <button
-          onClick={toggleType}
+          onClick={() => update({ type: nextSetType(set.type) })}
           className="rounded-lg px-2 py-1 text-[0.6rem] font-bold tracking-wider text-left transition-all"
           style={{ background: `${typeColor}18`, color: typeColor }}
-          title={lang === "el" ? "Αλλαγή τύπου" : "Change type"}
         >
           {typeLabel}
         </button>
@@ -527,7 +539,7 @@ function SetRow({ set, lang, isFirst, isLast, onChange, onDelete, onMove }: {
           className="w-full rounded-lg bg-white/5 px-1.5 py-1 text-center text-xs font-bold text-white outline-none focus:ring-1 focus:ring-[#1D9E75]"
         />
 
-        {/* value — "×" prefix shown inline */}
+        {/* value */}
         <div className="flex items-center gap-1">
           <span className="text-[0.6rem] text-white/20">×</span>
           <input
@@ -539,14 +551,12 @@ function SetRow({ set, lang, isFirst, isLast, onChange, onDelete, onMove }: {
         </div>
 
         {/* rest */}
-        <div className="flex items-center gap-1">
-          <input
-            value={set.rest}
-            onChange={(e) => update({ rest: e.target.value })}
-            className="w-full rounded-lg bg-white/5 px-1.5 py-1 text-center text-xs text-white outline-none focus:ring-1 focus:ring-[#1D9E75]"
-            placeholder="2:00"
-          />
-        </div>
+        <input
+          value={set.rest}
+          onChange={(e) => update({ rest: e.target.value })}
+          className="w-full rounded-lg bg-white/5 px-1.5 py-1 text-center text-xs text-white outline-none focus:ring-1 focus:ring-[#1D9E75]"
+          placeholder="2:00"
+        />
 
         {/* notes */}
         <input
@@ -558,30 +568,19 @@ function SetRow({ set, lang, isFirst, isLast, onChange, onDelete, onMove }: {
 
         {/* controls */}
         <div className="flex items-center justify-end gap-0.5">
-          <button
-            onClick={() => onMove(-1)}
-            disabled={isFirst}
-            className="rounded p-1 text-white/20 transition-colors hover:text-white/60 disabled:opacity-20"
-          >
+          <button onClick={() => onMove(-1)} disabled={isFirst} className="rounded p-1 text-white/20 hover:text-white/60 disabled:opacity-20">
             <ChevronUp className="size-3.5" />
           </button>
-          <button
-            onClick={() => onMove(1)}
-            disabled={isLast}
-            className="rounded p-1 text-white/20 transition-colors hover:text-white/60 disabled:opacity-20"
-          >
+          <button onClick={() => onMove(1)} disabled={isLast} className="rounded p-1 text-white/20 hover:text-white/60 disabled:opacity-20">
             <ChevronDown className="size-3.5" />
           </button>
-          <button
-            onClick={onDelete}
-            className="rounded p-1 text-white/20 transition-colors hover:text-red-400/70"
-          >
+          <button onClick={onDelete} className="rounded p-1 text-white/20 hover:text-red-400/70">
             <Trash2 className="size-3.5" />
           </button>
         </div>
       </div>
 
-      {/* combined toggle + fields */}
+      {/* combined toggle */}
       <div className="flex items-start gap-3 border-t px-3 py-1.5" style={{ borderColor: "rgba(255,255,255,0.04)" }}>
         <button
           onClick={toggleCombined}
@@ -591,7 +590,6 @@ function SetRow({ set, lang, isFirst, isLast, onChange, onDelete, onMove }: {
           {showCombined ? <ChevronDown className="size-3" /> : <ChevronRight className="size-3" />}
           {lang === "el" ? "Συνδυασμός STA+DYN" : "Combined STA+DYN"}
         </button>
-
         {showCombined && (
           <div className="flex flex-1 items-center gap-2">
             <input

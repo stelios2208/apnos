@@ -1,3 +1,5 @@
+import { supabase } from "@/integrations/supabase/client";
+
 export type Level = "beginner" | "intermediate" | "advanced" | "competitive";
 export type DisciplineCode = "STA" | "DYN" | "DYNB" | "DNF" | "CWT" | "CWTB" | "CNF" | "FIM";
 export type SetType = "warmup" | "mainset" | "strength" | "surface" | "custom";
@@ -8,18 +10,18 @@ export interface ProgramSet {
   id: string;
   type: SetType;
   reps: number;
-  value: string;    // "75m" | "1:30" | "1:00 STA + 100m DYN"
-  rest: string;     // "3:00"
+  value: string;
+  rest: string;
   notes: string;
   combined: boolean;
-  staTime: string;  // used when combined=true
-  dynDist: string;  // used when combined=true
+  staTime: string;
+  dynDist: string;
 }
 
 export interface TrainingProgram {
   id: string;
   name: string;
-  date: string;   // ISO date
+  date: string;
   sets: ProgramSet[];
 }
 
@@ -30,8 +32,7 @@ export interface Athlete {
   name: string;
   level: Level;
   disciplines: DisciplineCode[];
-  programs?: TrainingProgram[];
-  program?: string; // legacy single-program field
+  programs: TrainingProgram[];
 }
 
 // ── Constants ──────────────────────────────────────────────────────────────
@@ -48,11 +49,11 @@ export const ALL_DISCIPLINES: DisciplineCode[] = [
 ];
 
 export const SET_TYPES: { value: SetType; label_el: string; label_en: string; color: string }[] = [
-  { value: "warmup",   label_el: "Θέρμανση",   label_en: "Warm-up",  color: "#9FE1CB" },
-  { value: "mainset",  label_el: "Κύριο",       label_en: "Main",     color: "#1D9E75" },
-  { value: "strength", label_el: "Δύναμη",      label_en: "Strength", color: "#EF9F27" },
-  { value: "surface",  label_el: "Επιφάνεια",   label_en: "Surface",  color: "#5DCAA5" },
-  { value: "custom",   label_el: "Άλλο",         label_en: "Custom",   color: "rgba(255,255,255,0.3)" },
+  { value: "warmup",   label_el: "Θέρμανση",  label_en: "Warm-up",  color: "#9FE1CB" },
+  { value: "mainset",  label_el: "Κύριο",      label_en: "Main",     color: "#1D9E75" },
+  { value: "strength", label_el: "Δύναμη",     label_en: "Strength", color: "#EF9F27" },
+  { value: "surface",  label_el: "Επιφάνεια",  label_en: "Surface",  color: "#5DCAA5" },
+  { value: "custom",   label_el: "Άλλο",        label_en: "Custom",   color: "rgba(255,255,255,0.3)" },
 ];
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -81,25 +82,21 @@ export function nextSetType(type: SetType): SetType {
   return order[(i + 1) % order.length];
 }
 
-/** Parse a value string and return metres (0 if time-based). */
 export function parseMetres(value: string): number {
   const m = value.match(/(\d+)\s*m/i);
   return m ? parseInt(m[1], 10) : 0;
 }
 
-/** Parse "MM:SS" or "SS" → seconds. */
 export function parseSeconds(mmss: string): number {
   const parts = mmss.trim().split(":").map(Number);
   if (parts.length === 2) return (parts[0] ?? 0) * 60 + (parts[1] ?? 0);
   return parseInt(mmss, 10) || 0;
 }
 
-/** Auto-detect whether a value is time-based. */
 export function isTimeValue(value: string): boolean {
   return /^\d+:\d{2}/.test(value.trim()) || /^STA/i.test(value.trim());
 }
 
-/** Total metres in a program. */
 export function totalMetres(sets: ProgramSet[]): number {
   return sets.reduce((sum, s) => {
     if (s.combined) return sum + s.reps * (parseMetres(s.dynDist) || 0);
@@ -107,7 +104,6 @@ export function totalMetres(sets: ProgramSet[]): number {
   }, 0);
 }
 
-/** Rough estimated session minutes. */
 export function estimatedMinutes(sets: ProgramSet[]): number {
   const secs = sets.reduce((sum, s) => {
     const workSecs = isTimeValue(s.value) ? parseSeconds(s.value) : 60;
@@ -117,18 +113,17 @@ export function estimatedMinutes(sets: ProgramSet[]): number {
   return Math.round(secs / 60);
 }
 
-/** Auto intensity label from set type composition. */
 export function intensityLabel(sets: ProgramSet[], lang: string): string {
-  if (sets.length === 0) return lang === "el" ? "—" : "—";
+  if (sets.length === 0) return "—";
   const counts = sets.reduce<Record<SetType, number>>(
     (acc, s) => { acc[s.type] = (acc[s.type] ?? 0) + 1; return acc; },
     {} as Record<SetType, number>
   );
-  const total   = sets.length;
-  const heavy   = (counts.mainset ?? 0) + (counts.strength ?? 0);
-  const light   = counts.warmup ?? 0;
-  if (heavy / total > 0.55) return lang === "el" ? "Υψηλή"   : "High";
-  if (light / total > 0.55) return lang === "el" ? "Χαμηλή"  : "Low";
+  const total = sets.length;
+  const heavy = (counts.mainset ?? 0) + (counts.strength ?? 0);
+  const light = counts.warmup ?? 0;
+  if (heavy / total > 0.55) return lang === "el" ? "Υψηλή"  : "High";
+  if (light / total > 0.55) return lang === "el" ? "Χαμηλή" : "Low";
   return lang === "el" ? "Μέτρια" : "Moderate";
 }
 
@@ -140,17 +135,64 @@ export function todayISO(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-// ── Storage ────────────────────────────────────────────────────────────────
+// ── Supabase CRUD ──────────────────────────────────────────────────────────
 
-const STORAGE_KEY = "apnos.coach.athletes";
+type Row = {
+  id: string;
+  name: string;
+  level: string;
+  disciplines: string[];
+  programs: unknown;
+};
 
-export function loadAthletes(): Athlete[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as Athlete[]) : [];
-  } catch { return []; }
+function rowToAthlete(r: Row): Athlete {
+  return {
+    id: r.id,
+    name: r.name,
+    level: r.level as Level,
+    disciplines: (r.disciplines ?? []) as DisciplineCode[],
+    programs: (r.programs ?? []) as TrainingProgram[],
+  };
 }
 
-export function saveAthletes(athletes: Athlete[]): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(athletes));
+export async function fetchAthletes(userId: string): Promise<Athlete[]> {
+  const { data, error } = await supabase
+    .from("coach_athletes")
+    .select("id, name, level, disciplines, programs")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return (data ?? []).map((r) => rowToAthlete(r as Row));
+}
+
+export async function createAthlete(
+  userId: string,
+  input: { name: string; level: Level; disciplines: DisciplineCode[] }
+): Promise<Athlete> {
+  const { data, error } = await supabase
+    .from("coach_athletes")
+    .insert({ user_id: userId, ...input, programs: [] })
+    .select("id, name, level, disciplines, programs")
+    .single();
+  if (error) throw error;
+  return rowToAthlete(data as Row);
+}
+
+export async function updateAthletePrograms(
+  athleteId: string,
+  programs: TrainingProgram[]
+): Promise<void> {
+  const { error } = await supabase
+    .from("coach_athletes")
+    .update({ programs })
+    .eq("id", athleteId);
+  if (error) throw error;
+}
+
+export async function deleteAthlete(athleteId: string): Promise<void> {
+  const { error } = await supabase
+    .from("coach_athletes")
+    .delete()
+    .eq("id", athleteId);
+  if (error) throw error;
 }
