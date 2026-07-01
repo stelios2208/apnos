@@ -47,13 +47,13 @@ function AthletePage() {
   const { id }    = Route.useParams();
   const qc        = useQueryClient();
 
-  const [tab, setTab]             = useState<Tab>("program");
-  const [programs, setPrograms]   = useState<TrainingProgram[]>([]);
-  const [activeId, setActiveId]   = useState<string | null>(null);
-  const [showCopy, setShowCopy]   = useState(false);
-  const [showEdit, setShowEdit]   = useState(false);
-  const [showPicker, setShowPicker] = useState(false);
-  const [saved, setSaved]         = useState(true);
+  const [tab, setTab]                       = useState<Tab>("program");
+  const [programs, setPrograms]             = useState<TrainingProgram[]>([]);
+  const [activeId, setActiveId]             = useState<string | null>(null);
+  const [activeDiscipline, setActiveDiscipline] = useState<DisciplineCode | null>(null);
+  const [showCopy, setShowCopy]             = useState(false);
+  const [showEdit, setShowEdit]             = useState(false);
+  const [saved, setSaved]                   = useState(true);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { data: athletes = [], isLoading } = useQuery({
@@ -66,13 +66,23 @@ function AthletePage() {
   const athlete: Athlete | undefined = athletes.find((a) => a.id === id);
 
   useEffect(() => {
-    if (athlete) {
-      setPrograms(athlete.programs ?? []);
-      setActiveId((prev) => prev ?? (athlete.programs?.[0]?.id ?? null));
-    }
+    if (!athlete) return;
+    setPrograms(athlete.programs ?? []);
+    setActiveDiscipline((prev) => prev ?? (athlete.disciplines[0] ?? null));
+    // initialise activeId to first program of first discipline
+    setActiveId((prev) => {
+      if (prev) return prev;
+      const firstDisc = athlete.disciplines[0];
+      return athlete.programs?.find((p) => p.discipline === firstDisc)?.id ?? null;
+    });
   }, [athlete?.id, isLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const active = programs.find((p) => p.id === activeId) ?? null;
+  // programs visible in the current discipline tab
+  const disciplinePrograms = activeDiscipline
+    ? programs.filter((p) => p.discipline === activeDiscipline)
+    : programs;
+
+  const active = disciplinePrograms.find((p) => p.id === activeId) ?? null;
 
   // ── persist ───────────────────────────────────────────────────────────────
 
@@ -100,17 +110,17 @@ function AthletePage() {
 
   // ── program CRUD ──────────────────────────────────────────────────────────
 
-  const createProgram = (discipline: DisciplineCode) => {
+  const createProgram = () => {
+    if (!activeDiscipline) return;
     const prog: TrainingProgram = {
       id: crypto.randomUUID(),
       name: defaultProgramName(lang),
       date: todayISO(),
-      discipline,
-      sets: [newRow(discipline)],
+      discipline: activeDiscipline,
+      sets: [newRow(activeDiscipline)],
     };
     const updated = [prog, ...programs];
     setActiveId(prog.id);
-    setShowPicker(false);
     scheduleFlush(updated);
   };
 
@@ -121,8 +131,15 @@ function AthletePage() {
   const deleteProgram = (progId: string) => {
     const updated = programs.filter((p) => p.id !== progId);
     setPrograms(updated);
-    setActiveId(updated[0]?.id ?? null);
+    const nextInDisc = updated.find((p) => p.discipline === activeDiscipline);
+    setActiveId(nextInDisc?.id ?? null);
     flush(updated);
+  };
+
+  const switchDiscipline = (d: DisciplineCode) => {
+    setActiveDiscipline(d);
+    const first = programs.find((p) => p.discipline === d);
+    setActiveId(first?.id ?? null);
   };
 
   // ── edit athlete ──────────────────────────────────────────────────────────
@@ -179,7 +196,7 @@ function AthletePage() {
 
   const color = levelColor(athlete.level);
   const otherAthletes = athletes.filter((a) => a.id !== id);
-  const pickerDisciplines = athlete.disciplines.length > 0 ? athlete.disciplines : ["STA", "DYN", "CWT"] as DisciplineCode[];
+  const tabs = athlete.disciplines.length > 0 ? athlete.disciplines : (["DYN"] as DisciplineCode[]);
 
   return (
     <div className="space-y-5">
@@ -247,7 +264,42 @@ function AthletePage() {
       {/* ── PROGRAM TAB ── */}
       {tab === "program" && (
         <div className="space-y-4">
-          {programs.length === 0 ? (
+
+          {/* discipline tabs — only when athlete has >1 discipline */}
+          {tabs.length > 1 && (
+            <div className="flex gap-2 overflow-x-auto pb-0.5">
+              {tabs.map((d) => {
+                const isActive = d === activeDiscipline;
+                const c = DISCIPLINE_COLORS[d] ?? "#5DCAA5";
+                const count = programs.filter((p) => p.discipline === d).length;
+                return (
+                  <button
+                    key={d}
+                    onClick={() => switchDiscipline(d)}
+                    className="shrink-0 flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold tracking-wide transition-all"
+                    style={
+                      isActive
+                        ? { background: `${c}20`, color: c, border: `1.5px solid ${c}60` }
+                        : { background: "rgba(255,255,255,0.03)", color: "rgba(255,255,255,0.3)", border: "1.5px solid rgba(255,255,255,0.07)" }
+                    }
+                  >
+                    {d}
+                    {count > 0 && (
+                      <span
+                        className="rounded-full px-1.5 py-0.5 text-[0.55rem] font-black"
+                        style={{ background: isActive ? `${c}30` : "rgba(255,255,255,0.06)", color: isActive ? c : "rgba(255,255,255,0.25)" }}
+                      >
+                        {count}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {/* program selector + builder */}
+          {disciplinePrograms.length === 0 ? (
             <div
               className="flex flex-col items-center gap-4 rounded-2xl py-12 text-center"
               style={{ background: "rgba(255,255,255,0.02)", border: "1px dashed rgba(255,255,255,0.07)" }}
@@ -255,9 +307,10 @@ function AthletePage() {
               <Zap className="size-8 text-white/10" />
               <p className="text-sm text-white/30">
                 {lang === "el" ? "Κανένα πρόγραμμα ακόμα" : "No programme yet"}
+                {activeDiscipline ? ` · ${activeDiscipline}` : ""}
               </p>
               <button
-                onClick={() => setShowPicker(true)}
+                onClick={createProgram}
                 className="flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold"
                 style={{ background: "#1D9E75", color: "#fff" }}
               >
@@ -267,10 +320,9 @@ function AthletePage() {
             </div>
           ) : (
             <>
-              {/* program selector */}
               <div className="flex items-center gap-2">
                 <div className="flex flex-1 gap-2 overflow-x-auto pb-0.5">
-                  {programs.map((p) => (
+                  {disciplinePrograms.map((p) => (
                     <button
                       key={p.id}
                       onClick={() => setActiveId(p.id)}
@@ -286,7 +338,7 @@ function AthletePage() {
                   ))}
                 </div>
                 <button
-                  onClick={() => setShowPicker(true)}
+                  onClick={createProgram}
                   className="shrink-0 flex size-8 items-center justify-center rounded-lg text-white/40 hover:text-white transition-colors"
                   style={{ border: "1px solid rgba(255,255,255,0.1)" }}
                 >
@@ -329,16 +381,6 @@ function AthletePage() {
             ))
           )}
         </div>
-      )}
-
-      {/* discipline picker modal */}
-      {showPicker && (
-        <DisciplinePickerModal
-          disciplines={pickerDisciplines}
-          lang={lang}
-          onPick={createProgram}
-          onClose={() => setShowPicker(false)}
-        />
       )}
 
       {/* edit modal */}
@@ -398,69 +440,13 @@ function AthletePage() {
   );
 }
 
-// ── DisciplinePickerModal ──────────────────────────────────────────────────
+// ── ProgramBuilder ─────────────────────────────────────────────────────────
 
 const DISCIPLINE_COLORS: Record<string, string> = {
   STA: "#9FE1CB",
   DYN: "#1D9E75", DYNB: "#1D9E75", DNF: "#5DCAA5",
   CWT: "#EF9F27", CWTB: "#EF9F27", CNF: "#e8a020", FIM: "#d4912a",
 };
-
-function DisciplinePickerModal({ disciplines, lang, onPick, onClose }: {
-  disciplines: DisciplineCode[];
-  lang: string;
-  onPick: (d: DisciplineCode) => void;
-  onClose: () => void;
-}) {
-  return (
-    <div
-      className="fixed inset-0 z-50 flex flex-col justify-end"
-      style={{ background: "rgba(0,0,0,0.75)" }}
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      <div className="w-full rounded-t-2xl px-5 pb-10 pt-5" style={{ background: "#0d1320" }}>
-        <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-white/10" />
-        <div className="mb-5 flex items-center justify-between">
-          <div>
-            <h2 className="text-base font-bold text-white">
-              {lang === "el" ? "Επιλογή Discipline" : "Choose Discipline"}
-            </h2>
-            <p className="mt-0.5 text-xs text-white/30">
-              {lang === "el" ? "Το template προσαρμόζεται αυτόματα" : "Template adapts automatically"}
-            </p>
-          </div>
-          <button onClick={onClose} className="text-white/30 hover:text-white transition-colors">
-            <X className="size-5" />
-          </button>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          {disciplines.map((d) => {
-            const c = DISCIPLINE_COLORS[d] ?? "#5DCAA5";
-            const kind = templateKind(d);
-            const hint = kind === "sta"
-              ? (lang === "el" ? "Rounds · Breath-up · Hold" : "Rounds · Breath-up · Hold")
-              : kind === "depth"
-              ? (lang === "el" ? "Dives · Βάθος · Interval" : "Dives · Depth · Interval")
-              : (lang === "el" ? "Sets · Reps · Distance" : "Sets · Reps · Distance");
-            return (
-              <button
-                key={d}
-                onClick={() => onPick(d)}
-                className="flex flex-col items-start gap-2 rounded-2xl p-4 text-left transition-all active:scale-95"
-                style={{ background: `${c}10`, border: `1.5px solid ${c}30` }}
-              >
-                <span className="text-lg font-black" style={{ color: c }}>{d}</span>
-                <span className="text-[0.6rem] leading-tight text-white/35">{hint}</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── ProgramBuilder ─────────────────────────────────────────────────────────
 
 function ProgramBuilder({ program, lang, saved, onChange, onSave, onDelete, onCopy }: {
   program: TrainingProgram;
@@ -471,6 +457,9 @@ function ProgramBuilder({ program, lang, saved, onChange, onSave, onDelete, onCo
   onDelete: () => void;
   onCopy: () => void;
 }) {
+  const [localDate, setLocalDate] = useState(program.date);
+  useEffect(() => { setLocalDate(program.date); }, [program.id]);
+
   const update = (partial: Partial<TrainingProgram>) => onChange({ ...program, ...partial });
 
   const updateRow = (row: ProgramRow) =>
@@ -551,9 +540,11 @@ function ProgramBuilder({ program, lang, saved, onChange, onSave, onDelete, onCo
         />
         <input
           type="date"
-          value={program.date}
-          onChange={(e) => { if (e.target.value) update({ date: e.target.value }); }}
-          onInput={(e) => { const v = (e.target as HTMLInputElement).value; if (v) update({ date: v }); }}
+          value={localDate}
+          onChange={(e) => {
+            setLocalDate(e.target.value);
+            if (e.target.value) update({ date: e.target.value });
+          }}
           className="rounded-xl bg-white/5 px-3 py-2.5 text-xs text-white/60 outline-none focus:ring-1 focus:ring-[#1D9E75]"
           style={{ colorScheme: "dark" }}
         />
