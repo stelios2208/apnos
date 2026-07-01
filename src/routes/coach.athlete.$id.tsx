@@ -522,31 +522,32 @@ function DayCard({ day, programs, lang, onCreateDay, onOpenProgram }: {
 
   return (
     <div
-      className="flex flex-col gap-1.5 rounded-xl p-2"
+      className="flex shrink-0 flex-col gap-2 rounded-xl p-2"
       style={{
+        width: 88,
+        minHeight: 88,
         background: isToday ? "rgba(29,158,117,0.08)" : "rgba(255,255,255,0.02)",
-        border: `1px solid ${isToday ? "rgba(29,158,117,0.3)" : "rgba(255,255,255,0.05)"}`,
-        minHeight: 80,
+        border: `1px solid ${isToday ? "rgba(29,158,117,0.3)" : "rgba(255,255,255,0.06)"}`,
       }}
     >
-      {/* day header */}
-      <div className="flex items-center justify-between">
+      {/* day header: abbrev + number left, + right */}
+      <div className="flex items-start justify-between gap-1">
         <div className="flex flex-col leading-none">
-          <span className="text-[10px] font-medium uppercase" style={{ color: isToday ? "#1D9E75" : "rgba(255,255,255,0.35)" }}>
+          <span className="text-[9px] font-semibold uppercase tracking-wide" style={{ color: isToday ? "#1D9E75" : "rgba(255,255,255,0.35)" }}>
             {dayName}
           </span>
-          <span className="text-sm font-bold" style={{ color: isToday ? "#1D9E75" : "rgba(255,255,255,0.7)" }}>
+          <span className="mt-0.5 text-base font-bold leading-none" style={{ color: isToday ? "#1D9E75" : "rgba(255,255,255,0.75)" }}>
             {dayNum}
           </span>
         </div>
         <button
           onClick={() => onCreateDay(iso)}
-          className="flex size-5 items-center justify-center rounded-md transition-colors"
-          style={{ color: "rgba(255,255,255,0.2)" }}
+          className="flex size-5 shrink-0 items-center justify-center rounded-md transition-colors"
+          style={{ color: "rgba(255,255,255,0.25)", background: "rgba(255,255,255,0.04)" }}
           onMouseEnter={(e) => (e.currentTarget.style.color = "#1D9E75")}
-          onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.2)")}
+          onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.25)")}
         >
-          <Plus className="size-3.5" />
+          <Plus className="size-3" />
         </button>
       </div>
 
@@ -561,11 +562,8 @@ function DayCard({ day, programs, lang, onCreateDay, onOpenProgram }: {
               className="w-full rounded-md px-1.5 py-1 text-left"
               style={{ background: `${color}18`, border: `1px solid ${color}40` }}
             >
-              <div className="text-[10px] font-semibold leading-none" style={{ color }}>
+              <div className="text-[9px] font-bold leading-none" style={{ color }}>
                 {p.discipline ?? "—"}
-              </div>
-              <div className="mt-0.5 truncate text-[10px] leading-none text-white/50">
-                {p.name}
               </div>
             </button>
           );
@@ -625,8 +623,8 @@ function WeekView({ programs, activeDiscipline, lang, weekOffset, onWeekChange, 
         </button>
       </div>
 
-      {/* 7-day grid */}
-      <div className="grid grid-cols-7 gap-1.5">
+      {/* 7-day scroll row */}
+      <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
         {days.map((day) => (
           <DayCard
             key={localISO(day)}
