@@ -112,6 +112,7 @@ function AthletePage() {
   // ── program CRUD ──────────────────────────────────────────────────────────
 
   const createProgram = () => {
+    console.log('[createProgram] using date:', selectedDate);
     if (!activeDiscipline) return;
     const prog: TrainingProgram = {
       id: crypto.randomUUID(),
@@ -357,7 +358,7 @@ function AthletePage() {
                   onSave={manualSave}
                   onDelete={() => deleteProgram(active.id)}
                   onCopy={() => setShowCopy(true)}
-                  onDateChange={setSelectedDate}
+                  onDateChange={(date) => { console.log('[AthletePage] date changed to:', date); setSelectedDate(date); }}
                 />
               )}
             </>
