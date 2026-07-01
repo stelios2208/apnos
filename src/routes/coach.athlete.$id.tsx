@@ -33,8 +33,9 @@ export const Route = createFileRoute("/coach/athlete/$id")({
 
 type Tab = "program" | "history";
 
-function defaultProgramName(lang: string): string {
-  const d = new Date();
+function defaultProgramName(lang: string, dateISO: string): string {
+  // noon avoids off-by-one from UTC timezone conversions
+  const d = new Date(`${dateISO}T12:00:00`);
   const opts: Intl.DateTimeFormatOptions = { day: "numeric", month: "long" };
   return d.toLocaleDateString(lang === "el" ? "el-GR" : "en-GB", opts);
 }
@@ -112,11 +113,10 @@ function AthletePage() {
   // ── program CRUD ──────────────────────────────────────────────────────────
 
   const createProgram = () => {
-    console.log('[createProgram] using date:', selectedDate);
     if (!activeDiscipline) return;
     const prog: TrainingProgram = {
       id: crypto.randomUUID(),
-      name: defaultProgramName(lang),
+      name: defaultProgramName(lang, selectedDate),
       date: selectedDate,
       discipline: activeDiscipline,
       sets: [newRow(activeDiscipline)],
@@ -358,7 +358,7 @@ function AthletePage() {
                   onSave={manualSave}
                   onDelete={() => deleteProgram(active.id)}
                   onCopy={() => setShowCopy(true)}
-                  onDateChange={(date) => { console.log('[AthletePage] date changed to:', date); setSelectedDate(date); }}
+                  onDateChange={setSelectedDate}
                 />
               )}
             </>
