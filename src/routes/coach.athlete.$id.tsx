@@ -2,8 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  ArrowLeft, ChevronDown, ChevronRight, ChevronUp,
-  Copy, Loader2, Pencil, Plus, Trash2, X, Zap,
+  ArrowLeft, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, ChevronUp,
+  Copy, LayoutList, Loader2, Pencil, Plus, Trash2, X, Zap,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AppLayout } from "@/components/AppLayout";
@@ -49,6 +49,8 @@ function AthletePage() {
   const qc        = useQueryClient();
 
   const [tab, setTab]                       = useState<Tab>("program");
+  const [view, setView]                     = useState<"list" | "week">("list");
+  const [weekOffset, setWeekOffset]         = useState(0);
   const [programs, setPrograms]             = useState<TrainingProgram[]>([]);
   const [activeId, setActiveId]             = useState<string | null>(null);
   const [activeDiscipline, setActiveDiscipline] = useState<DisciplineCode | null>(null);
@@ -112,19 +114,21 @@ function AthletePage() {
 
   // ── program CRUD ──────────────────────────────────────────────────────────
 
-  const createProgram = () => {
+  const createProgramForDate = (dateISO: string) => {
     if (!activeDiscipline) return;
     const prog: TrainingProgram = {
       id: crypto.randomUUID(),
-      name: defaultProgramName(lang, selectedDate),
-      date: selectedDate,
+      name: defaultProgramName(lang, dateISO),
+      date: dateISO,
       discipline: activeDiscipline,
       sets: [newRow(activeDiscipline)],
     };
-    const updated = [prog, ...programs];
     setActiveId(prog.id);
-    scheduleFlush(updated);
+    setSelectedDate(dateISO);
+    scheduleFlush([prog, ...programs]);
   };
+
+  const createProgram = () => createProgramForDate(selectedDate);
 
   const updateProgram = (prog: TrainingProgram) => {
     scheduleFlush(programs.map((p) => p.id === prog.id ? prog : p));
@@ -267,9 +271,10 @@ function AthletePage() {
       {tab === "program" && (
         <div className="space-y-4">
 
-          {/* discipline tabs — only when athlete has >1 discipline */}
-          {tabs.length > 1 && (
-            <div className="flex gap-2 overflow-x-auto pb-0.5">
+          {/* discipline tabs + view toggle */}
+          <div className="flex items-center gap-2">
+            {tabs.length > 1 && (
+              <div className="flex flex-1 gap-2 overflow-x-auto pb-0.5">
               {tabs.map((d) => {
                 const isActive = d === activeDiscipline;
                 const c = DISCIPLINE_COLORS[d] ?? "#5DCAA5";
@@ -297,11 +302,29 @@ function AthletePage() {
                   </button>
                 );
               })}
+              </div>
+            )}
+            {/* view toggle */}
+            <div className="shrink-0 flex rounded-lg overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
+              <button
+                onClick={() => setView("list")}
+                className="flex items-center justify-center px-2.5 py-2 transition-colors"
+                style={{ background: view === "list" ? "rgba(29,158,117,0.2)" : "transparent", color: view === "list" ? "#1D9E75" : "rgba(255,255,255,0.3)" }}
+              >
+                <LayoutList className="size-3.5" />
+              </button>
+              <button
+                onClick={() => setView("week")}
+                className="flex items-center justify-center px-2.5 py-2 transition-colors"
+                style={{ background: view === "week" ? "rgba(29,158,117,0.2)" : "transparent", color: view === "week" ? "#1D9E75" : "rgba(255,255,255,0.3)" }}
+              >
+                <CalendarDays className="size-3.5" />
+              </button>
             </div>
-          )}
+          </div>
 
-          {/* program selector + builder */}
-          {disciplinePrograms.length === 0 ? (
+          {/* ── LIST VIEW ── */}
+          {view === "list" && (disciplinePrograms.length === 0 ? (
             <div
               className="flex flex-col items-center gap-4 rounded-2xl py-12 text-center"
               style={{ background: "rgba(255,255,255,0.02)", border: "1px dashed rgba(255,255,255,0.07)" }}
@@ -362,6 +385,19 @@ function AthletePage() {
                 />
               )}
             </>
+          ))}
+
+          {/* ── WEEK VIEW ── */}
+          {view === "week" && (
+            <WeekView
+              programs={disciplinePrograms}
+              activeDiscipline={activeDiscipline}
+              lang={lang}
+              weekOffset={weekOffset}
+              onWeekChange={setWeekOffset}
+              onCreateDay={(dateISO) => { createProgramForDate(dateISO); setView("list"); }}
+              onOpenProgram={(prog) => { setActiveId(prog.id); setView("list"); }}
+            />
           )}
         </div>
       )}
@@ -450,6 +486,161 @@ const DISCIPLINE_COLORS: Record<string, string> = {
   DYN: "#1D9E75", DYNB: "#1D9E75", DNF: "#5DCAA5",
   CWT: "#EF9F27", CWTB: "#EF9F27", CNF: "#e8a020", FIM: "#d4912a",
 };
+
+// ── Week View helpers ──────────────────────────────────────────────────────
+
+function localISO(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function getWeekDays(weekOffset: number): Date[] {
+  const now = new Date();
+  const dow = now.getDay(); // 0=Sun
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - ((dow + 6) % 7) + weekOffset * 7);
+  monday.setHours(0, 0, 0, 0);
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    return d;
+  });
+}
+
+function DayCard({ day, programs, lang, onCreateDay, onOpenProgram }: {
+  day: Date;
+  programs: TrainingProgram[];
+  lang: string;
+  onCreateDay: (dateISO: string) => void;
+  onOpenProgram: (prog: TrainingProgram) => void;
+}) {
+  const iso = localISO(day);
+  const todayStr = todayISO();
+  const isToday = iso === todayStr;
+  const dayProgs = programs.filter((p) => p.date === iso);
+  const dayName = day.toLocaleDateString(lang === "el" ? "el-GR" : "en-GB", { weekday: "short" });
+  const dayNum = day.getDate();
+
+  return (
+    <div
+      className="flex flex-col gap-1.5 rounded-xl p-2"
+      style={{
+        background: isToday ? "rgba(29,158,117,0.08)" : "rgba(255,255,255,0.02)",
+        border: `1px solid ${isToday ? "rgba(29,158,117,0.3)" : "rgba(255,255,255,0.05)"}`,
+        minHeight: 80,
+      }}
+    >
+      {/* day header */}
+      <div className="flex items-center justify-between">
+        <div className="flex flex-col leading-none">
+          <span className="text-[10px] font-medium uppercase" style={{ color: isToday ? "#1D9E75" : "rgba(255,255,255,0.35)" }}>
+            {dayName}
+          </span>
+          <span className="text-sm font-bold" style={{ color: isToday ? "#1D9E75" : "rgba(255,255,255,0.7)" }}>
+            {dayNum}
+          </span>
+        </div>
+        <button
+          onClick={() => onCreateDay(iso)}
+          className="flex size-5 items-center justify-center rounded-md transition-colors"
+          style={{ color: "rgba(255,255,255,0.2)" }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = "#1D9E75")}
+          onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.2)")}
+        >
+          <Plus className="size-3.5" />
+        </button>
+      </div>
+
+      {/* programme chips */}
+      <div className="flex flex-col gap-1">
+        {dayProgs.map((p) => {
+          const color = DISCIPLINE_COLORS[p.discipline ?? ""] ?? "#5DCAA5";
+          return (
+            <button
+              key={p.id}
+              onClick={() => onOpenProgram(p)}
+              className="w-full rounded-md px-1.5 py-1 text-left"
+              style={{ background: `${color}18`, border: `1px solid ${color}40` }}
+            >
+              <div className="text-[10px] font-semibold leading-none" style={{ color }}>
+                {p.discipline ?? "—"}
+              </div>
+              <div className="mt-0.5 truncate text-[10px] leading-none text-white/50">
+                {p.name}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function WeekView({ programs, activeDiscipline, lang, weekOffset, onWeekChange, onCreateDay, onOpenProgram }: {
+  programs: TrainingProgram[];
+  activeDiscipline: DisciplineCode | null;
+  lang: string;
+  weekOffset: number;
+  onWeekChange: (offset: number) => void;
+  onCreateDay: (dateISO: string) => void;
+  onOpenProgram: (prog: TrainingProgram) => void;
+}) {
+  const days = getWeekDays(weekOffset);
+  const rangeLabel = (() => {
+    const first = days[0]!;
+    const last = days[6]!;
+    const opts: Intl.DateTimeFormatOptions = { day: "numeric", month: "short" };
+    const loc = lang === "el" ? "el-GR" : "en-GB";
+    return `${first.toLocaleDateString(loc, opts)} – ${last.toLocaleDateString(loc, opts)}`;
+  })();
+
+  return (
+    <div className="flex flex-col gap-3">
+      {/* week navigation */}
+      <div className="flex items-center justify-between">
+        <button
+          onClick={() => onWeekChange(weekOffset - 1)}
+          className="flex size-8 items-center justify-center rounded-lg text-white/40 hover:text-white transition-colors"
+          style={{ border: "1px solid rgba(255,255,255,0.08)" }}
+        >
+          <ChevronLeft className="size-4" />
+        </button>
+        <div className="flex flex-col items-center gap-0.5">
+          <span className="text-xs font-medium text-white/60">{rangeLabel}</span>
+          {weekOffset !== 0 && (
+            <button
+              onClick={() => onWeekChange(0)}
+              className="text-[10px] font-semibold"
+              style={{ color: "#1D9E75" }}
+            >
+              {lang === "el" ? "Σήμερα" : "Today"}
+            </button>
+          )}
+        </div>
+        <button
+          onClick={() => onWeekChange(weekOffset + 1)}
+          className="flex size-8 items-center justify-center rounded-lg text-white/40 hover:text-white transition-colors"
+          style={{ border: "1px solid rgba(255,255,255,0.08)" }}
+        >
+          <ChevronRight className="size-4" />
+        </button>
+      </div>
+
+      {/* 7-day grid */}
+      <div className="grid grid-cols-7 gap-1.5">
+        {days.map((day) => (
+          <DayCard
+            key={localISO(day)}
+            day={day}
+            programs={programs}
+            lang={lang}
+            onCreateDay={onCreateDay}
+            onOpenProgram={onOpenProgram}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function ProgramBuilder({ program, lang, saved, onChange, onSave, onDelete, onCopy, onDateChange }: {
   program: TrainingProgram;
