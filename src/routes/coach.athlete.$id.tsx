@@ -51,6 +51,7 @@ function AthletePage() {
   const [programs, setPrograms]             = useState<TrainingProgram[]>([]);
   const [activeId, setActiveId]             = useState<string | null>(null);
   const [activeDiscipline, setActiveDiscipline] = useState<DisciplineCode | null>(null);
+  const [selectedDate, setSelectedDate]     = useState(todayISO());
   const [showCopy, setShowCopy]             = useState(false);
   const [showEdit, setShowEdit]             = useState(false);
   const [saved, setSaved]                   = useState(true);
@@ -115,7 +116,7 @@ function AthletePage() {
     const prog: TrainingProgram = {
       id: crypto.randomUUID(),
       name: defaultProgramName(lang),
-      date: todayISO(),
+      date: selectedDate,
       discipline: activeDiscipline,
       sets: [newRow(activeDiscipline)],
     };
@@ -356,6 +357,7 @@ function AthletePage() {
                   onSave={manualSave}
                   onDelete={() => deleteProgram(active.id)}
                   onCopy={() => setShowCopy(true)}
+                  onDateChange={setSelectedDate}
                 />
               )}
             </>
@@ -448,7 +450,7 @@ const DISCIPLINE_COLORS: Record<string, string> = {
   CWT: "#EF9F27", CWTB: "#EF9F27", CNF: "#e8a020", FIM: "#d4912a",
 };
 
-function ProgramBuilder({ program, lang, saved, onChange, onSave, onDelete, onCopy }: {
+function ProgramBuilder({ program, lang, saved, onChange, onSave, onDelete, onCopy, onDateChange }: {
   program: TrainingProgram;
   lang: string;
   saved: boolean;
@@ -456,10 +458,8 @@ function ProgramBuilder({ program, lang, saved, onChange, onSave, onDelete, onCo
   onSave: () => void;
   onDelete: () => void;
   onCopy: () => void;
+  onDateChange: (date: string) => void;
 }) {
-  const [localDate, setLocalDate] = useState(program.date);
-  useEffect(() => { setLocalDate(program.date); }, [program.id]);
-
   const update = (partial: Partial<TrainingProgram>) => onChange({ ...program, ...partial });
 
   const updateRow = (row: ProgramRow) =>
@@ -540,10 +540,11 @@ function ProgramBuilder({ program, lang, saved, onChange, onSave, onDelete, onCo
         />
         <input
           type="date"
-          value={localDate}
+          value={program.date}
           onChange={(e) => {
-            setLocalDate(e.target.value);
-            if (e.target.value) update({ date: e.target.value });
+            if (!e.target.value) return;
+            update({ date: e.target.value });
+            onDateChange(e.target.value);
           }}
           className="rounded-xl bg-white/5 px-3 py-2.5 text-xs text-white/60 outline-none focus:ring-1 focus:ring-[#1D9E75]"
           style={{ colorScheme: "dark" }}
