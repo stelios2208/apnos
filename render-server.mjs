@@ -115,6 +115,27 @@ const server = createServer(async (req, res) => {
   }
 });
 
+server.on("error", (err) => {
+  if (err.code === "EADDRINUSE") {
+    console.error(`Port ${port} already in use, retrying in 1s...`);
+    setTimeout(() => {
+      server.close();
+      server.listen(port, "0.0.0.0");
+    }, 1000);
+  } else {
+    console.error("Server error:", err);
+    process.exit(1);
+  }
+});
+
 server.listen(port, "0.0.0.0", () => {
   console.log(`Server listening on http://0.0.0.0:${port}`);
+});
+
+process.on("SIGTERM", () => {
+  server.close(() => process.exit(0));
+});
+
+process.on("SIGINT", () => {
+  server.close(() => process.exit(0));
 });
