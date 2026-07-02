@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 
 // Support both build output layouts:
-//   dist/server/server.js    — old Vinxi/TanStack Start build
+//   dist/server/server.js   — old Vinxi/TanStack Start build
 //   .output/server/index.mjs — new Nitro-based build
 const OLD_ENTRY = join(__dirname, "dist", "server", "server.js");
 const NEW_ENTRY = join(__dirname, ".output", "server", "index.mjs");
@@ -117,12 +117,4 @@ const server = createServer(async (req, res) => {
 
 server.listen(port, "0.0.0.0", () => {
   console.log(`Server listening on http://0.0.0.0:${port}`);
-});
-
-process.on("SIGTERM", () => {
-  server.close(() => process.exit(0));
-});
-
-process.on("SIGINT", () => {
-  server.close(() => process.exit(0));
 });
