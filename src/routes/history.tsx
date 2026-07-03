@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Trophy, Trash2, Moon, Brain, Waves, Plus, Pencil, Download,
   ChevronRight, ChevronDown, SlidersHorizontal, X, ArrowLeftRight,
-  Search, LayoutList, CalendarDays,
+  Search, LayoutList, CalendarDays, ListChecks, CheckCircle2, Circle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -34,6 +34,7 @@ type Segment = "all" | "pool" | "depth";
 type SessionFilter = "all" | "training" | "competition";
 type FedFilter = "all" | Federation;
 type ViewMode = "list" | "month";
+type Selection = { mode: boolean; has: (id: string) => boolean; toggle: (id: string) => void };
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 const POOL_DISC  = ["STA", "DYN", "DYNB", "DNF"]  as DisciplineCode[];
@@ -112,6 +113,38 @@ function History() {
     },
     onError: (err) => toast.error(err instanceof Error ? err.message : "Error"),
   });
+
+  // ── bulk select / delete ──────────────────────────────────────────────────
+  const [selectMode, setSelectMode] = useState(false);
+  const [selected,   setSelected]   = useState<Set<string>>(new Set());
+
+  const selection: Selection = useMemo(() => ({
+    mode: selectMode,
+    has: (id: string) => selected.has(id),
+    toggle: (id: string) =>
+      setSelected((p) => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; }),
+  }), [selectMode, selected]);
+
+  const exitSelect = () => { setSelectMode(false); setSelected(new Set()); };
+
+  const bulkDelete = async () => {
+    const targets = Array.from(selected)
+      .map((id) => dives.find((d) => d.id === id))
+      .filter(Boolean) as Dive[];
+    if (targets.length === 0) return;
+    const msg = lang === "el"
+      ? `Διαγραφή ${targets.length} βουτιών;`
+      : `Delete ${targets.length} dives?`;
+    if (!confirm(msg)) return;
+    try {
+      await Promise.all(targets.map((d) => deleteDive(d.id, user?.id, d.discipline)));
+      queryClient.invalidateQueries({ queryKey: ["dives", user?.id] });
+      toast.success(lang === "el" ? `Διαγράφηκαν ${targets.length}` : `Deleted ${targets.length}`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Error");
+    }
+    exitSelect();
+  };
 
   const toggleExpand = (id: string) =>
     setExpanded((p) => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
@@ -214,6 +247,19 @@ function History() {
             <Button variant="outline" size="sm" onClick={handleExport} className="gap-1.5">
               <Download className="size-4" />
             </Button>
+          )}
+          {dives.length > 0 && (
+            <button
+              onClick={() => (selectMode ? exitSelect() : setSelectMode(true))}
+              title={lang === "el" ? "Επιλογή" : "Select"}
+              className="relative flex size-9 items-center justify-center rounded-xl transition-colors"
+              style={{
+                background: selectMode ? "rgba(239,80,80,0.12)" : "#0d1320",
+                border: `1px solid ${selectMode ? "rgba(239,80,80,0.35)" : "rgba(255,255,255,0.08)"}`,
+              }}
+            >
+              <ListChecks className="size-4" style={{ color: selectMode ? "#ef5050" : "rgba(255,255,255,0.6)" }} />
+            </button>
           )}
           {dives.length > 0 && (
             <button
@@ -336,6 +382,7 @@ function History() {
                         onToggle={() => toggleExpand(dive.id)}
                         onCompare={() => toggleCompare(dive.id)}
                         onDelete={() => remove.mutate({ id: dive.id, discipline: dive.discipline })}
+                        selection={selection}
                         lang={lang}
                         t={t}
                       />
@@ -369,6 +416,7 @@ function History() {
               compareIds={compareIds}
               onCompare={toggleCompare}
               onDelete={(d) => remove.mutate(d)}
+              selection={selection}
               lang={lang}
               t={t}
             />
@@ -400,12 +448,48 @@ function History() {
               compareIds={compareIds}
               onCompare={toggleCompare}
               onDelete={(d) => remove.mutate(d)}
+              selection={selection}
               lang={lang}
               t={t}
             />
           )}
         </div>
       /* end list view */
+      )}
+
+      {/* ── bulk-delete action bar ── */}
+      {selectMode && (
+        <div
+          className="fixed inset-x-0 bottom-0 z-40 border-t px-4 py-3"
+          style={{ background: "rgba(7,10,16,0.97)", borderColor: "rgba(239,80,80,0.2)", paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
+        >
+          <div className="mx-auto flex max-w-2xl items-center gap-3">
+            <span className="text-sm font-semibold text-white/70">
+              {selected.size} {lang === "el" ? "επιλεγμένες" : "selected"}
+            </span>
+            <div className="flex-1" />
+            <button
+              onClick={exitSelect}
+              className="rounded-xl px-4 py-2.5 text-sm font-semibold"
+              style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.55)" }}
+            >
+              {lang === "el" ? "Άκυρο" : "Cancel"}
+            </button>
+            <button
+              onClick={bulkDelete}
+              disabled={selected.size === 0}
+              className="flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-bold transition-all"
+              style={{
+                background: selected.size === 0 ? "rgba(239,80,80,0.15)" : "#ef5050",
+                color: "#fff",
+                opacity: selected.size === 0 ? 0.5 : 1,
+              }}
+            >
+              <Trash2 className="size-4" />
+              {lang === "el" ? "Διαγραφή" : "Delete"}
+            </button>
+          </div>
+        </div>
       )}
 
       {/* ── compare bar ── */}
@@ -496,7 +580,7 @@ function History() {
 function EnvironmentSection({
   icon, label, accentColor, disciplines, dives,
   discFilter, onDiscFilter, expanded, onToggle,
-  compareIds, onCompare, onDelete, lang, t,
+  compareIds, onCompare, onDelete, selection, lang, t,
 }: {
   icon: ReactNode; label: string; accentColor: string;
   disciplines: DisciplineCode[]; dives: Dive[];
@@ -504,6 +588,7 @@ function EnvironmentSection({
   expanded: Set<string>; onToggle: (id: string) => void;
   compareIds: string[]; onCompare: (id: string) => void;
   onDelete: (d: { id: string; discipline: DisciplineCode }) => void;
+  selection?: Selection;
   lang: string; t: (k: string, v?: Record<string, string | number>) => string;
 }) {
   const filtered = discFilter ? dives.filter((d) => d.discipline === discFilter) : dives;
@@ -553,7 +638,7 @@ function EnvironmentSection({
           dives={competition}
           expanded={expanded} onToggle={onToggle}
           compareIds={compareIds} onCompare={onCompare}
-          onDelete={onDelete} lang={lang} t={t}
+          onDelete={onDelete} selection={selection} lang={lang} t={t}
         />
       )}
       {training.length > 0 && (
@@ -563,7 +648,7 @@ function EnvironmentSection({
           dives={training}
           expanded={expanded} onToggle={onToggle}
           compareIds={compareIds} onCompare={onCompare}
-          onDelete={onDelete} lang={lang} t={t}
+          onDelete={onDelete} selection={selection} lang={lang} t={t}
         />
       )}
     </div>
@@ -572,12 +657,13 @@ function EnvironmentSection({
 
 // ── SubSection ────────────────────────────────────────────────────────────────
 function SubSection({
-  labelEl, dives, expanded, onToggle, compareIds, onCompare, onDelete, lang, t,
+  labelEl, dives, expanded, onToggle, compareIds, onCompare, onDelete, selection, lang, t,
 }: {
   label: string; labelEl: string; dives: Dive[];
   expanded: Set<string>; onToggle: (id: string) => void;
   compareIds: string[]; onCompare: (id: string) => void;
   onDelete: (d: { id: string; discipline: DisciplineCode }) => void;
+  selection?: Selection;
   lang: string; t: (k: string, v?: Record<string, string | number>) => string;
 }) {
   return (
@@ -601,6 +687,7 @@ function SubSection({
             onToggle={() => onToggle(dive.id)}
             onCompare={() => onCompare(dive.id)}
             onDelete={() => onDelete({ id: dive.id, discipline: dive.discipline })}
+            selection={selection}
             lang={lang}
             t={t}
           />
@@ -611,24 +698,40 @@ function SubSection({
 }
 
 // ── DiveCard ──────────────────────────────────────────────────────────────────
-function DiveCard({ dive, isExpanded, isComparing, onToggle, onCompare, onDelete, lang, t }: {
+function DiveCard({ dive, isExpanded, isComparing, onToggle, onCompare, onDelete, selection, lang, t }: {
   dive: Dive; isExpanded: boolean; isComparing: boolean;
   onToggle: () => void; onCompare: () => void; onDelete: () => void;
+  selection?: Selection;
   lang: string; t: (k: string, v?: Record<string, string | number>) => string;
 }) {
   const border = cardBorder(dive);
+  const selectMode = selection?.mode ?? false;
+  const isSelected = selection?.has(dive.id) ?? false;
 
   return (
     <li
       className="overflow-hidden rounded-xl transition-all"
       style={{
-        background: "#0d1320",
-        border: isComparing ? `1px solid ${border}` : "1px solid rgba(255,255,255,0.06)",
+        background: isSelected ? "rgba(239,80,80,0.06)" : "#0d1320",
+        border: isSelected
+          ? "1px solid rgba(239,80,80,0.5)"
+          : isComparing ? `1px solid ${border}` : "1px solid rgba(255,255,255,0.06)",
         borderLeft: `3px solid ${border}`,
       }}
     >
       {/* top row: badges + compare */}
       <div className="flex items-center gap-2 px-3 pt-3">
+        {selectMode && (
+          <button
+            onClick={(e) => { e.stopPropagation(); selection?.toggle(dive.id); }}
+            className="shrink-0"
+            aria-label={lang === "el" ? "Επιλογή" : "Select"}
+          >
+            {isSelected
+              ? <CheckCircle2 className="size-5" style={{ color: "#ef5050" }} />
+              : <Circle className="size-5 text-white/25" />}
+          </button>
+        )}
         <span
           className="shrink-0 rounded-md px-2 py-0.5 text-[0.6rem] font-bold tracking-wider"
           style={{ background: "rgba(29,158,117,0.15)", color: "#5DCAA5" }}
@@ -656,18 +759,25 @@ function DiveCard({ dive, isExpanded, isComparing, onToggle, onCompare, onDelete
 
         <div className="flex-1" />
 
-        <button
-          onClick={(e) => { e.stopPropagation(); onCompare(); }}
-          className="flex items-center gap-1 rounded-lg px-2 py-1 text-[0.6rem] font-semibold transition-all"
-          style={isComparing ? { background: "#1D9E75", color: "#fff" } : { color: "rgba(255,255,255,0.3)" }}
-        >
-          <ArrowLeftRight className="size-3" />
-          {lang === "el" ? "Σύγκριση" : "Compare"}
-        </button>
+        {!selectMode && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onCompare(); }}
+            className="flex items-center gap-1 rounded-lg px-2 py-1 text-[0.6rem] font-semibold transition-all"
+            style={isComparing ? { background: "#1D9E75", color: "#fff" } : { color: "rgba(255,255,255,0.3)" }}
+          >
+            <ArrowLeftRight className="size-3" />
+            {lang === "el" ? "Σύγκριση" : "Compare"}
+          </button>
+        )}
       </div>
 
-      {/* result — tapping navigates to detail page */}
-      <Link to="/dive/$id" params={{ id: dive.id }} className="block px-3 pb-1 pt-1">
+      {/* result — tapping navigates to detail (or toggles selection in select mode) */}
+      <Link
+        to="/dive/$id"
+        params={{ id: dive.id }}
+        className="block px-3 pb-1 pt-1"
+        onClick={(e) => { if (selectMode) { e.preventDefault(); selection?.toggle(dive.id); } }}
+      >
         <span
           className="font-bold tabular-nums text-white"
           style={{ fontFamily: "'Outfit', sans-serif", fontSize: "1.75rem", lineHeight: 1.1 }}
@@ -678,7 +788,7 @@ function DiveCard({ dive, isExpanded, isComparing, onToggle, onCompare, onDelete
 
       {/* meta + expand toggle */}
       <button
-        onClick={onToggle}
+        onClick={() => { if (selectMode) selection?.toggle(dive.id); else onToggle(); }}
         className="flex w-full items-center justify-between px-3 pb-3 text-left"
       >
         <span className="text-[0.65rem] text-white/35">
