@@ -14,7 +14,7 @@ import {
   type Athlete, type DisciplineCode, type ProgramRow,
   type STARound, type DynSet, type DepthDive, type DynIntensity,
   type TrainingProgram, type TableType, type DynSetType, type BreathingMode,
-  templateKind, newRow, levelColor, levelLabel,
+  templateKind, newRow, levelColor, levelLabel, athleteInitials, athleteColor,
   fetchAthletes, updateAthlete, updateAthletePrograms,
   totalSTAHoldSecs, totalDynMetres, maxDepthMetres,
   dynSetColor, dynSetLabel, dynIntensityTag,
@@ -232,10 +232,10 @@ function AthletePage() {
         style={{ background: "#0d1320", border: "1px solid rgba(255,255,255,0.05)" }}
       >
         <div
-          className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full text-xl font-bold"
-          style={{ background: `${color}18`, color }}
+          className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full text-lg font-bold"
+          style={{ background: `${athleteColor(athlete.id || athlete.name)}22`, color: athleteColor(athlete.id || athlete.name), border: `1px solid ${athleteColor(athlete.id || athlete.name)}45` }}
         >
-          {athlete.name.charAt(0).toUpperCase()}
+          {athleteInitials(athlete.name)}
         </div>
         <div className="flex-1">
           <div className="flex items-center gap-2">
@@ -476,10 +476,10 @@ function AthletePage() {
                     style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
                   >
                     <div
-                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold"
-                      style={{ background: `${levelColor(a.level)}18`, color: levelColor(a.level) }}
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold"
+                      style={{ background: `${athleteColor(a.id || a.name)}22`, color: athleteColor(a.id || a.name), border: `1px solid ${athleteColor(a.id || a.name)}45` }}
                     >
-                      {a.name.charAt(0).toUpperCase()}
+                      {athleteInitials(a.name)}
                     </div>
                     <span className="text-sm font-medium text-white/80">{a.name}</span>
                   </button>

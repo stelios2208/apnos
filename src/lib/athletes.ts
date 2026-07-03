@@ -91,6 +91,30 @@ export function levelColor(level: Level) {
   return LEVELS.find((x) => x.value === level)?.color ?? "#5DCAA5";
 }
 
+// Up to two initials (first + last word) so athletes with the same first
+// letter stay distinguishable, e.g. "Giorgos Markis" → "GM".
+export function athleteInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
+  return (parts[0]![0]! + parts[parts.length - 1]![0]!).toUpperCase();
+}
+
+// Distinct, deterministic avatar colour per athlete so cards don't all share
+// the level colour. Stable across renders (hash of the athlete id/name).
+const ATHLETE_PALETTE = [
+  "#5DCAA5", "#1D9E75", "#EF9F27", "#4FA8E0", "#B58BE8",
+  "#E87DA8", "#7ED9C3", "#E0C04F", "#6FB1F5", "#F2846B",
+];
+
+export function athleteColor(seed: string): string {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) {
+    hash = (hash * 31 + seed.charCodeAt(i)) | 0;
+  }
+  return ATHLETE_PALETTE[Math.abs(hash) % ATHLETE_PALETTE.length]!;
+}
+
 export function templateKind(discipline: DisciplineCode): TemplateKind {
   if (discipline === "STA") return "sta";
   if (["CWT", "CWTB", "CNF", "FIM"].includes(discipline)) return "depth";

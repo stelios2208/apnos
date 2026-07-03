@@ -13,7 +13,8 @@ import {
   type Level,
   type DisciplineCode,
   levelLabel,
-  levelColor,
+  athleteInitials,
+  athleteColor,
   fetchAthletes,
   createAthlete,
   deleteAthlete,
@@ -197,17 +198,17 @@ function AthleteCard({ athlete, lang, onProgram, onDelete }: {
   onProgram: () => void;
   onDelete: () => void;
 }) {
-  const color = levelColor(athlete.level);
+  const color = athleteColor(athlete.id || athlete.name);
   return (
     <div
       className="flex items-center gap-4 rounded-2xl px-4 py-4"
       style={{ background: "#0d1320", border: "1px solid rgba(255,255,255,0.05)" }}
     >
       <div
-        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-base font-bold"
-        style={{ background: `${color}18`, color }}
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm font-bold"
+        style={{ background: `${color}22`, color, border: `1px solid ${color}45` }}
       >
-        {athlete.name.charAt(0).toUpperCase()}
+        {athleteInitials(athlete.name)}
       </div>
 
       <div className="min-w-0 flex-1">
