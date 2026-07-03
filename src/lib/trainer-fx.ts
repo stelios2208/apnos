@@ -63,17 +63,35 @@ export const HOLD_MILESTONES: { at: number; key: CueKey }[] = [
   { at: 300, key: "m300" },
 ];
 
-export function cueSrc(key: CueKey, lang: string): string {
-  return `/audio/cues/${lang === "el" ? "el" : "en"}/${key}.mp3`;
-}
+// Catalog of every cue, used by the management UI. Milestone rows reuse the
+// timing from HOLD_MILESTONES; phases come first.
+export const CUE_CATALOG: { key: CueKey; group: "phase" | "milestone"; labelEl: string; labelEn: string }[] = [
+  { key: "breathe",  group: "phase",     labelEl: "Έναρξη αναπνοών",   labelEn: "Breathe-up start" },
+  { key: "hold",     group: "phase",     labelEl: "Έναρξη κράτησης",   labelEn: "Hold start" },
+  { key: "recovery", group: "phase",     labelEl: "Έναρξη ανάκαμψης",  labelEn: "Recovery start" },
+  ...HOLD_MILESTONES.map((m) => {
+    const mm = Math.floor(m.at / 60);
+    const ss = String(m.at % 60).padStart(2, "0");
+    const label = `${mm}:${ss}`;
+    return { key: m.key, group: "milestone" as const, labelEl: label, labelEn: label };
+  }),
+];
 
+// Plays per-user recorded cues. Sources are resolved externally (from Supabase
+// Storage) and handed in via setSources; a key with no source stays silent.
 export class CuePlayer {
+  private sources = new Map<CueKey, string>();
   private cache = new Map<string, HTMLAudioElement>();
   private current: HTMLAudioElement | null = null;
 
-  play(key: CueKey, lang: string): void {
+  setSources(map: Map<CueKey, string>): void {
+    this.sources = map;
+  }
+
+  play(key: CueKey): void {
     if (typeof Audio === "undefined") return;
-    const src = cueSrc(key, lang);
+    const src = this.sources.get(key);
+    if (!src) return; // no recording for this cue → silent
     let el = this.cache.get(src);
     if (!el) {
       el = new Audio(src);
@@ -87,7 +105,7 @@ export class CuePlayer {
     this.current = el;
     try {
       el.currentTime = 0;
-      void el.play().catch(() => { /* missing file or blocked → silent */ });
+      void el.play().catch(() => { /* blocked / unsupported → silent */ });
     } catch { /* ignore */ }
   }
 

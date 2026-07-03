@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { X, Check, Trophy, Target, Mic, MicOff, Music, VolumeX, Vibrate } from "lucide-react";
+import { X, Check, Trophy, Target, Mic, MicOff, Music, VolumeX, Vibrate, SlidersHorizontal } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,6 +9,8 @@ import {
   vibrate, hapticsSupported,
   HOLD_MILESTONES, SoundscapeEngine, CuePlayer,
 } from "@/lib/trainer-fx";
+import { listCueUrls } from "@/lib/voice-cues";
+import { VoiceCuesModal } from "@/components/VoiceCuesModal";
 
 export const Route = createFileRoute("/sta-trainer")({
   head: () => ({ meta: [{ title: "STA Trainer — Apnos" }] }),
@@ -90,6 +92,9 @@ function STATrainer() {
   const cueRef      = useRef<CuePlayer | null>(null);
   const nextMsRef   = useRef(0); // index of next hold milestone to announce
 
+  const [showVoice, setShowVoice] = useState(false);
+  const [hasCues, setHasCues]     = useState(false);
+
   const phaseStart    = useRef<number>(Date.now());
   const breatheStart  = useRef<number>(0);
   const holdStart     = useRef<number>(0);
@@ -104,11 +109,20 @@ function STATrainer() {
     return engineRef.current;
   }, []);
 
+  const loadCues = useCallback(async () => {
+    if (!user) return;
+    if (!cueRef.current) cueRef.current = new CuePlayer();
+    const map = await listCueUrls(user.id, lang);
+    cueRef.current.setSources(map);
+    setHasCues(map.size > 0);
+  }, [user, lang]);
+
+  useEffect(() => { void loadCues(); }, [loadCues]);
+
   const guideVoice = useCallback((key: CueKey) => {
     if (!fxRef.current.voice) return;
-    if (!cueRef.current) cueRef.current = new CuePlayer();
-    cueRef.current.play(key, lang);
-  }, [lang]);
+    cueRef.current?.play(key);
+  }, []);
 
   const guideHaptic = useCallback((pattern: number | number[]) => {
     if (fxRef.current.haptics) vibrate(pattern);
@@ -152,10 +166,7 @@ function STATrainer() {
     const ms = HOLD_MILESTONES[idx]!;
     if (elapsed >= ms.at) {
       nextMsRef.current = idx + 1;
-      if (fxRef.current.voice) {
-        if (!cueRef.current) cueRef.current = new CuePlayer();
-        cueRef.current.play(ms.key, lang);
-      }
+      if (fxRef.current.voice) cueRef.current?.play(ms.key);
       if (fxRef.current.haptics) vibrate(20);
     }
   }, [elapsed, phase, lang]);
@@ -358,6 +369,18 @@ function STATrainer() {
           off={<Vibrate className="size-4" />}
           label={canHaptics ? (lang === "el" ? "Δόνηση" : "Haptics") : (lang === "el" ? "Η δόνηση δεν υποστηρίζεται σε iPhone" : "Haptics not supported on iPhone")}
         />
+        <button
+          onClick={() => setShowVoice(true)}
+          aria-label={lang === "el" ? "Η φωνή μου" : "My voice cues"}
+          title={lang === "el" ? "Η φωνή μου" : "My voice cues"}
+          className="relative flex h-11 w-11 items-center justify-center rounded-full transition-all"
+          style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.5)" }}
+        >
+          <SlidersHorizontal className="size-4" />
+          {hasCues && (
+            <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full" style={{ background: "#1D9E75", boxShadow: "0 0 6px #1D9E7580" }} />
+          )}
+        </button>
       </div>
 
       {/* tap zone */}
@@ -613,6 +636,16 @@ function STATrainer() {
             )}
           </div>
         </div>
+      )}
+
+      {/* ── My Voice Cues manager ──────────────────────────────────────────── */}
+      {showVoice && user && (
+        <VoiceCuesModal
+          uid={user.id}
+          lang={lang}
+          onClose={() => setShowVoice(false)}
+          onChanged={() => { void loadCues(); }}
+        />
       )}
     </div>
   );
