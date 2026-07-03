@@ -1,9 +1,14 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { X, Check, Trophy, Target } from "lucide-react";
+import { X, Check, Trophy, Target, Mic, MicOff, Music, VolumeX, Vibrate } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  type FxSettings, loadFxSettings, saveFxSettings,
+  vibrate, speak, cancelSpeech, cueText,
+  PHASE_CUES, HOLD_MILESTONES, SoundscapeEngine,
+} from "@/lib/trainer-fx";
 
 export const Route = createFileRoute("/sta-trainer")({
   head: () => ({ meta: [{ title: "STA Trainer — Apnos" }] }),
@@ -76,6 +81,13 @@ function STATrainer() {
   const [saving, setSaving]       = useState(false);
   const [saved, setSaved]         = useState(false);
 
+  // ── guided-session FX (voice / soundscape / haptics) ──────────────────────
+  const [fx, setFx] = useState<FxSettings>(() => loadFxSettings());
+  const fxRef       = useRef(fx);
+  fxRef.current     = fx;
+  const engineRef   = useRef<SoundscapeEngine | null>(null);
+  const nextMsRef   = useRef(0); // index of next hold milestone to announce
+
   const phaseStart    = useRef<number>(Date.now());
   const breatheStart  = useRef<number>(0);
   const holdStart     = useRef<number>(0);
@@ -83,6 +95,42 @@ function STATrainer() {
 
   const pressTimer   = useRef<ReturnType<typeof setTimeout> | null>(null);
   const didLongPress = useRef(false);
+
+  // ── FX helpers ────────────────────────────────────────────────────────────
+  const ensureEngine = useCallback(() => {
+    if (!engineRef.current) engineRef.current = new SoundscapeEngine();
+    return engineRef.current;
+  }, []);
+
+  const guideVoice = useCallback((cue: { el: string; en: string }) => {
+    if (fxRef.current.voice) speak(cueText(cue, lang), lang);
+  }, [lang]);
+
+  const guideHaptic = useCallback((pattern: number | number[]) => {
+    if (fxRef.current.haptics) vibrate(pattern);
+  }, []);
+
+  const enginePhase = useCallback((p: "breathe" | "hold" | "recovery") => {
+    if (!fxRef.current.sound) return;
+    const eng = ensureEngine();
+    if (!eng.isRunning) eng.start().then(() => eng.setPhase(p));
+    else eng.setPhase(p);
+  }, [ensureEngine]);
+
+  const toggleFx = useCallback((key: keyof FxSettings) => {
+    setFx((prev) => {
+      const next = { ...prev, [key]: !prev[key] };
+      saveFxSettings(next);
+      if (key === "sound") {
+        if (!next.sound) engineRef.current?.stop();
+      }
+      if (key === "voice" && !next.voice) cancelSpeech();
+      return next;
+    });
+  }, []);
+
+  // stop audio + speech on unmount
+  useEffect(() => () => { engineRef.current?.stop(); cancelSpeech(); }, []);
 
   // ── tick ────────────────────────────────────────────────────────────────
 
@@ -94,6 +142,19 @@ function STATrainer() {
     return () => clearInterval(id);
   }, [phase]);
 
+  // ── spoken milestone cues during a hold ───────────────────────────────────
+  useEffect(() => {
+    if (phase !== "hold") return;
+    const idx = nextMsRef.current;
+    if (idx >= HOLD_MILESTONES.length) return;
+    const ms = HOLD_MILESTONES[idx]!;
+    if (elapsed >= ms.at) {
+      nextMsRef.current = idx + 1;
+      if (fxRef.current.voice) speak(lang === "el" ? ms.el : ms.en, lang);
+      if (fxRef.current.haptics) vibrate(20);
+    }
+  }, [elapsed, phase, lang]);
+
   // ── phase transitions ──────────────────────────────────────────────────
 
   const startBreathe = useCallback(() => {
@@ -102,21 +163,31 @@ function STATrainer() {
     setPhase("breathe");
     setElapsed(0);
     setContractions(0);
-  }, []);
+    guideHaptic(60);
+    guideVoice(PHASE_CUES.breathe);
+    enginePhase("breathe");
+  }, [guideHaptic, guideVoice, enginePhase]);
 
   const startHold = useCallback(() => {
     holdStart.current  = Date.now();
     phaseStart.current = Date.now();
     setPhase("hold");
     setElapsed(0);
-  }, []);
+    nextMsRef.current = 0;
+    guideHaptic([40, 60, 40]);
+    guideVoice(PHASE_CUES.hold);
+    enginePhase("hold");
+  }, [guideHaptic, guideVoice, enginePhase]);
 
   const startRecovery = useCallback(() => {
     recoveryStart.current = Date.now();
     phaseStart.current    = Date.now();
     setPhase("recovery");
     setElapsed(0);
-  }, []);
+    guideHaptic([120, 80, 120]);
+    guideVoice(PHASE_CUES.recovery);
+    enginePhase("recovery");
+  }, [guideHaptic, guideVoice, enginePhase]);
 
   // ── press handlers ─────────────────────────────────────────────────────
 
@@ -143,6 +214,7 @@ function STATrainer() {
       startHold();
     } else if (phase === "hold") {
       setContractions((c) => c + 1);
+      guideHaptic(25);
     } else if (phase === "recovery") {
       const breatheSecs  = Math.round((holdStart.current     - breatheStart.current)  / 1000);
       const holdSecs     = Math.round((recoveryStart.current - holdStart.current)     / 1000);
@@ -153,7 +225,7 @@ function STATrainer() {
       ]);
       startBreathe();
     }
-  }, [phase, contractions, startBreathe, startHold]);
+  }, [phase, contractions, startBreathe, startHold, guideHaptic]);
 
   // ── end session (opens modal, captures in-progress recovery if any) ────
 
@@ -166,6 +238,8 @@ function STATrainer() {
       const recoverySecs = Math.round((Date.now()            - recoveryStart.current) / 1000);
       setRounds((prev) => [{ breatheSecs, holdSecs, recoverySecs, contractions }, ...prev]);
     }
+    engineRef.current?.stop();
+    cancelSpeech();
     setSaved(false);
     setShowModal(true);
   }, [phase, contractions]);
@@ -250,6 +324,35 @@ function STATrainer() {
         className="pointer-events-none absolute inset-0 transition-all duration-700"
         style={{ background: PHASE_BG[phase] }}
       />
+
+      {/* guided-session controls */}
+      <div
+        className="absolute right-3 top-3 z-20 flex gap-2"
+        onMouseDown={(e) => e.stopPropagation()}
+        onTouchStart={(e) => e.stopPropagation()}
+      >
+        <FxToggle
+          active={fx.voice}
+          onClick={() => toggleFx("voice")}
+          on={<Mic className="size-4" />}
+          off={<MicOff className="size-4" />}
+          label={lang === "el" ? "Φωνή" : "Voice"}
+        />
+        <FxToggle
+          active={fx.sound}
+          onClick={() => toggleFx("sound")}
+          on={<Music className="size-4" />}
+          off={<VolumeX className="size-4" />}
+          label={lang === "el" ? "Ήχος" : "Sound"}
+        />
+        <FxToggle
+          active={fx.haptics}
+          onClick={() => toggleFx("haptics")}
+          on={<Vibrate className="size-4" />}
+          off={<Vibrate className="size-4" />}
+          label={lang === "el" ? "Δόνηση" : "Haptics"}
+        />
+      </div>
 
       {/* tap zone */}
       <div
@@ -506,6 +609,32 @@ function STATrainer() {
         </div>
       )}
     </div>
+  );
+}
+
+// ── FxToggle ───────────────────────────────────────────────────────────────
+
+function FxToggle({ active, onClick, on, off, label }: {
+  active: boolean;
+  onClick: () => void;
+  on: React.ReactNode;
+  off: React.ReactNode;
+  label: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      aria-label={label}
+      aria-pressed={active}
+      className="flex h-11 w-11 items-center justify-center rounded-full transition-all"
+      style={{
+        background: active ? "rgba(29,158,117,0.18)" : "rgba(255,255,255,0.04)",
+        border: `1px solid ${active ? "rgba(29,158,117,0.45)" : "rgba(255,255,255,0.08)"}`,
+        color: active ? "#5DCAA5" : "rgba(255,255,255,0.28)",
+      }}
+    >
+      {active ? on : off}
+    </button>
   );
 }
 
