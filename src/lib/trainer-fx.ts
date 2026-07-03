@@ -29,8 +29,13 @@ export function saveFxSettings(s: FxSettings): void {
 
 // ── Haptics ──────────────────────────────────────────────────────────────────
 
+export function hapticsSupported(): boolean {
+  // iOS Safari (incl. PWA) does not expose the Vibration API at all.
+  return typeof navigator !== "undefined" && "vibrate" in navigator;
+}
+
 export function vibrate(pattern: number | number[]): void {
-  if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+  if (hapticsSupported()) {
     try { navigator.vibrate(pattern); } catch { /* ignore */ }
   }
 }
@@ -107,23 +112,33 @@ export class SoundscapeEngine {
 
     const ctx = new Ctx();
     try { await ctx.resume(); } catch { /* ignore */ }
+    // iOS unlock: play one silent buffer inside the gesture chain
+    try {
+      const buf = ctx.createBuffer(1, 1, ctx.sampleRate);
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      src.connect(ctx.destination);
+      src.start(0);
+    } catch { /* ignore */ }
     const now = ctx.currentTime;
 
     const master = ctx.createGain();
     master.gain.value = 0;
     master.connect(ctx.destination);
 
+    // keep it soft but let it breathe through phone speakers
     const filter = ctx.createBiquadFilter();
     filter.type = "lowpass";
-    filter.frequency.value = 480;
-    filter.Q.value = 0.7;
+    filter.frequency.value = 1600;
+    filter.Q.value = 0.6;
     filter.connect(master);
 
-    // pad — a soft, low, calming fifth
+    // pad — a warm calming chord in a register phone speakers can reproduce
     const partials: { freq: number; gain: number }[] = [
-      { freq: 98,    gain: 0.5  }, // G2
-      { freq: 98 * 1.5, gain: 0.3 }, // D3 (fifth)
-      { freq: 196,   gain: 0.16 }, // G3
+      { freq: 196, gain: 0.34 }, // G3
+      { freq: 294, gain: 0.30 }, // D4 (fifth)
+      { freq: 392, gain: 0.22 }, // G4 (octave)
+      { freq: 588, gain: 0.10 }, // D5 shimmer
     ];
     partials.forEach((p, i) => {
       const o = ctx.createOscillator();
@@ -140,7 +155,7 @@ export class SoundscapeEngine {
 
     // breathing swell — LFO modulates the master gain around its base level
     const lfoGain = ctx.createGain();
-    lfoGain.gain.value = 0.03;
+    lfoGain.gain.value = 0.07;
     const lfo = ctx.createOscillator();
     lfo.type = "sine";
     lfo.frequency.value = 0.1; // ~10s breathe cycle
@@ -149,7 +164,7 @@ export class SoundscapeEngine {
     lfo.start(now);
 
     master.gain.setValueAtTime(0, now);
-    master.gain.linearRampToValueAtTime(0.05, now + 2);
+    master.gain.linearRampToValueAtTime(0.2, now + 2);
 
     this.ctx = ctx;
     this.master = master;
@@ -172,13 +187,13 @@ export class SoundscapeEngine {
     };
     if (phase === "breathe") {
       rampLfo(0.1, 1);   // paced ~10s inhale/exhale
-      rampBase(0.06, 1.5);
+      rampBase(0.22, 1.5);
     } else if (phase === "hold") {
       rampLfo(0.04, 2);  // very slow, still
-      rampBase(0.035, 3);
+      rampBase(0.14, 3);
     } else if (phase === "recovery") {
       rampLfo(0.18, 1);  // quicker recovery breaths
-      rampBase(0.055, 1);
+      rampBase(0.2, 1);
     }
   }
 

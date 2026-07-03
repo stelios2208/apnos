@@ -6,7 +6,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import {
   type FxSettings, loadFxSettings, saveFxSettings,
-  vibrate, speak, cancelSpeech, cueText,
+  vibrate, hapticsSupported, speak, cancelSpeech, cueText,
   PHASE_CUES, HOLD_MILESTONES, SoundscapeEngine,
 } from "@/lib/trainer-fx";
 
@@ -82,6 +82,7 @@ function STATrainer() {
   const [saved, setSaved]         = useState(false);
 
   // ── guided-session FX (voice / soundscape / haptics) ──────────────────────
+  const canHaptics  = hapticsSupported();
   const [fx, setFx] = useState<FxSettings>(() => loadFxSettings());
   const fxRef       = useRef(fx);
   fxRef.current     = fx;
@@ -346,11 +347,12 @@ function STATrainer() {
           label={lang === "el" ? "Ήχος" : "Sound"}
         />
         <FxToggle
-          active={fx.haptics}
+          active={canHaptics && fx.haptics}
+          disabled={!canHaptics}
           onClick={() => toggleFx("haptics")}
           on={<Vibrate className="size-4" />}
           off={<Vibrate className="size-4" />}
-          label={lang === "el" ? "Δόνηση" : "Haptics"}
+          label={canHaptics ? (lang === "el" ? "Δόνηση" : "Haptics") : (lang === "el" ? "Η δόνηση δεν υποστηρίζεται σε iPhone" : "Haptics not supported on iPhone")}
         />
       </div>
 
@@ -614,26 +616,36 @@ function STATrainer() {
 
 // ── FxToggle ───────────────────────────────────────────────────────────────
 
-function FxToggle({ active, onClick, on, off, label }: {
+function FxToggle({ active, onClick, on, off, label, disabled = false }: {
   active: boolean;
   onClick: () => void;
   on: React.ReactNode;
   off: React.ReactNode;
   label: string;
+  disabled?: boolean;
 }) {
   return (
     <button
-      onClick={onClick}
+      onClick={disabled ? undefined : onClick}
+      disabled={disabled}
+      title={label}
       aria-label={label}
       aria-pressed={active}
-      className="flex h-11 w-11 items-center justify-center rounded-full transition-all"
+      className="relative flex h-11 w-11 items-center justify-center rounded-full transition-all"
       style={{
         background: active ? "rgba(29,158,117,0.18)" : "rgba(255,255,255,0.04)",
         border: `1px solid ${active ? "rgba(29,158,117,0.45)" : "rgba(255,255,255,0.08)"}`,
         color: active ? "#5DCAA5" : "rgba(255,255,255,0.28)",
+        opacity: disabled ? 0.35 : 1,
       }}
     >
       {active ? on : off}
+      {disabled && (
+        <span
+          className="pointer-events-none absolute h-[1.5px] w-6 rotate-45 rounded-full"
+          style={{ background: "rgba(255,255,255,0.4)" }}
+        />
+      )}
     </button>
   );
 }
