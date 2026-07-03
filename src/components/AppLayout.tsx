@@ -45,7 +45,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const trainActive    = matches(["/train", "/sta-trainer", "/warmup", "/planner", "/coach", "/calendar"]);
   const logActive      = matches(["/log"]);
   const progressActive = matches(["/history"]);
-  const youActive      = matches(["/you", "/equipment", "/rules", "/settings"]);
+  const youActive      = matches(["/you", "/profile", "/equipment", "/rules", "/settings"]);
 
   const sideItems = [
     { to: "/dashboard", label: lang === "el" ? "Αρχική"     : "Home",     icon: LayoutDashboard, active: homeActive },

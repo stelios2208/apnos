@@ -16,6 +16,7 @@ import { Route as StaTrainerRouteImport } from './routes/sta-trainer'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as RulesRouteImport } from './routes/rules'
+import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as PlannerRouteImport } from './routes/planner'
 import { Route as LogRouteImport } from './routes/log'
 import { Route as HistoryRouteImport } from './routes/history'
@@ -63,6 +64,11 @@ const SettingsRoute = SettingsRouteImport.update({
 const RulesRoute = RulesRouteImport.update({
   id: '/rules',
   path: '/rules',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PlannerRoute = PlannerRouteImport.update({
@@ -141,6 +147,7 @@ export interface FileRoutesByFullPath {
   '/history': typeof HistoryRoute
   '/log': typeof LogRoute
   '/planner': typeof PlannerRoute
+  '/profile': typeof ProfileRoute
   '/rules': typeof RulesRoute
   '/settings': typeof SettingsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -162,6 +169,7 @@ export interface FileRoutesByTo {
   '/history': typeof HistoryRoute
   '/log': typeof LogRoute
   '/planner': typeof PlannerRoute
+  '/profile': typeof ProfileRoute
   '/rules': typeof RulesRoute
   '/settings': typeof SettingsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -185,6 +193,7 @@ export interface FileRoutesById {
   '/history': typeof HistoryRoute
   '/log': typeof LogRoute
   '/planner': typeof PlannerRoute
+  '/profile': typeof ProfileRoute
   '/rules': typeof RulesRoute
   '/settings': typeof SettingsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -209,6 +218,7 @@ export interface FileRouteTypes {
     | '/history'
     | '/log'
     | '/planner'
+    | '/profile'
     | '/rules'
     | '/settings'
     | '/sitemap.xml'
@@ -230,6 +240,7 @@ export interface FileRouteTypes {
     | '/history'
     | '/log'
     | '/planner'
+    | '/profile'
     | '/rules'
     | '/settings'
     | '/sitemap.xml'
@@ -252,6 +263,7 @@ export interface FileRouteTypes {
     | '/history'
     | '/log'
     | '/planner'
+    | '/profile'
     | '/rules'
     | '/settings'
     | '/sitemap.xml'
@@ -275,6 +287,7 @@ export interface RootRouteChildren {
   HistoryRoute: typeof HistoryRoute
   LogRoute: typeof LogRoute
   PlannerRoute: typeof PlannerRoute
+  ProfileRoute: typeof ProfileRoute
   RulesRoute: typeof RulesRoute
   SettingsRoute: typeof SettingsRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
@@ -335,6 +348,13 @@ declare module '@tanstack/react-router' {
       path: '/rules'
       fullPath: '/rules'
       preLoaderRoute: typeof RulesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/planner': {
@@ -453,6 +473,7 @@ const rootRouteChildren: RootRouteChildren = {
   HistoryRoute: HistoryRoute,
   LogRoute: LogRoute,
   PlannerRoute: PlannerRoute,
+  ProfileRoute: ProfileRoute,
   RulesRoute: RulesRoute,
   SettingsRoute: SettingsRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
