@@ -1,9 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { type CSSProperties, useEffect, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, ChevronUp,
-  Copy, LayoutList, Loader2, Pencil, Plus, Trash2, X, Zap,
+  Copy, CopyPlus, LayoutList, Loader2, Pencil, Plus, Trash2, X, Zap,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AppLayout } from "@/components/AppLayout";
@@ -129,6 +129,19 @@ function AthletePage() {
   };
 
   const createProgram = () => createProgramForDate(selectedDate);
+
+  const duplicateProgram = (src: TrainingProgram) => {
+    const suffix = lang === "el" ? " (αντίγραφο)" : " (copy)";
+    const copy: TrainingProgram = {
+      ...src,
+      id: crypto.randomUUID(),
+      name: src.name + suffix,
+      sets: src.sets.map((s) => ({ ...s, id: crypto.randomUUID() })),
+    };
+    setActiveId(copy.id);
+    scheduleFlush([copy, ...programs]);
+    toast.success(lang === "el" ? "Δημιουργήθηκε αντίγραφο" : "Duplicate created");
+  };
 
   const updateProgram = (prog: TrainingProgram) => {
     scheduleFlush(programs.map((p) => p.id === prog.id ? prog : p));
@@ -381,6 +394,7 @@ function AthletePage() {
                   onSave={manualSave}
                   onDelete={() => deleteProgram(active.id)}
                   onCopy={() => setShowCopy(true)}
+                  onDuplicate={() => duplicateProgram(active)}
                   onDateChange={setSelectedDate}
                 />
               )}
@@ -640,7 +654,7 @@ function WeekView({ programs, activeDiscipline, lang, weekOffset, onWeekChange, 
   );
 }
 
-function ProgramBuilder({ program, lang, saved, onChange, onSave, onDelete, onCopy, onDateChange }: {
+function ProgramBuilder({ program, lang, saved, onChange, onSave, onDelete, onCopy, onDuplicate, onDateChange }: {
   program: TrainingProgram;
   lang: string;
   saved: boolean;
@@ -648,6 +662,7 @@ function ProgramBuilder({ program, lang, saved, onChange, onSave, onDelete, onCo
   onSave: () => void;
   onDelete: () => void;
   onCopy: () => void;
+  onDuplicate: () => void;
   onDateChange: (date: string) => void;
 }) {
   const update = (partial: Partial<TrainingProgram>) => onChange({ ...program, ...partial });
@@ -784,12 +799,20 @@ function ProgramBuilder({ program, lang, saved, onChange, onSave, onDelete, onCo
       {/* actions */}
       <div className="flex gap-2">
         <button
+          onClick={onDuplicate}
+          title={lang === "el" ? "Διπλότυπο" : "Duplicate"}
+          className="flex items-center justify-center rounded-xl px-3.5 py-3 transition-all"
+          style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.5)" }}
+        >
+          <CopyPlus className="size-3.5" />
+        </button>
+        <button
           onClick={onCopy}
-          className="flex items-center gap-1.5 rounded-xl px-4 py-3 text-xs font-semibold transition-all"
+          title={lang === "el" ? "Αντιγραφή σε αθλητή" : "Copy to athlete"}
+          className="flex items-center justify-center rounded-xl px-3.5 py-3 transition-all"
           style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.5)" }}
         >
           <Copy className="size-3.5" />
-          {lang === "el" ? "Αντιγραφή" : "Copy"}
         </button>
         <button
           onClick={onSave}
@@ -840,6 +863,47 @@ function RowControls({ accentColor, isFirst, isLast, onMove, onDelete }: {
 
 const inputCls = "rounded-lg bg-white/5 px-2 py-2 text-sm text-white outline-none focus:ring-1 focus:ring-[#1D9E75]";
 const labelCls = "text-[0.55rem] font-bold tracking-wider text-white/30";
+
+// Normalise a free-typed time into M:SS — the colon is inserted automatically,
+// so "230" → "2:30", "45" → "0:45", empty stays empty (no forced 00:00).
+function normalizeMMSS(s: string): string {
+  const trimmed = s.trim();
+  if (!trimmed) return "";
+  if (trimmed.includes(":")) {
+    const [m, sec = ""] = trimmed.split(":");
+    const mm = parseInt(m || "0", 10) || 0;
+    const ss = Math.min(59, parseInt(sec || "0", 10) || 0);
+    return `${mm}:${String(ss).padStart(2, "0")}`;
+  }
+  const d = trimmed.replace(/\D/g, "");
+  if (!d) return "";
+  const ss = d.slice(-2).padStart(2, "0");
+  const mm = d.slice(0, -2) || "0";
+  return `${parseInt(mm, 10)}:${ss}`;
+}
+
+/** MM:SS text input that auto-formats the colon on blur; clearable to empty. */
+function TimeField({ value, onChange, className, style, placeholder }: {
+  value: string;
+  onChange: (v: string) => void;
+  className?: string;
+  style?: CSSProperties;
+  placeholder?: string;
+}) {
+  const [display, setDisplay] = useState(value);
+  useEffect(() => { setDisplay(value); }, [value]);
+  return (
+    <input
+      inputMode="numeric"
+      value={display}
+      onChange={(e) => setDisplay(e.target.value.replace(/[^0-9:]/g, ""))}
+      onBlur={() => { const n = normalizeMMSS(display); setDisplay(n); onChange(n); }}
+      className={className}
+      style={style}
+      placeholder={placeholder}
+    />
+  );
+}
 
 // Numeric input that allows temporary empty state during editing, commits on blur
 function NumericInput({ value, onChange, min = 1, defaultVal, className }: {
@@ -898,20 +962,18 @@ function STARow({ row, lang, isFirst, isLast, onChange, onDelete, onMove }: {
       <div className="grid grid-cols-3 gap-2 px-3 pb-2.5">
         <div className="flex flex-col gap-1">
           <label className={labelCls}>{lang === "el" ? "BREATH-UP" : "BREATH-UP"}</label>
-          <input
-            inputMode="text"
+          <TimeField
             value={row.breathUp}
-            onChange={(e) => upd({ breathUp: e.target.value })}
+            onChange={(v) => upd({ breathUp: v })}
             className={`${inputCls} text-center`}
             placeholder="2:00"
           />
         </div>
         <div className="flex flex-col gap-1">
           <label className={labelCls}>{lang === "el" ? "HOLD" : "HOLD"}</label>
-          <input
-            inputMode="text"
+          <TimeField
             value={row.holdTime}
-            onChange={(e) => upd({ holdTime: e.target.value })}
+            onChange={(v) => upd({ holdTime: v })}
             className={`${inputCls} text-center font-bold`}
             style={{ color: accent }}
             placeholder="1:30"
@@ -919,10 +981,9 @@ function STARow({ row, lang, isFirst, isLast, onChange, onDelete, onMove }: {
         </div>
         <div className="flex flex-col gap-1">
           <label className={labelCls}>{lang === "el" ? "RECOVERY" : "RECOVERY"}</label>
-          <input
-            inputMode="text"
+          <TimeField
             value={row.recovery}
-            onChange={(e) => upd({ recovery: e.target.value })}
+            onChange={(v) => upd({ recovery: v })}
             className={`${inputCls} text-center`}
             placeholder="2:00"
           />
@@ -1015,10 +1076,9 @@ function DynRow({ row, lang, isFirst, isLast, onChange, onDelete, onMove }: {
         </div>
         <div className="flex flex-col gap-1">
           <label className={labelCls}>REST</label>
-          <input
-            inputMode="text"
+          <TimeField
             value={row.rest}
-            onChange={(e) => upd({ rest: e.target.value })}
+            onChange={(v) => upd({ rest: v })}
             className={`${inputCls} text-center`}
             placeholder="2:00"
           />
@@ -1079,20 +1139,18 @@ function DepthRow({ row, lang, isFirst, isLast, onChange, onDelete, onMove }: {
         </div>
         <div className="flex flex-col gap-1">
           <label className={labelCls}>{lang === "el" ? "ΣΥΝΟΛ. ΧΡΌΝΟΣ" : "TOTAL TIME"}</label>
-          <input
-            inputMode="text"
+          <TimeField
             value={row.totalTime}
-            onChange={(e) => upd({ totalTime: e.target.value })}
+            onChange={(v) => upd({ totalTime: v })}
             className={`${inputCls} text-center`}
             placeholder="1:30"
           />
         </div>
         <div className="flex flex-col gap-1">
           <label className={labelCls}>SURFACE INT.</label>
-          <input
-            inputMode="text"
+          <TimeField
             value={row.surfaceInterval}
-            onChange={(e) => upd({ surfaceInterval: e.target.value })}
+            onChange={(v) => upd({ surfaceInterval: v })}
             className={`${inputCls} text-center`}
             placeholder="3:00"
           />
