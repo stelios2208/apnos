@@ -9,7 +9,9 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as YouRouteImport } from './routes/you'
 import { Route as WarmupRouteImport } from './routes/warmup'
+import { Route as TrainRouteImport } from './routes/train'
 import { Route as StaTrainerRouteImport } from './routes/sta-trainer'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as SettingsRouteImport } from './routes/settings'
@@ -28,9 +30,19 @@ import { Route as DiveIdRouteImport } from './routes/dive.$id'
 import { Route as DisciplineCodeRouteImport } from './routes/discipline.$code'
 import { Route as CoachAthleteIdRouteImport } from './routes/coach.athlete.$id'
 
+const YouRoute = YouRouteImport.update({
+  id: '/you',
+  path: '/you',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const WarmupRoute = WarmupRouteImport.update({
   id: '/warmup',
   path: '/warmup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TrainRoute = TrainRouteImport.update({
+  id: '/train',
+  path: '/train',
   getParentRoute: () => rootRouteImport,
 } as any)
 const StaTrainerRoute = StaTrainerRouteImport.update({
@@ -133,7 +145,9 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/sta-trainer': typeof StaTrainerRoute
+  '/train': typeof TrainRoute
   '/warmup': typeof WarmupRoute
+  '/you': typeof YouRoute
   '/discipline/$code': typeof DisciplineCodeRoute
   '/dive/$id': typeof DiveIdRoute
   '/coach/': typeof CoachIndexRoute
@@ -152,7 +166,9 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/sta-trainer': typeof StaTrainerRoute
+  '/train': typeof TrainRoute
   '/warmup': typeof WarmupRoute
+  '/you': typeof YouRoute
   '/discipline/$code': typeof DisciplineCodeRoute
   '/dive/$id': typeof DiveIdRoute
   '/coach': typeof CoachIndexRoute
@@ -173,7 +189,9 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/sta-trainer': typeof StaTrainerRoute
+  '/train': typeof TrainRoute
   '/warmup': typeof WarmupRoute
+  '/you': typeof YouRoute
   '/discipline/$code': typeof DisciplineCodeRoute
   '/dive/$id': typeof DiveIdRoute
   '/coach/': typeof CoachIndexRoute
@@ -195,7 +213,9 @@ export interface FileRouteTypes {
     | '/settings'
     | '/sitemap.xml'
     | '/sta-trainer'
+    | '/train'
     | '/warmup'
+    | '/you'
     | '/discipline/$code'
     | '/dive/$id'
     | '/coach/'
@@ -214,7 +234,9 @@ export interface FileRouteTypes {
     | '/settings'
     | '/sitemap.xml'
     | '/sta-trainer'
+    | '/train'
     | '/warmup'
+    | '/you'
     | '/discipline/$code'
     | '/dive/$id'
     | '/coach'
@@ -234,7 +256,9 @@ export interface FileRouteTypes {
     | '/settings'
     | '/sitemap.xml'
     | '/sta-trainer'
+    | '/train'
     | '/warmup'
+    | '/you'
     | '/discipline/$code'
     | '/dive/$id'
     | '/coach/'
@@ -255,18 +279,34 @@ export interface RootRouteChildren {
   SettingsRoute: typeof SettingsRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   StaTrainerRoute: typeof StaTrainerRoute
+  TrainRoute: typeof TrainRoute
   WarmupRoute: typeof WarmupRoute
+  YouRoute: typeof YouRoute
   DisciplineCodeRoute: typeof DisciplineCodeRoute
   DiveIdRoute: typeof DiveIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/you': {
+      id: '/you'
+      path: '/you'
+      fullPath: '/you'
+      preLoaderRoute: typeof YouRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/warmup': {
       id: '/warmup'
       path: '/warmup'
       fullPath: '/warmup'
       preLoaderRoute: typeof WarmupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/train': {
+      id: '/train'
+      path: '/train'
+      fullPath: '/train'
+      preLoaderRoute: typeof TrainRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sta-trainer': {
@@ -417,7 +457,9 @@ const rootRouteChildren: RootRouteChildren = {
   SettingsRoute: SettingsRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   StaTrainerRoute: StaTrainerRoute,
+  TrainRoute: TrainRoute,
   WarmupRoute: WarmupRoute,
+  YouRoute: YouRoute,
   DisciplineCodeRoute: DisciplineCodeRoute,
   DiveIdRoute: DiveIdRoute,
 }
