@@ -127,6 +127,12 @@ function History() {
 
   const exitSelect = () => { setSelectMode(false); setSelected(new Set()); };
 
+  const toggleSelectAll = () => {
+    const allIds = filtered.map((d) => d.id);
+    const allSel = allIds.length > 0 && allIds.every((id) => selected.has(id));
+    setSelected(allSel ? new Set() : new Set(allIds));
+  };
+
   const bulkDelete = async () => {
     const targets = Array.from(selected)
       .map((id) => dives.find((d) => d.id === id))
@@ -172,6 +178,8 @@ function History() {
     }
     return true;
   }), [dives, segment, sessionFilter, fedFilter, discFilter, searchQuery]);
+
+  const allFilteredSelected = filtered.length > 0 && filtered.every((d) => selected.has(d.id));
 
   // month grouping — sorted newest first
   const byMonth = useMemo(() => {
@@ -457,20 +465,29 @@ function History() {
       /* end list view */
       )}
 
-      {/* ── bulk-delete action bar ── */}
+      {/* ── bulk-delete action bar (above the bottom nav) ── */}
       {selectMode && (
         <div
-          className="fixed inset-x-0 bottom-0 z-40 border-t px-4 py-3"
-          style={{ background: "rgba(7,10,16,0.97)", borderColor: "rgba(239,80,80,0.2)", paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
+          className="fixed inset-x-0 bottom-0 z-50 border-t px-4 py-3"
+          style={{ background: "rgba(7,10,16,0.98)", borderColor: "rgba(239,80,80,0.25)", paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
         >
-          <div className="mx-auto flex max-w-2xl items-center gap-3">
+          <div className="mx-auto flex max-w-2xl items-center gap-2">
+            <button
+              onClick={toggleSelectAll}
+              className="rounded-xl px-3 py-2.5 text-xs font-semibold"
+              style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.6)" }}
+            >
+              {allFilteredSelected
+                ? (lang === "el" ? "Καθαρισμός" : "Clear")
+                : (lang === "el" ? "Όλες" : "All")}
+            </button>
             <span className="text-sm font-semibold text-white/70">
               {selected.size} {lang === "el" ? "επιλεγμένες" : "selected"}
             </span>
             <div className="flex-1" />
             <button
               onClick={exitSelect}
-              className="rounded-xl px-4 py-2.5 text-sm font-semibold"
+              className="rounded-xl px-3 py-2.5 text-sm font-semibold"
               style={{ background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.55)" }}
             >
               {lang === "el" ? "Άκυρο" : "Cancel"}
