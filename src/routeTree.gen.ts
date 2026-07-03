@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as WarmupRouteImport } from './routes/warmup'
 import { Route as StaTrainerRouteImport } from './routes/sta-trainer'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as SettingsRouteImport } from './routes/settings'
@@ -27,6 +28,11 @@ import { Route as DiveIdRouteImport } from './routes/dive.$id'
 import { Route as DisciplineCodeRouteImport } from './routes/discipline.$code'
 import { Route as CoachAthleteIdRouteImport } from './routes/coach.athlete.$id'
 
+const WarmupRoute = WarmupRouteImport.update({
+  id: '/warmup',
+  path: '/warmup',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const StaTrainerRoute = StaTrainerRouteImport.update({
   id: '/sta-trainer',
   path: '/sta-trainer',
@@ -127,6 +133,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/sta-trainer': typeof StaTrainerRoute
+  '/warmup': typeof WarmupRoute
   '/discipline/$code': typeof DisciplineCodeRoute
   '/dive/$id': typeof DiveIdRoute
   '/coach/': typeof CoachIndexRoute
@@ -145,6 +152,7 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/sta-trainer': typeof StaTrainerRoute
+  '/warmup': typeof WarmupRoute
   '/discipline/$code': typeof DisciplineCodeRoute
   '/dive/$id': typeof DiveIdRoute
   '/coach': typeof CoachIndexRoute
@@ -165,6 +173,7 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/sta-trainer': typeof StaTrainerRoute
+  '/warmup': typeof WarmupRoute
   '/discipline/$code': typeof DisciplineCodeRoute
   '/dive/$id': typeof DiveIdRoute
   '/coach/': typeof CoachIndexRoute
@@ -186,6 +195,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/sitemap.xml'
     | '/sta-trainer'
+    | '/warmup'
     | '/discipline/$code'
     | '/dive/$id'
     | '/coach/'
@@ -204,6 +214,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/sitemap.xml'
     | '/sta-trainer'
+    | '/warmup'
     | '/discipline/$code'
     | '/dive/$id'
     | '/coach'
@@ -223,6 +234,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/sitemap.xml'
     | '/sta-trainer'
+    | '/warmup'
     | '/discipline/$code'
     | '/dive/$id'
     | '/coach/'
@@ -243,12 +255,20 @@ export interface RootRouteChildren {
   SettingsRoute: typeof SettingsRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   StaTrainerRoute: typeof StaTrainerRoute
+  WarmupRoute: typeof WarmupRoute
   DisciplineCodeRoute: typeof DisciplineCodeRoute
   DiveIdRoute: typeof DiveIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/warmup': {
+      id: '/warmup'
+      path: '/warmup'
+      fullPath: '/warmup'
+      preLoaderRoute: typeof WarmupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/sta-trainer': {
       id: '/sta-trainer'
       path: '/sta-trainer'
@@ -397,6 +417,7 @@ const rootRouteChildren: RootRouteChildren = {
   SettingsRoute: SettingsRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   StaTrainerRoute: StaTrainerRoute,
+  WarmupRoute: WarmupRoute,
   DisciplineCodeRoute: DisciplineCodeRoute,
   DiveIdRoute: DiveIdRoute,
 }
