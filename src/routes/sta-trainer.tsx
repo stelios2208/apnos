@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { X, Check, Trophy, Target, Mic, MicOff, Music, VolumeX, Vibrate, SlidersHorizontal } from "lucide-react";
+import { ArrowLeft, X, Check, Trophy, Target, Mic, MicOff, Music, VolumeX, Vibrate, SlidersHorizontal } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
@@ -26,6 +26,7 @@ interface Round {
   holdSecs: number;
   recoverySecs: number;
   contractions: number;
+  firstContractionSecs: number; // 0 = none recorded
 }
 
 // ── constants ──────────────────────────────────────────────────────────────
@@ -77,6 +78,7 @@ function STATrainer() {
   const [phase, setPhase]               = useState<Phase>("idle");
   const [elapsed, setElapsed]           = useState(0);
   const [contractions, setContractions] = useState(0);
+  const [firstContraction, setFirstContraction] = useState(0); // secs into hold, 0 = none
   const [rounds, setRounds]             = useState<Round[]>([]);
 
   const [showModal, setShowModal] = useState(false);
@@ -179,6 +181,7 @@ function STATrainer() {
     setPhase("breathe");
     setElapsed(0);
     setContractions(0);
+    setFirstContraction(0);
     guideHaptic(60);
     guideVoice("breathe");
     enginePhase("breathe");
@@ -229,19 +232,21 @@ function STATrainer() {
     } else if (phase === "breathe") {
       startHold();
     } else if (phase === "hold") {
+      const at = Math.round((Date.now() - holdStart.current) / 1000);
       setContractions((c) => c + 1);
+      setFirstContraction((f) => (f === 0 ? Math.max(1, at) : f));
       guideHaptic(25);
     } else if (phase === "recovery") {
       const breatheSecs  = Math.round((holdStart.current     - breatheStart.current)  / 1000);
       const holdSecs     = Math.round((recoveryStart.current - holdStart.current)     / 1000);
       const recoverySecs = Math.round((Date.now()            - recoveryStart.current) / 1000);
       setRounds((prev) => [
-        { breatheSecs, holdSecs, recoverySecs, contractions },
+        { breatheSecs, holdSecs, recoverySecs, contractions, firstContractionSecs: firstContraction },
         ...prev,
       ]);
       startBreathe();
     }
-  }, [phase, contractions, startBreathe, startHold, guideHaptic]);
+  }, [phase, contractions, firstContraction, startBreathe, startHold, guideHaptic]);
 
   // ── end session (opens modal, captures in-progress recovery if any) ────
 
@@ -252,13 +257,31 @@ function STATrainer() {
       const breatheSecs  = Math.round((holdStart.current     - breatheStart.current)  / 1000);
       const holdSecs     = Math.round((recoveryStart.current - holdStart.current)     / 1000);
       const recoverySecs = Math.round((Date.now()            - recoveryStart.current) / 1000);
-      setRounds((prev) => [{ breatheSecs, holdSecs, recoverySecs, contractions }, ...prev]);
+      setRounds((prev) => [{ breatheSecs, holdSecs, recoverySecs, contractions, firstContractionSecs: firstContraction }, ...prev]);
     }
     engineRef.current?.stop();
     cueRef.current?.stop();
     setSaved(false);
     setShowModal(true);
-  }, [phase, contractions]);
+  }, [phase, contractions, firstContraction]);
+
+  // ── exit trainer (back) — protect an in-progress session ──────────────────
+  const handleExit = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    e.stopPropagation();
+    const hasData = rounds.length > 0 || phase === "recovery";
+    if (hasData) {
+      // route to the summary so the athlete can save (or discard) first
+      handleEndSession(e);
+      return;
+    }
+    if (phase !== "idle") {
+      const msg = lang === "el" ? "Έξοδος; Η τρέχουσα κράτηση θα χαθεί." : "Exit? Your current hold will be lost.";
+      if (!confirm(msg)) return;
+    }
+    engineRef.current?.stop();
+    cueRef.current?.stop();
+    navigate({ to: "/dashboard" });
+  }, [rounds.length, phase, lang, navigate, handleEndSession]);
 
   // ── save ───────────────────────────────────────────────────────────────
 
@@ -279,6 +302,7 @@ function STATrainer() {
           hold: fmt(r.holdSecs),
           recovery: fmt(r.recoverySecs),
           contractions: r.contractions,
+          firstContraction: r.firstContractionSecs ? fmt(r.firstContractionSecs) : null,
         }))
       )}`,
     ];
@@ -340,6 +364,18 @@ function STATrainer() {
         className="pointer-events-none absolute inset-0 transition-all duration-700"
         style={{ background: PHASE_BG[phase] }}
       />
+
+      {/* back / exit */}
+      <button
+        onMouseDown={(e) => e.stopPropagation()}
+        onTouchStart={(e) => e.stopPropagation()}
+        onClick={handleExit}
+        aria-label={lang === "el" ? "Έξοδος" : "Exit"}
+        className="absolute left-3 top-3 z-20 flex h-11 w-11 items-center justify-center rounded-full transition-all"
+        style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.5)" }}
+      >
+        <ArrowLeft className="size-4" />
+      </button>
 
       {/* guided-session controls */}
       <div
@@ -404,20 +440,34 @@ function STATrainer() {
         </span>
 
         {phase === "hold" && (
-          <div className="flex gap-2">
-            {Array.from({ length: Math.max(contractions, 0) }).map((_, i) => (
-              <span key={i} className="h-3 w-3 rounded-full" style={{ background: "#EF9F27", boxShadow: "0 0 6px #EF9F2780" }} />
-            ))}
-            {contractions === 0 && (
+          <div className="flex flex-col items-center gap-2">
+            {contractions === 0 ? (
               <span className="text-[0.6rem] tracking-widest" style={{ color: "#EF9F2760" }}>
                 {lang === "el" ? "χωρίς συσπάσεις" : "no contractions yet"}
               </span>
+            ) : (
+              <>
+                <div className="flex items-baseline gap-2">
+                  <span className="font-mono text-4xl font-bold tabular-nums leading-none" style={{ color: "#EF9F27" }}>
+                    {contractions}
+                  </span>
+                  <span className="text-[0.55rem] font-bold tracking-widest" style={{ color: "#EF9F2790" }}>
+                    {lang === "el" ? "ΣΥΣΠΑΣΕΙΣ" : "CONTRACTIONS"}
+                  </span>
+                </div>
+                <div className="flex max-w-[220px] flex-wrap justify-center gap-1.5">
+                  {Array.from({ length: Math.min(contractions, 20) }).map((_, i) => (
+                    <span key={i} className="h-2 w-2 rounded-full" style={{ background: "#EF9F27", boxShadow: "0 0 5px #EF9F2770" }} />
+                  ))}
+                </div>
+                {firstContraction > 0 && (
+                  <span className="text-[0.6rem] tracking-widest" style={{ color: "#EF9F2775" }}>
+                    {lang === "el" ? "1η σύσπαση" : "1st contraction"} · {fmt(firstContraction)}
+                  </span>
+                )}
+              </>
             )}
           </div>
-        )}
-
-        {phase === "hold" && contractions > 0 && (
-          <span className="text-xs font-medium" style={{ color: "#EF9F27" }}>×{contractions}</span>
         )}
 
         {subLabel[phase] && (
@@ -492,14 +542,14 @@ function STATrainer() {
                     className="w-full rounded-xl py-4 text-sm font-bold transition-colors"
                     style={{ background: "#1D9E75", color: "#fff" }}
                   >
-                    {lang === "el" ? "Πίνακας" : "Dashboard"}
+                    {lang === "el" ? "Αποθήκευση & Έξοδος" : "Save & Exit"}
                   </button>
                   <button
                     onClick={() => { setShowModal(false); setSaved(false); setRounds([]); setPhase("idle"); setElapsed(0); }}
                     className="w-full rounded-xl py-4 text-sm font-semibold transition-colors"
                     style={{ background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.5)" }}
                   >
-                    {lang === "el" ? "Νέο Session" : "New Session"}
+                    {lang === "el" ? "Νέα Προπόνηση" : "Save & Continue"}
                   </button>
                 </div>
               </div>
@@ -715,12 +765,17 @@ function RoundRow({ round, index, lang, isBest }: { round: Round; index: number;
       <Cell label={lang === "el" ? "ΚΡΤ" : "HLD"} value={fmt(round.holdSecs)}    color={isBest ? "#EF9F27" : "#1D9E75"} />
       <Cell label={lang === "el" ? "ΑΝΚ" : "REC"} value={fmt(round.recoverySecs)} color="#9FE1CB" />
       {round.contractions > 0 && (
-        <div className="ml-auto flex items-center gap-1">
-          {Array.from({ length: Math.min(round.contractions, 8) }).map((_, j) => (
-            <span key={j} className="h-1.5 w-1.5 rounded-full" style={{ background: "#EF9F27" }} />
-          ))}
-          {round.contractions > 8 && (
-            <span className="text-[0.55rem]" style={{ color: "#EF9F27" }}>+{round.contractions - 8}</span>
+        <div className="ml-auto flex flex-col items-end gap-0.5">
+          <div className="flex items-center gap-1.5">
+            <span className="font-mono text-xs font-bold" style={{ color: "#EF9F27" }}>{round.contractions}</span>
+            <span className="text-[0.5rem] font-bold tracking-widest" style={{ color: "#EF9F2780" }}>
+              {lang === "el" ? "ΣΥΣΠ" : "CON"}
+            </span>
+          </div>
+          {round.firstContractionSecs > 0 && (
+            <span className="text-[0.5rem] tracking-wider" style={{ color: "#EF9F2770" }}>
+              {lang === "el" ? "1η" : "1st"} {fmt(round.firstContractionSecs)}
+            </span>
           )}
         </div>
       )}
