@@ -5,9 +5,9 @@ import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  type FxSettings, loadFxSettings, saveFxSettings,
-  vibrate, hapticsSupported, speak, cancelSpeech, cueText,
-  PHASE_CUES, HOLD_MILESTONES, SoundscapeEngine,
+  type FxSettings, type CueKey, loadFxSettings, saveFxSettings,
+  vibrate, hapticsSupported,
+  HOLD_MILESTONES, SoundscapeEngine, CuePlayer,
 } from "@/lib/trainer-fx";
 
 export const Route = createFileRoute("/sta-trainer")({
@@ -87,6 +87,7 @@ function STATrainer() {
   const fxRef       = useRef(fx);
   fxRef.current     = fx;
   const engineRef   = useRef<SoundscapeEngine | null>(null);
+  const cueRef      = useRef<CuePlayer | null>(null);
   const nextMsRef   = useRef(0); // index of next hold milestone to announce
 
   const phaseStart    = useRef<number>(Date.now());
@@ -103,8 +104,10 @@ function STATrainer() {
     return engineRef.current;
   }, []);
 
-  const guideVoice = useCallback((cue: { el: string; en: string }) => {
-    if (fxRef.current.voice) speak(cueText(cue, lang), lang);
+  const guideVoice = useCallback((key: CueKey) => {
+    if (!fxRef.current.voice) return;
+    if (!cueRef.current) cueRef.current = new CuePlayer();
+    cueRef.current.play(key, lang);
   }, [lang]);
 
   const guideHaptic = useCallback((pattern: number | number[]) => {
@@ -122,16 +125,14 @@ function STATrainer() {
     setFx((prev) => {
       const next = { ...prev, [key]: !prev[key] };
       saveFxSettings(next);
-      if (key === "sound") {
-        if (!next.sound) engineRef.current?.stop();
-      }
-      if (key === "voice" && !next.voice) cancelSpeech();
+      if (key === "sound" && !next.sound) engineRef.current?.stop();
+      if (key === "voice" && !next.voice) cueRef.current?.stop();
       return next;
     });
   }, []);
 
-  // stop audio + speech on unmount
-  useEffect(() => () => { engineRef.current?.stop(); cancelSpeech(); }, []);
+  // stop audio + cues on unmount
+  useEffect(() => () => { engineRef.current?.stop(); cueRef.current?.stop(); }, []);
 
   // ── tick ────────────────────────────────────────────────────────────────
 
@@ -143,7 +144,7 @@ function STATrainer() {
     return () => clearInterval(id);
   }, [phase]);
 
-  // ── spoken milestone cues during a hold ───────────────────────────────────
+  // ── milestone cues during a hold ──────────────────────────────────────────
   useEffect(() => {
     if (phase !== "hold") return;
     const idx = nextMsRef.current;
@@ -151,7 +152,10 @@ function STATrainer() {
     const ms = HOLD_MILESTONES[idx]!;
     if (elapsed >= ms.at) {
       nextMsRef.current = idx + 1;
-      if (fxRef.current.voice) speak(lang === "el" ? ms.el : ms.en, lang);
+      if (fxRef.current.voice) {
+        if (!cueRef.current) cueRef.current = new CuePlayer();
+        cueRef.current.play(ms.key, lang);
+      }
       if (fxRef.current.haptics) vibrate(20);
     }
   }, [elapsed, phase, lang]);
@@ -165,7 +169,7 @@ function STATrainer() {
     setElapsed(0);
     setContractions(0);
     guideHaptic(60);
-    guideVoice(PHASE_CUES.breathe);
+    guideVoice("breathe");
     enginePhase("breathe");
   }, [guideHaptic, guideVoice, enginePhase]);
 
@@ -176,7 +180,7 @@ function STATrainer() {
     setElapsed(0);
     nextMsRef.current = 0;
     guideHaptic([40, 60, 40]);
-    guideVoice(PHASE_CUES.hold);
+    guideVoice("hold");
     enginePhase("hold");
   }, [guideHaptic, guideVoice, enginePhase]);
 
@@ -186,7 +190,7 @@ function STATrainer() {
     setPhase("recovery");
     setElapsed(0);
     guideHaptic([120, 80, 120]);
-    guideVoice(PHASE_CUES.recovery);
+    guideVoice("recovery");
     enginePhase("recovery");
   }, [guideHaptic, guideVoice, enginePhase]);
 
@@ -240,7 +244,7 @@ function STATrainer() {
       setRounds((prev) => [{ breatheSecs, holdSecs, recoverySecs, contractions }, ...prev]);
     }
     engineRef.current?.stop();
-    cancelSpeech();
+    cueRef.current?.stop();
     setSaved(false);
     setShowModal(true);
   }, [phase, contractions]);

@@ -40,52 +40,63 @@ export function vibrate(pattern: number | number[]): void {
   }
 }
 
-// ── Voice guidance ───────────────────────────────────────────────────────────
+// ── Custom voice cues ────────────────────────────────────────────────────────
+// Plays pre-recorded audio clips (the owner's own recordings / voiceover) so the
+// guidance sounds human, not robotic. Drop files at:
+//   public/audio/cues/<lang>/<key>.mp3   e.g. public/audio/cues/el/hold.mp3
+// Missing files simply don't play — no synthetic fallback.
 
-export function speak(text: string, lang: string): void {
-  if (typeof window === "undefined" || !window.speechSynthesis) return;
-  try {
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang   = lang === "el" ? "el-GR" : "en-GB";
-    u.rate   = 0.88; // slightly slow = calming
-    u.pitch  = 1;
-    u.volume = 1;
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(u);
-  } catch { /* ignore */ }
-}
+export type CueKey =
+  | "breathe" | "hold" | "recovery"
+  | "m30" | "m60" | "m90" | "m120" | "m150" | "m180" | "m210" | "m240" | "m300";
 
-export function cancelSpeech(): void {
-  if (typeof window !== "undefined" && window.speechSynthesis) {
-    try { window.speechSynthesis.cancel(); } catch { /* ignore */ }
-  }
-}
-
-// ── Cue phrases (EL / EN) ────────────────────────────────────────────────────
-
-type Cue = { el: string; en: string };
-
-export const PHASE_CUES: Record<"breathe" | "hold" | "recovery", Cue> = {
-  breathe:  { el: "Χαλάρωσε. Ανάπνευσε αργά και βαθιά.", en: "Relax. Breathe slowly and deeply." },
-  hold:     { el: "Τελευταία αναπνοή. Κράτα.",           en: "Final breath. Hold." },
-  recovery: { el: "Ανάκαμψη. Πάρε τις αναπνοές σου.",    en: "Recovery. Take your recovery breaths." },
-};
-
-// Spoken at the moment hold time crosses each threshold (seconds).
-export const HOLD_MILESTONES: { at: number; el: string; en: string }[] = [
-  { at: 30,  el: "Χαλάρωσε τους ώμους.",          en: "Relax your shoulders." },
-  { at: 60,  el: "Ένα λεπτό. Μείνε ήρεμος.",       en: "One minute. Stay calm." },
-  { at: 90,  el: "Άσε το σώμα βαρύ. Πάει τέλεια.", en: "Let your body go heavy. Doing great." },
-  { at: 120, el: "Δύο λεπτά. Ήρεμη σκέψη.",        en: "Two minutes. Quiet your mind." },
-  { at: 150, el: "Χαλάρωσε το πρόσωπο.",           en: "Soften your face." },
-  { at: 180, el: "Τρία λεπτά. Είσαι σε ζώνη.",      en: "Three minutes. You're in the zone." },
-  { at: 210, el: "Συνέχισε, όλα ήρεμα.",           en: "Keep going, all calm." },
-  { at: 240, el: "Τέσσερα λεπτά. Εντυπωσιακό.",     en: "Four minutes. Incredible." },
-  { at: 300, el: "Πέντε λεπτά. Απίστευτο.",         en: "Five minutes. Unbelievable." },
+// Hold-time thresholds (seconds) → which cue clip to play when crossed.
+export const HOLD_MILESTONES: { at: number; key: CueKey }[] = [
+  { at: 30,  key: "m30"  },
+  { at: 60,  key: "m60"  },
+  { at: 90,  key: "m90"  },
+  { at: 120, key: "m120" },
+  { at: 150, key: "m150" },
+  { at: 180, key: "m180" },
+  { at: 210, key: "m210" },
+  { at: 240, key: "m240" },
+  { at: 300, key: "m300" },
 ];
 
-export function cueText(cue: Cue, lang: string): string {
-  return lang === "el" ? cue.el : cue.en;
+export function cueSrc(key: CueKey, lang: string): string {
+  return `/audio/cues/${lang === "el" ? "el" : "en"}/${key}.mp3`;
+}
+
+export class CuePlayer {
+  private cache = new Map<string, HTMLAudioElement>();
+  private current: HTMLAudioElement | null = null;
+
+  play(key: CueKey, lang: string): void {
+    if (typeof Audio === "undefined") return;
+    const src = cueSrc(key, lang);
+    let el = this.cache.get(src);
+    if (!el) {
+      el = new Audio(src);
+      el.preload = "auto";
+      this.cache.set(src, el);
+    }
+    // cut off any currently-playing cue so they don't overlap
+    if (this.current && this.current !== el) {
+      try { this.current.pause(); this.current.currentTime = 0; } catch { /* ignore */ }
+    }
+    this.current = el;
+    try {
+      el.currentTime = 0;
+      void el.play().catch(() => { /* missing file or blocked → silent */ });
+    } catch { /* ignore */ }
+  }
+
+  stop(): void {
+    if (this.current) {
+      try { this.current.pause(); } catch { /* ignore */ }
+    }
+    this.current = null;
+  }
 }
 
 // ── Soundscape engine ────────────────────────────────────────────────────────
