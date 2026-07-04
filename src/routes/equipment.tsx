@@ -1,13 +1,30 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Plus, Trash2, RotateCcw } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import {
+  Plus, Trash2, RotateCcw, Check, Backpack,
+  Glasses, Footprints, Shirt, Wind, Weight, Cable, Eye, Droplet, Droplets, GlassWater, CircleDot,
+} from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { useI18n } from "@/lib/i18n";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
+
+const ITEM_ICON: Record<string, LucideIcon> = {
+  mask: Glasses,
+  fins: Footprints,
+  wetsuit: Shirt,
+  noseclip: Wind,
+  weights: Weight,
+  snorkel: Wind,
+  lanyard: Cable,
+  swimgoggles: Glasses,
+  depthgoggles: Eye,
+  slippers: Footprints,
+  shampoo: Droplet,
+  soap: Droplets,
+  water: GlassWater,
+  towel: Droplets,
+};
 
 export const Route = createFileRoute("/equipment")({
   head: () => ({ meta: [{ title: "Equipment — Apnos" }] }),
@@ -115,59 +132,78 @@ function Equipment() {
 
   const done = items.filter((it) => it.checked).length;
   const pct = items.length ? Math.round((done / items.length) * 100) : 0;
+  const allDone = items.length > 0 && done === items.length;
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">{t("equip.title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("equip.sub")}</p>
-      </div>
-
-      <div className="glass-card space-y-3 rounded-2xl p-5">
-        <div className="flex items-center justify-between text-sm">
-          <span className="font-medium text-primary">{t("equip.progress", { done, total: items.length })}</span>
-          <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs" onClick={resetChecks}>
-            <RotateCcw className="size-3.5" /> {t("equip.reset")}
-          </Button>
+    <div className="space-y-4">
+      <div className="flex items-center gap-3">
+        <div className="flex h-11 w-11 items-center justify-center rounded-full" style={{ background: "rgba(239,159,39,0.14)", color: "#EF9F27" }}>
+          <Backpack className="size-5" />
         </div>
-        <Progress value={pct} />
+        <div>
+          <h1 className="text-2xl font-bold text-white">{t("equip.title")}</h1>
+          <p className="text-xs text-white/35">{t("equip.sub")}</p>
+        </div>
       </div>
 
-      <ul className="space-y-2">
-        {items.map((it) => (
-          <li key={it.id} className="glass-card flex items-center gap-3 rounded-xl px-4 py-3">
-            <Checkbox id={it.id} checked={it.checked} onCheckedChange={() => toggle(it.id)} />
-            <label
-              htmlFor={it.id}
-              className={cn(
-                "flex-1 cursor-pointer text-sm",
-                it.checked && "text-muted-foreground line-through",
-              )}
-            >
-              {it.label}
-              {it.hint && (
-                <span className="mt-0.5 block text-[0.68rem] font-normal text-muted-foreground no-underline">
-                  {it.hint}
-                </span>
-              )}
-            </label>
-            <Button variant="ghost" size="icon" className="size-7" onClick={() => remove(it.id)} aria-label={t("common.delete")}>
-              <Trash2 className="size-3.5 text-muted-foreground" />
-            </Button>
-          </li>
-        ))}
-      </ul>
+      {/* progress */}
+      <div className="rounded-2xl p-4" style={{ background: "#0d1320", border: "1px solid rgba(255,255,255,0.06)" }}>
+        <div className="mb-2 flex items-center justify-between">
+          <span className="text-sm font-bold" style={{ color: allDone ? "#5DCAA5" : "#EF9F27" }}>
+            {allDone ? (lang === "el" ? "Έτοιμος! 🎒" : "All packed! 🎒") : `${done}/${items.length}`}
+          </span>
+          <button onClick={resetChecks} className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[0.7rem] font-semibold text-white/45 hover:text-white/70" style={{ background: "rgba(255,255,255,0.04)" }}>
+            <RotateCcw className="size-3.5" /> {t("equip.reset")}
+          </button>
+        </div>
+        <div className="h-2 w-full overflow-hidden rounded-full" style={{ background: "rgba(255,255,255,0.06)" }}>
+          <div className="h-full rounded-full transition-all duration-300" style={{ width: `${pct}%`, background: allDone ? "#5DCAA5" : "#EF9F27" }} />
+        </div>
+      </div>
 
+      {/* items */}
+      <div className="space-y-2">
+        {items.map((it) => {
+          const Icon = ITEM_ICON[it.id] ?? CircleDot;
+          return (
+            <div
+              key={it.id}
+              onClick={() => toggle(it.id)}
+              className="flex cursor-pointer items-center gap-3 rounded-xl px-3.5 py-3 transition-all active:scale-[0.99]"
+              style={{ background: "#0d1320", border: `1px solid ${it.checked ? "rgba(29,158,117,0.3)" : "rgba(255,255,255,0.05)"}` }}
+            >
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full" style={{ background: it.checked ? "rgba(29,158,117,0.15)" : "rgba(255,255,255,0.04)", color: it.checked ? "#5DCAA5" : "rgba(255,255,255,0.35)" }}>
+                <Icon className="size-4" />
+              </div>
+              <div className={cn("min-w-0 flex-1", it.checked && "opacity-50")}>
+                <p className={cn("text-sm text-white", it.checked && "line-through")}>{it.label}</p>
+                {it.hint && <p className="mt-0.5 text-[0.65rem] text-white/35">{it.hint}</p>}
+              </div>
+              <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full transition-all" style={{ background: it.checked ? "#1D9E75" : "transparent", border: it.checked ? "none" : "1.5px solid rgba(255,255,255,0.15)" }}>
+                {it.checked && <Check className="size-3.5 text-white" />}
+              </div>
+              {it.custom && (
+                <button onClick={(e) => { e.stopPropagation(); remove(it.id); }} className="rounded-lg p-1.5 text-white/20 hover:text-red-400/70" aria-label={t("common.delete")}>
+                  <Trash2 className="size-3.5" />
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* add custom */}
       <div className="flex gap-2">
-        <Input
+        <input
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && add()}
           placeholder={t("equip.addPlaceholder")}
+          className="flex-1 rounded-xl bg-white/5 px-3 py-2.5 text-sm text-white outline-none focus:ring-1 focus:ring-[#1D9E75] placeholder:text-white/30"
         />
-        <Button variant="hero" size="icon" onClick={add} aria-label={t("common.add")}>
+        <button onClick={add} aria-label={t("common.add")} className="flex size-11 shrink-0 items-center justify-center rounded-xl" style={{ background: "#1D9E75", color: "#fff" }}>
           <Plus className="size-5" />
-        </Button>
+        </button>
       </div>
     </div>
   );
