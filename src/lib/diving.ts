@@ -45,6 +45,20 @@ export function disciplineName(code: DisciplineCode, lang: "el" | "en"): string 
 
 export type SessionType = "training" | "competition";
 
+// STA-specific session conditions, stored in the dives.conditions JSONB column.
+export type StaPosture = "" | "supine" | "seated" | "float";
+export type StaEnvironment = "" | "dry" | "wet";
+export type StaFace = "" | "noseclip" | "mask" | "goggles";
+
+export interface StaConditions {
+  posture?: StaPosture;
+  environment?: StaEnvironment;
+  face?: StaFace;
+  roomTemp?: number | null;      // °C, for dry training
+  breatheInSec?: number | null;  // breathe-up inhale seconds (e.g. 3)
+  breatheOutSec?: number | null; // breathe-up exhale seconds (e.g. 3)
+}
+
 export interface Dive {
   id: string;
   user_id: string;
@@ -67,6 +81,7 @@ export interface Dive {
   fins_model: string | null;
   foot_pocket: string | null;
   water_temp: number | null;
+  conditions: StaConditions | null;
   is_personal_best: boolean;
   created_at: string;
 }

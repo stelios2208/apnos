@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import type { Dive, DisciplineCode, Federation, SessionType } from "./diving";
+import type { Dive, DisciplineCode, Federation, SessionType, StaConditions } from "./diving";
 import { DISCIPLINE_MAP, formatResult } from "./diving";
 
 export interface NewDiveInput {
@@ -22,6 +22,15 @@ export interface NewDiveInput {
   fins_model: string | null;
   foot_pocket: string | null;
   water_temp: number | null;
+  conditions?: StaConditions | null;
+}
+
+// PostgREST reports an unknown column with code PGRST204; before the
+// dives.conditions migration is applied we drop that field and retry so
+// logging never breaks.
+function isMissingConditionsColumn(err: { code?: string; message?: string } | null): boolean {
+  if (!err) return false;
+  return err.code === "PGRST204" && /conditions/i.test(err.message ?? "");
 }
 
 export async function fetchDives(userId: string): Promise<Dive[]> {
@@ -68,11 +77,12 @@ async function recomputePersonalBest(userId: string, discipline: DisciplineCode)
 }
 
 export async function createDive(userId: string, input: NewDiveInput): Promise<Dive> {
-  const { data, error } = await supabase
-    .from("dives")
-    .insert({ ...input, user_id: userId, is_personal_best: false })
-    .select("*")
-    .single();
+  const payload = { ...input, user_id: userId, is_personal_best: false };
+  let { data, error } = await supabase.from("dives").insert(payload).select("*").single();
+  if (error && isMissingConditionsColumn(error)) {
+    const { conditions: _drop, ...rest } = payload;
+    ({ data, error } = await supabase.from("dives").insert(rest).select("*").single());
+  }
   if (error) throw error;
 
   await recomputePersonalBest(userId, input.discipline);
@@ -92,12 +102,11 @@ export async function updateDive(
   id: string,
   input: NewDiveInput,
 ): Promise<Dive> {
-  const { data, error } = await supabase
-    .from("dives")
-    .update(input)
-    .eq("id", id)
-    .select("*")
-    .single();
+  let { data, error } = await supabase.from("dives").update(input).eq("id", id).select("*").single();
+  if (error && isMissingConditionsColumn(error)) {
+    const { conditions: _drop, ...rest } = input;
+    ({ data, error } = await supabase.from("dives").update(rest).eq("id", id).select("*").single());
+  }
   if (error) throw error;
   await recomputePersonalBest(userId, input.discipline);
   return data as Dive;

@@ -17,6 +17,9 @@ import {
   isTimeDiscipline,
   type DisciplineCode,
   type Federation,
+  type StaPosture,
+  type StaEnvironment,
+  type StaFace,
 } from "@/lib/diving";
 import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
@@ -83,6 +86,14 @@ function LogDive() {
   const [footPocket, setFootPocket] = useState("");
   const [waterTemp, setWaterTemp] = useState("");
 
+  // STA-only session conditions
+  const [posture, setPosture] = useState<StaPosture>("");
+  const [environment, setEnvironment] = useState<StaEnvironment>("");
+  const [face, setFace] = useState<StaFace>("");
+  const [roomTemp, setRoomTemp] = useState("");
+  const [breatheIn, setBreatheIn] = useState("");
+  const [breatheOut, setBreatheOut] = useState("");
+
   // Derive fins category from discipline — no manual override needed
   const finsCategory = (d: DisciplineCode): "monofin" | "bifins" | "none" => {
     if (["DYN", "CWT"].includes(d))   return "monofin";
@@ -111,6 +122,13 @@ function LogDive() {
     setFinsModel(editing.fins_model ?? "");
     setFootPocket(editing.foot_pocket ?? "");
     setWaterTemp(editing.water_temp != null ? String(editing.water_temp) : "");
+    const c = editing.conditions ?? {};
+    setPosture(c.posture ?? "");
+    setEnvironment(c.environment ?? "");
+    setFace(c.face ?? "");
+    setRoomTemp(c.roomTemp != null ? String(c.roomTemp) : "");
+    setBreatheIn(c.breatheInSec != null ? String(c.breatheInSec) : "");
+    setBreatheOut(c.breatheOutSec != null ? String(c.breatheOutSec) : "");
   }, [editing]);
 
   const mutation = useMutation({
@@ -138,6 +156,22 @@ function LogDive() {
       toast.error(t("log.enterValid"));
       return;
     }
+    const staConditions =
+      discipline === "STA"
+        ? {
+            posture,
+            environment,
+            face,
+            roomTemp: roomTemp ? Number(roomTemp) : null,
+            breatheInSec: breatheIn ? Number(breatheIn) : null,
+            breatheOutSec: breatheOut ? Number(breatheOut) : null,
+          }
+        : null;
+    const hasConditions =
+      !!staConditions &&
+      (staConditions.posture || staConditions.environment || staConditions.face ||
+        staConditions.roomTemp != null || staConditions.breatheInSec != null || staConditions.breatheOutSec != null);
+
     mutation.mutate({
       discipline,
       result,
@@ -156,8 +190,9 @@ function LogDive() {
       fins_type: finsCat !== "none" ? finsCat : null,
       fins_brand: finsBrand || null,
       fins_model: finsModel || null,
-      foot_pocket: footPocket || null,
       water_temp: waterTemp ? Number(waterTemp) : null,
+      foot_pocket: footPocket || null,
+      conditions: hasConditions ? staConditions : null,
     });
   };
 
@@ -425,10 +460,116 @@ function LogDive() {
           )}
         </div>
 
+        {/* STA session conditions — only for static apnea */}
+        {discipline === "STA" && (
+          <div className="glass-card space-y-4 rounded-2xl p-5">
+            <span className="text-sm font-semibold" style={{ color: "#5DCAA5" }}>
+              {lang === "el" ? "Συνθήκες Στατικής" : "Static Conditions"}
+            </span>
+
+            <div className="space-y-1.5">
+              <Label>{lang === "el" ? "Περιβάλλον" : "Environment"}</Label>
+              <PillGroup
+                value={environment}
+                onChange={setEnvironment}
+                options={[
+                  { value: "dry", label: lang === "el" ? "Ξηρή" : "Dry" },
+                  { value: "wet", label: lang === "el" ? "Υγρή" : "Wet" },
+                ]}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>{lang === "el" ? "Στάση" : "Posture"}</Label>
+              <PillGroup
+                value={posture}
+                onChange={setPosture}
+                options={[
+                  { value: "supine", label: lang === "el" ? "Ανάσκελα" : "Supine" },
+                  { value: "seated", label: lang === "el" ? "Καθιστή" : "Seated" },
+                  { value: "float",  label: lang === "el" ? "Επίπλευση" : "Float" },
+                ]}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>{lang === "el" ? "Πρόσωπο" : "Face"}</Label>
+              <PillGroup
+                value={face}
+                onChange={setFace}
+                options={[
+                  { value: "noseclip", label: lang === "el" ? "Κλιπ μύτης" : "Noseclip" },
+                  { value: "mask",     label: lang === "el" ? "Μάσκα" : "Mask" },
+                  { value: "goggles",  label: lang === "el" ? "Γυαλάκια" : "Goggles" },
+                ]}
+              />
+            </div>
+
+            {environment === "dry" && (
+              <div className="space-y-1.5">
+                <Label htmlFor="room-temp">{lang === "el" ? "Θερμοκρασία χώρου (°C)" : "Room temperature (°C)"}</Label>
+                <Input id="room-temp" type="number" inputMode="decimal" step="0.5"
+                  value={roomTemp} onChange={(e) => setRoomTemp(e.target.value)} placeholder="e.g. 24" />
+              </div>
+            )}
+            {environment === "wet" && (
+              <p className="text-[0.7rem] text-muted-foreground">
+                {lang === "el" ? "Θερμοκρασία νερού: συμπλήρωσέ την στον Εξοπλισμό & Συνθήκες πιο πάνω." : "Water temperature: set it in Equipment & Conditions above."}
+              </p>
+            )}
+
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label>{lang === "el" ? "Ρυθμός breathe-up (δευτ.)" : "Breathe-up rhythm (sec)"}</Label>
+                <button
+                  type="button"
+                  onClick={() => { setBreatheIn("3"); setBreatheOut("3"); }}
+                  className="rounded-md px-2 py-1 text-[0.6rem] font-bold"
+                  style={{ background: "rgba(29,158,117,0.15)", color: "#5DCAA5" }}
+                >
+                  3 / 3
+                </button>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Input type="number" inputMode="numeric" min="0" step="1"
+                  value={breatheIn} onChange={(e) => setBreatheIn(e.target.value)}
+                  placeholder={lang === "el" ? "Εισπνοή" : "Inhale"} />
+                <Input type="number" inputMode="numeric" min="0" step="1"
+                  value={breatheOut} onChange={(e) => setBreatheOut(e.target.value)}
+                  placeholder={lang === "el" ? "Εκπνοή" : "Exhale"} />
+              </div>
+            </div>
+          </div>
+        )}
+
         <Button type="submit" variant="hero" size="lg" className="w-full" disabled={mutation.isPending}>
           {mutation.isPending ? t("common.saving") : editId ? t("log.update") : t("log.save")}
         </Button>
       </form>
+    </div>
+  );
+}
+
+function PillGroup<T extends string>({ value, onChange, options }: {
+  value: T;
+  onChange: (v: T) => void;
+  options: { value: T; label: string }[];
+}) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {options.map((o) => (
+        <button
+          key={o.value}
+          type="button"
+          onClick={() => onChange(value === o.value ? ("" as T) : o.value)}
+          className="rounded-lg px-3 py-2 text-xs font-semibold transition-all"
+          style={value === o.value
+            ? { background: "rgba(29,158,117,0.2)", color: "#5DCAA5", border: "1px solid rgba(29,158,117,0.4)" }
+            : { background: "rgba(255,255,255,0.03)", color: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.08)" }}
+        >
+          {o.label}
+        </button>
+      ))}
     </div>
   );
 }

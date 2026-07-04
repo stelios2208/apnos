@@ -19,20 +19,71 @@ export const Route = createFileRoute("/equipment")({
 });
 
 const STORAGE = "apnos.equipment";
+const VERSION = 2;
 
 interface Item {
   id: string;
   label: string;
   checked: boolean;
   custom?: boolean;
+  hint?: string;
 }
 
-const defaultsEl = ["Μάσκα", "Πτερύγια / Μονοπέδιλο", "Στολή", "Κλιπ μύτης", "Βαρίδια / Ζώνη", "Snorkel", "Λάστιχο λαιμού (lanyard)", "Νερό", "Πετσέτα"];
-const defaultsEn = ["Mask", "Fins / Monofin", "Wetsuit", "Noseclip", "Weights / Belt", "Snorkel", "Lanyard", "Water", "Towel"];
+// Stable ids so newly-added standard items can be merged into lists that
+// existing users already saved. "Lanyard" stays English on purpose.
+const DEFAULTS: { id: string; el: string; en: string; hint_el?: string; hint_en?: string }[] = [
+  { id: "mask",         el: "Μάσκα",                 en: "Mask" },
+  { id: "fins",         el: "Πτερύγια / Μονοπέδιλο", en: "Fins / Monofin" },
+  { id: "wetsuit",      el: "Στολή",                 en: "Wetsuit" },
+  { id: "noseclip",     el: "Κλιπ μύτης",            en: "Noseclip" },
+  { id: "weights",      el: "Βαρίδια / Ζώνη",        en: "Weights / Belt" },
+  { id: "snorkel",      el: "Snorkel",               en: "Snorkel" },
+  { id: "lanyard",      el: "Lanyard",               en: "Lanyard" },
+  { id: "swimgoggles",  el: "Γυαλάκια κολύμβησης",   en: "Swim goggles" },
+  { id: "depthgoggles", el: "Γυαλάκια βάθους (fluid)", en: "Depth goggles (fluid)" },
+  { id: "slippers",     el: "Παντόφλες",             en: "Slippers" },
+  { id: "shampoo",      el: "Σαμπουάν",              en: "Shampoo", hint_el: "βοηθά να φορέσεις τη στολή", hint_en: "helps slide the wetsuit on" },
+  { id: "soap",         el: "Σαπούνι",               en: "Soap",    hint_el: "βοηθά να φορέσεις τη στολή", hint_en: "helps slide the wetsuit on" },
+  { id: "water",        el: "Νερό",                  en: "Water" },
+  { id: "towel",        el: "Πετσέτα",               en: "Towel" },
+];
 
 function buildDefaults(lang: "el" | "en"): Item[] {
-  const labels = lang === "el" ? defaultsEl : defaultsEn;
-  return labels.map((label, i) => ({ id: `d${i}`, label, checked: false }));
+  return DEFAULTS.map((d) => ({
+    id: d.id,
+    label: lang === "el" ? d.el : d.en,
+    hint: lang === "el" ? d.hint_el : d.hint_en,
+    checked: false,
+  }));
+}
+
+// Load saved list, migrating legacy shapes and merging any newly-added defaults.
+function loadItems(lang: "el" | "en"): Item[] {
+  const defaults = buildDefaults(lang);
+  try {
+    const raw = localStorage.getItem(STORAGE);
+    if (!raw) return defaults;
+    const parsed = JSON.parse(raw);
+    // legacy v1: a raw array with generated ids d0.. — rebuild, keep customs
+    if (Array.isArray(parsed)) {
+      const customs = (parsed as Item[]).filter((it) => it.custom);
+      return [...defaults, ...customs];
+    }
+    if (parsed && Array.isArray(parsed.items)) {
+      const items = parsed.items as Item[];
+      const have = new Set(items.map((i) => i.id));
+      const missing = defaults.filter((d) => !have.has(d.id));
+      // refresh hints on existing default items (labels stay as saved)
+      const withHints = items.map((it) => {
+        const d = DEFAULTS.find((x) => x.id === it.id);
+        return d ? { ...it, hint: lang === "el" ? d.hint_el : d.hint_en } : it;
+      });
+      return [...withHints, ...missing];
+    }
+    return defaults;
+  } catch {
+    return defaults;
+  }
 }
 
 function Equipment() {
@@ -42,22 +93,13 @@ function Equipment() {
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE);
-      if (raw) {
-        setItems(JSON.parse(raw));
-      } else {
-        setItems(buildDefaults(lang));
-      }
-    } catch {
-      setItems(buildDefaults(lang));
-    }
+    setItems(loadItems(lang));
     setLoaded(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    if (loaded) localStorage.setItem(STORAGE, JSON.stringify(items));
+    if (loaded) localStorage.setItem(STORAGE, JSON.stringify({ version: VERSION, items }));
   }, [items, loaded]);
 
   const toggle = (id: string) =>
@@ -103,6 +145,11 @@ function Equipment() {
               )}
             >
               {it.label}
+              {it.hint && (
+                <span className="mt-0.5 block text-[0.68rem] font-normal text-muted-foreground no-underline">
+                  {it.hint}
+                </span>
+              )}
             </label>
             <Button variant="ghost" size="icon" className="size-7" onClick={() => remove(it.id)} aria-label={t("common.delete")}>
               <Trash2 className="size-3.5 text-muted-foreground" />

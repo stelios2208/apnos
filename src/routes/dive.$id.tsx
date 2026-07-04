@@ -228,6 +228,18 @@ function DiveDetail() {
     ? { negative: "Αρνητική", neutral: "Ουδέτερη", positive: "Θετική" }
     : { negative: "Negative", neutral: "Neutral", positive: "Positive" };
 
+  const c = dive.conditions ?? null;
+  const hasSta = !!c && (!!c.posture || !!c.environment || !!c.face ||
+    c.roomTemp != null || c.breatheInSec != null || c.breatheOutSec != null);
+  const postureLabel: Record<string, string> = lang === "el"
+    ? { supine: "Ανάσκελα", seated: "Καθιστή", float: "Επίπλευση" }
+    : { supine: "Supine", seated: "Seated", float: "Float" };
+  const envLabel: Record<string, string> = lang === "el"
+    ? { dry: "Ξηρή", wet: "Υγρή" } : { dry: "Dry", wet: "Wet" };
+  const faceLabel: Record<string, string> = lang === "el"
+    ? { noseclip: "Κλιπ μύτης", mask: "Μάσκα", goggles: "Γυαλάκια" }
+    : { noseclip: "Noseclip", mask: "Mask", goggles: "Goggles" };
+
   return (
     <div className="space-y-5">
       {/* back + prev/next */}
@@ -333,6 +345,19 @@ function DiveDetail() {
           {dive.fins_brand && <Row label={t("log.finsBrand")} value={dive.fins_brand} />}
           {dive.fins_model && <Row label={t("log.finsModel")} value={dive.fins_model} />}
           {dive.foot_pocket && <Row label={t("log.footPocket")} value={dive.foot_pocket} />}
+        </Section>
+      )}
+
+      {/* STA session conditions */}
+      {hasSta && c && (
+        <Section title={lang === "el" ? "ΣΥΝΘΗΚΕΣ ΣΤΑΤΙΚΗΣ" : "STATIC CONDITIONS"}>
+          {c.environment && <Row label={lang === "el" ? "Περιβάλλον" : "Environment"} value={envLabel[c.environment] ?? c.environment} />}
+          {c.posture && <Row label={lang === "el" ? "Στάση" : "Posture"} value={postureLabel[c.posture] ?? c.posture} />}
+          {c.face && <Row label={lang === "el" ? "Πρόσωπο" : "Face"} value={faceLabel[c.face] ?? c.face} />}
+          {c.roomTemp != null && <Row label={lang === "el" ? "Θερμοκρασία χώρου" : "Room temp"} value={`${c.roomTemp} °C`} />}
+          {(c.breatheInSec != null || c.breatheOutSec != null) && (
+            <Row label={lang === "el" ? "Ρυθμός breathe-up" : "Breathe-up"} value={`${c.breatheInSec ?? "–"}s / ${c.breatheOutSec ?? "–"}s`} />
+          )}
         </Section>
       )}
 
