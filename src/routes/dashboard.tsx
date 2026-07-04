@@ -1,11 +1,12 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Plus, Share2, Trophy, Waves } from "lucide-react";
+import { Plus, Share2, Trophy, Waves, Lightbulb, ChevronRight } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { useAuth } from "@/hooks/use-auth";
 import { fetchDives, personalBests } from "@/lib/dives";
 import { disciplineName, formatResult, type DisciplineCode } from "@/lib/diving";
 import { fetchProfile } from "@/lib/profile";
+import { TIPS, categoryColor, categoryLabel } from "@/lib/tips";
 import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { ShareCardModal } from "@/components/ShareCard";
@@ -116,6 +117,9 @@ function Dashboard() {
   const bests     = personalBests(dives);
   const bestCount = Object.keys(bests).length;
   const bestDive  = dives.length > 0 ? dives.reduce((a, b) => (a.result > b.result ? a : b)) : null;
+
+  // rotating tip of the day (stable within a calendar day)
+  const tipOfDay  = TIPS[Math.floor(Date.now() / 86400000) % TIPS.length]!;
 
   // weekly stats
   const weekStart  = startOfWeek();
@@ -245,6 +249,26 @@ function Dashboard() {
           />
         </div>
       )}
+
+      {/* TIP OF THE DAY */}
+      <Link
+        to="/tips"
+        className="block rounded-2xl p-4 transition-all active:scale-[0.99]"
+        style={{ background: "#0d1320", border: "1px solid rgba(255,255,255,0.06)", borderLeft: `3px solid ${categoryColor(tipOfDay.category)}` }}
+      >
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full" style={{ background: `${categoryColor(tipOfDay.category)}18`, color: categoryColor(tipOfDay.category) }}>
+            <Lightbulb className="size-5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[0.58rem] font-bold uppercase tracking-wider" style={{ color: `${categoryColor(tipOfDay.category)}cc` }}>
+              {categoryLabel(tipOfDay.category, lang)} · {lang === "el" ? "Συμβουλή της ημέρας" : "Tip of the day"}
+            </p>
+            <p className="mt-0.5 truncate text-sm font-semibold text-white">{lang === "el" ? tipOfDay.title_el : tipOfDay.title_en}</p>
+          </div>
+          <ChevronRight className="size-4 shrink-0 text-white/20" />
+        </div>
+      </Link>
 
       {/* LOG NEW */}
       <Button asChild size="lg" className="w-full font-semibold text-white" style={{ background: "#1D9E75" }}>
