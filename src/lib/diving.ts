@@ -48,12 +48,17 @@ export type SessionType = "training" | "competition";
 // STA-specific session conditions, stored in the dives.conditions JSONB column.
 export type StaPosture = "" | "supine" | "seated" | "float" | "prone";
 export type StaEnvironment = "" | "dry" | "wet";
+/** @deprecated superseded by faceCover + noseclip, which allow combos */
 export type StaFace = "" | "noseclip" | "mask" | "goggles";
+export type StaFaceCover = "" | "mask" | "goggles";
 
 export interface StaConditions {
   posture?: StaPosture;
   environment?: StaEnvironment;
+  /** @deprecated superseded by faceCover + noseclip, which allow combos */
   face?: StaFace;
+  faceCover?: StaFaceCover;  // mask XOR goggles (or none) — independent of noseclip
+  noseclip?: boolean;        // can be combined with either face cover, or alone
   roomTemp?: number | null;      // °C, for dry training
   breatheInSec?: number | null;  // breathe-up inhale seconds (e.g. 3)
   breatheOutSec?: number | null; // breathe-up exhale seconds (e.g. 3)

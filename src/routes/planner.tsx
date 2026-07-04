@@ -62,9 +62,12 @@ function beep() {
   } catch { /* audio not available */ }
 }
 
-function todayAt(hhmm: string): Date {
+// Combines the plan's own date with its top time — using "today" here was the
+// bug behind "Plan your dive" always showing every milestone as passed for
+// dives planned on a future date.
+function dateTimeAt(dateISO: string, hhmm: string): Date {
   const [h, m] = hhmm.split(":").map(Number);
-  const d = new Date();
+  const d = dateISO ? new Date(`${dateISO}T00:00:00`) : new Date();
   d.setHours(h ?? 0, m ?? 0, 0, 0);
   return d;
 }
@@ -413,13 +416,13 @@ function CountdownPanel({ plan, lang, onClose }: { plan: DivePlan; lang: string;
   const fired = useRef<Set<string>>(new Set());
 
   const milestones = useMemo<Milestone[]>(() => {
-    const tt = todayAt(plan.topTime);
+    const tt = dateTimeAt(plan.date, plan.topTime);
     const ms: Milestone[] = [];
     if (plan.warmupMins > 0) ms.push({ key: "warmup", label: lang === "el" ? "Έναρξη ζεστάματος" : "Warm-up start", at: new Date(tt.getTime() - plan.warmupMins * 60000) });
     ms.push({ key: "countdown", label: lang === "el" ? "Αντίστροφη 3′" : "Countdown 3′", at: new Date(tt.getTime() - 3 * 60000) });
     ms.push({ key: "top", label: lang === "el" ? "Επίσημο TOP" : "Official TOP", at: tt });
     return ms;
-  }, [plan.topTime, plan.warmupMins, lang]);
+  }, [plan.date, plan.topTime, plan.warmupMins, lang]);
 
   useEffect(() => {
     if (!running) return;

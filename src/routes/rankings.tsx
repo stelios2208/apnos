@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { Trophy, Plus, X, Pencil, Trash2, Medal, Globe, Lock, Loader2, Award } from "lucide-react";
+import { Trophy, Plus, X, Pencil, Trash2, Globe, Lock, Loader2, Award } from "lucide-react";
 import { toast } from "sonner";
 import { AppLayout } from "@/components/AppLayout";
 import { useAuth } from "@/hooks/use-auth";
@@ -214,7 +214,9 @@ function SegBtn({ active, onClick, children }: { active: boolean; onClick: () =>
 function RankingRow({ entry, rank, discipline, isMe, lang }: {
   entry: RankingEntry; rank: number; discipline: DisciplineCode; isMe: boolean; lang: string;
 }) {
-  const medal = rank === 1 ? "#EF9F27" : rank === 2 ? "#C0C6CF" : rank === 3 ? "#CD8544" : null;
+  // No medal iconography: this leaderboard only reflects results logged in
+  // the app, not an official ranking against every real-world competitor.
+  const topAccent = rank <= 3 ? "#5DCAA5" : null;
   return (
     <div
       className="flex items-center gap-3 rounded-xl px-3 py-3"
@@ -223,8 +225,13 @@ function RankingRow({ entry, rank, discipline, isMe, lang }: {
         border: `1px solid ${isMe ? "rgba(29,158,117,0.35)" : "rgba(255,255,255,0.05)"}`,
       }}
     >
-      <div className="flex w-7 shrink-0 justify-center">
-        {medal ? <Medal className="size-5" style={{ color: medal }} /> : <span className="text-sm font-bold text-white/30">{rank}</span>}
+      <div
+        className="flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-bold"
+        style={topAccent
+          ? { background: `${topAccent}18`, color: topAccent, border: `1px solid ${topAccent}45` }
+          : { color: "rgba(255,255,255,0.3)" }}
+      >
+        {rank}
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">

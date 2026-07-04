@@ -19,7 +19,7 @@ import {
   type Federation,
   type StaPosture,
   type StaEnvironment,
-  type StaFace,
+  type StaFaceCover,
   type StaConditions,
 } from "@/lib/diving";
 import { WARMUP_PRESETS, loadCustomWarmups } from "@/lib/warmups";
@@ -91,7 +91,8 @@ function LogDive() {
   // STA-only session conditions
   const [posture, setPosture] = useState<StaPosture>("");
   const [environment, setEnvironment] = useState<StaEnvironment>("");
-  const [face, setFace] = useState<StaFace>("");
+  const [faceCover, setFaceCover] = useState<StaFaceCover>("");
+  const [noseclip, setNoseclip] = useState(false);
   const [roomTemp, setRoomTemp] = useState("");
   const [breatheIn, setBreatheIn] = useState("");
   const [breatheOut, setBreatheOut] = useState("");
@@ -132,7 +133,10 @@ function LogDive() {
     const c = editing.conditions ?? {};
     setPosture(c.posture ?? "");
     setEnvironment(c.environment ?? "");
-    setFace(c.face ?? "");
+    // faceCover/noseclip supersede the old single-select "face"; read legacy
+    // data (face: "mask"|"goggles"|"noseclip") into the new shape if present.
+    setFaceCover(c.faceCover ?? (c.face === "mask" || c.face === "goggles" ? c.face : ""));
+    setNoseclip(c.noseclip ?? c.face === "noseclip");
     setRoomTemp(c.roomTemp != null ? String(c.roomTemp) : "");
     setBreatheIn(c.breatheInSec != null ? String(c.breatheInSec) : "");
     setBreatheOut(c.breatheOutSec != null ? String(c.breatheOutSec) : "");
@@ -170,7 +174,8 @@ function LogDive() {
         ? {
             posture,
             environment,
-            face,
+            faceCover,
+            noseclip,
             roomTemp: roomTemp ? Number(roomTemp) : null,
             breatheInSec: breatheIn ? Number(breatheIn) : null,
             breatheOutSec: breatheOut ? Number(breatheOut) : null,
@@ -179,7 +184,7 @@ function LogDive() {
       ...(warmupName ? { warmupName, warmupId } : {}),
     };
     const hasConditions =
-      !!conditions.posture || !!conditions.environment || !!conditions.face ||
+      !!conditions.posture || !!conditions.environment || !!conditions.faceCover || !!conditions.noseclip ||
       conditions.roomTemp != null || conditions.breatheInSec != null || conditions.breatheOutSec != null ||
       !!conditions.warmupName;
 
@@ -542,16 +547,42 @@ function LogDive() {
             </div>
 
             <div className="space-y-1.5">
-              <Label>{lang === "el" ? "Πρόσωπο" : "Face"}</Label>
+              <Label>{lang === "el" ? "Κάλυμμα προσώπου" : "Face cover"}</Label>
               <PillGroup
-                value={face}
-                onChange={setFace}
+                value={faceCover}
+                onChange={setFaceCover}
                 options={[
-                  { value: "noseclip", label: lang === "el" ? "Κλιπ μύτης" : "Noseclip" },
-                  { value: "mask",     label: lang === "el" ? "Μάσκα" : "Mask" },
-                  { value: "goggles",  label: lang === "el" ? "Γυαλάκια" : "Goggles" },
+                  { value: "",        label: lang === "el" ? "Κανένα" : "None" },
+                  { value: "mask",    label: lang === "el" ? "Μάσκα" : "Mask" },
+                  { value: "goggles", label: lang === "el" ? "Γυαλάκια" : "Goggles" },
                 ]}
               />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>{lang === "el" ? "Κλιπ μύτης" : "Noseclip"}</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setNoseclip(true)}
+                  className="rounded-lg py-2 text-xs font-semibold transition-all"
+                  style={noseclip
+                    ? { background: "rgba(29,158,117,0.2)", color: "#5DCAA5", border: "1px solid rgba(29,158,117,0.4)" }
+                    : { background: "rgba(255,255,255,0.03)", color: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.08)" }}
+                >
+                  {lang === "el" ? "Ναι" : "Yes"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setNoseclip(false)}
+                  className="rounded-lg py-2 text-xs font-semibold transition-all"
+                  style={!noseclip
+                    ? { background: "rgba(29,158,117,0.2)", color: "#5DCAA5", border: "1px solid rgba(29,158,117,0.4)" }
+                    : { background: "rgba(255,255,255,0.03)", color: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.08)" }}
+                >
+                  {lang === "el" ? "Όχι" : "No"}
+                </button>
+              </div>
             </div>
 
             {environment === "dry" && (
@@ -605,13 +636,13 @@ function PillGroup<T extends string>({ value, onChange, options }: {
   options: { value: T; label: string }[];
 }) {
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${options.length}, 1fr)` }}>
       {options.map((o) => (
         <button
           key={o.value}
           type="button"
           onClick={() => onChange(value === o.value ? ("" as T) : o.value)}
-          className="rounded-lg px-3 py-2 text-xs font-semibold transition-all"
+          className="rounded-lg px-2 py-2 text-xs font-semibold transition-all"
           style={value === o.value
             ? { background: "rgba(29,158,117,0.2)", color: "#5DCAA5", border: "1px solid rgba(29,158,117,0.4)" }
             : { background: "rgba(255,255,255,0.03)", color: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.08)" }}

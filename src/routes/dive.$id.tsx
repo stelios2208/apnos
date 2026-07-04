@@ -240,13 +240,16 @@ function DiveDetail() {
     : { negative: "Negative", neutral: "Neutral", positive: "Positive" };
 
   const c = dive.conditions ?? null;
-  const hasSta = !!c && (!!c.posture || !!c.environment || !!c.face ||
+  const hasSta = !!c && (!!c.posture || !!c.environment || !!c.faceCover || !!c.noseclip || !!c.face ||
     c.roomTemp != null || c.breatheInSec != null || c.breatheOutSec != null);
   const postureLabel: Record<string, string> = lang === "el"
-    ? { supine: "Ανάσκελα", seated: "Καθιστή", float: "Επίπλευση" }
-    : { supine: "Supine", seated: "Seated", float: "Float" };
+    ? { supine: "Ανάσκελα", seated: "Καθιστή", float: "Επίπλευση", prone: "Μπρούμυτα" }
+    : { supine: "Supine", seated: "Seated", float: "Float", prone: "Face down" };
   const envLabel: Record<string, string> = lang === "el"
     ? { dry: "Ξηρή", wet: "Υγρή" } : { dry: "Dry", wet: "Wet" };
+  const faceCoverLabel: Record<string, string> = lang === "el"
+    ? { mask: "Μάσκα", goggles: "Γυαλάκια" } : { mask: "Mask", goggles: "Goggles" };
+  // legacy single-select data
   const faceLabel: Record<string, string> = lang === "el"
     ? { noseclip: "Κλιπ μύτης", mask: "Μάσκα", goggles: "Γυαλάκια" }
     : { noseclip: "Noseclip", mask: "Mask", goggles: "Goggles" };
@@ -364,7 +367,16 @@ function DiveDetail() {
         <Section title={lang === "el" ? "ΣΥΝΘΗΚΕΣ ΣΤΑΤΙΚΗΣ" : "STATIC CONDITIONS"}>
           {c.environment && <Row label={lang === "el" ? "Περιβάλλον" : "Environment"} value={envLabel[c.environment] ?? c.environment} />}
           {c.posture && <Row label={lang === "el" ? "Στάση" : "Posture"} value={postureLabel[c.posture] ?? c.posture} />}
-          {c.face && <Row label={lang === "el" ? "Πρόσωπο" : "Face"} value={faceLabel[c.face] ?? c.face} />}
+          {(c.faceCover || c.noseclip) && (
+            <Row
+              label={lang === "el" ? "Πρόσωπο" : "Face"}
+              value={[
+                c.faceCover ? (faceCoverLabel[c.faceCover] ?? c.faceCover) : null,
+                c.noseclip ? (lang === "el" ? "Κλιπ μύτης" : "Noseclip") : null,
+              ].filter(Boolean).join(" + ") || "—"}
+            />
+          )}
+          {!c.faceCover && !c.noseclip && c.face && <Row label={lang === "el" ? "Πρόσωπο" : "Face"} value={faceLabel[c.face] ?? c.face} />}
           {c.roomTemp != null && <Row label={lang === "el" ? "Θερμοκρασία χώρου" : "Room temp"} value={`${c.roomTemp} °C`} />}
           {(c.breatheInSec != null || c.breatheOutSec != null) && (
             <Row label={lang === "el" ? "Ρυθμός breathe-up" : "Breathe-up"} value={`${c.breatheInSec ?? "–"}s / ${c.breatheOutSec ?? "–"}s`} />

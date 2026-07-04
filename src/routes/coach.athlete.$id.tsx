@@ -524,7 +524,8 @@ const DISCIPLINE_COLORS: Record<string, string> = {
 // One readable line per set/round, for the shareable programme card.
 function programRowLine(row: ProgramRow, lang: string): string {
   if (row.kind === "sta") {
-    return `${row.tableType} · ${lang === "el" ? "κράτ." : "hold"} ${row.holdTime} · rec ${row.recovery}`;
+    const bm = row.breathingMode && row.breathingMode !== "normal" ? ` · ${row.breathingMode}` : "";
+    return `${row.tableType} · ${lang === "el" ? "κράτ." : "hold"} ${row.holdTime} · rec ${row.recovery}${bm}`;
   }
   if (row.kind === "dyn") {
     const bm = row.breathingMode !== "normal" ? ` · ${row.breathingMode}` : "";
@@ -977,6 +978,12 @@ function STARow({ row, lang, isFirst, isLast, onChange, onDelete, onMove }: {
 }) {
   const upd = (p: Partial<STARound>) => onChange({ ...row, ...p });
   const accent = "#9FE1CB";
+  const mode = row.breathingMode ?? "normal";
+
+  const cycleBreathing = () => {
+    const i = BREATHING_MODES.indexOf(mode);
+    upd({ breathingMode: BREATHING_MODES[(i + 1) % BREATHING_MODES.length] });
+  };
 
   return (
     <div
@@ -995,7 +1002,17 @@ function STARow({ row, lang, isFirst, isLast, onChange, onDelete, onMove }: {
           style={{ colorScheme: "dark" }}
         >
           {TABLE_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+          {!TABLE_TYPES.includes(row.tableType) && <option value={row.tableType}>{row.tableType}</option>}
         </select>
+        <button
+          onClick={cycleBreathing}
+          className="rounded-full px-2.5 py-1 text-[0.6rem] font-bold tracking-wider transition-all"
+          style={mode !== "normal"
+            ? { background: "rgba(239,159,39,0.2)", color: "#EF9F27", border: "1px solid rgba(239,159,39,0.4)" }
+            : { background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.3)", border: "1px solid transparent" }}
+        >
+          {mode === "normal" ? (lang === "el" ? "κανονική" : "normal") : mode}
+        </button>
         <RowControls accentColor={accent} isFirst={isFirst} isLast={isLast} onMove={onMove} onDelete={onDelete} />
       </div>
 

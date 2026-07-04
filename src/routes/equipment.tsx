@@ -21,7 +21,6 @@ const ITEM_ICON: Record<string, LucideIcon> = {
   depthgoggles: Eye,
   slippers: Footprints,
   shampoo: Droplet,
-  soap: Droplets,
   water: GlassWater,
   towel: Droplets,
 };
@@ -60,10 +59,12 @@ const DEFAULTS: { id: string; el: string; en: string; hint_el?: string; hint_en?
   { id: "depthgoggles", el: "Γυαλάκια βάθους (fluid)", en: "Depth goggles (fluid)" },
   { id: "slippers",     el: "Παντόφλες",             en: "Slippers" },
   { id: "shampoo",      el: "Σαμπουάν",              en: "Shampoo", hint_el: "βοηθά να φορέσεις τη στολή", hint_en: "helps slide the wetsuit on" },
-  { id: "soap",         el: "Σαπούνι",               en: "Soap",    hint_el: "βοηθά να φορέσεις τη στολή", hint_en: "helps slide the wetsuit on" },
   { id: "water",        el: "Νερό",                  en: "Water" },
   { id: "towel",        el: "Πετσέτα",               en: "Towel" },
 ];
+
+// Ids removed from the checklist over time — filtered out of saved lists too.
+const REMOVED_IDS = new Set(["soap"]);
 
 function buildDefaults(lang: "el" | "en"): Item[] {
   return DEFAULTS.map((d) => ({
@@ -87,7 +88,7 @@ function loadItems(lang: "el" | "en"): Item[] {
       return [...defaults, ...customs];
     }
     if (parsed && Array.isArray(parsed.items)) {
-      const items = parsed.items as Item[];
+      const items = (parsed.items as Item[]).filter((it) => !REMOVED_IDS.has(it.id));
       const have = new Set(items.map((i) => i.id));
       const missing = defaults.filter((d) => !have.has(d.id));
       // refresh hints on existing default items (labels stay as saved)

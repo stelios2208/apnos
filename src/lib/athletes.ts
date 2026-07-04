@@ -16,6 +16,7 @@ export interface STARound {
   holdTime: string;
   recovery: string;
   tableType: TableType;
+  breathingMode: BreathingMode;
   notes: string;
 }
 
@@ -72,7 +73,9 @@ export const ALL_DISCIPLINES: DisciplineCode[] = [
   "STA", "DYN", "DYNB", "DNF", "CWT", "CWTB", "CNF", "FIM",
 ];
 
-export const TABLE_TYPES: TableType[] = ["CO2", "O2", "FRC", "RV", "Classic"];
+// FRC/RV moved to the dedicated breathing-mode toggle on the round itself —
+// kept in the TableType union for backward compat with already-saved rounds.
+export const TABLE_TYPES: TableType[] = ["CO2", "O2", "Classic"];
 export const DYN_SET_TYPES: { value: DynSetType; label: string; color: string }[] = [
   { value: "warmup",     label: "Warm-up",    color: "#1D9E75" },
   { value: "mainset",    label: "Main Set",   color: "#1D9E75" },
@@ -136,7 +139,7 @@ export function fmtSeconds(totalSecs: number): string {
 // ── Template row factories ─────────────────────────────────────────────────
 
 export function newSTARound(): STARound {
-  return { id: crypto.randomUUID(), kind: "sta", breathUp: "2:00", holdTime: "1:30", recovery: "2:00", tableType: "CO2", notes: "" };
+  return { id: crypto.randomUUID(), kind: "sta", breathUp: "2:00", holdTime: "1:30", recovery: "2:00", tableType: "CO2", breathingMode: "normal", notes: "" };
 }
 
 export function newDynSet(): DynSet {

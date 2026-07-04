@@ -100,7 +100,6 @@ function ProfilePage() {
   const genders: { value: Gender; el: string; en: string }[] = [
     { value: "male",   el: "Άνδρας",  en: "Male" },
     { value: "female", el: "Γυναίκα", en: "Female" },
-    { value: "other",  el: "Άλλο",    en: "Other" },
   ];
 
   if (isLoading) {
