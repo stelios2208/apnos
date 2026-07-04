@@ -21,6 +21,11 @@ create table if not exists competition_results (
 
 alter table competition_results enable row level security;
 
+-- Table-level privileges. Raw-SQL tables don't always inherit these, and without
+-- them Postgres returns "permission denied for table" before RLS is even checked.
+grant select, insert, update, delete on competition_results to authenticated;
+grant select on competition_results to anon;
+
 drop policy if exists "read public or own competition_results" on competition_results;
 create policy "read public or own competition_results"
   on competition_results for select
