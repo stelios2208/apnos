@@ -1,14 +1,17 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ChevronLeft, ChevronRight, Pencil, Trash2 } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Pencil, Share2, Trash2 } from "lucide-react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { AppLayout } from "@/components/AppLayout";
 import { useAuth } from "@/hooks/use-auth";
 import { deleteDive, fetchDives } from "@/lib/dives";
 import { disciplineName, formatResult } from "@/lib/diving";
+import { fetchProfile } from "@/lib/profile";
 import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
+import { ShareCardModal } from "@/components/ShareCard";
 
 export const Route = createFileRoute("/dive/$id")({
   head: () => ({ meta: [{ title: "Dive — Apnos" }] }),
@@ -179,6 +182,14 @@ function DiveDetail() {
     queryFn: () => fetchDives(user!.id),
     enabled: !!user,
   });
+
+  const { data: profile } = useQuery({
+    queryKey: ["profile", user?.id],
+    queryFn: fetchProfile,
+    enabled: !!user,
+  });
+
+  const [showShare, setShowShare] = useState(false);
 
   const dive    = dives.find((d) => d.id === id);
   // prev/next in chronological order (dives array is newest-first from fetchDives)
@@ -372,6 +383,16 @@ function DiveDetail() {
           )
       )}
 
+      {/* share */}
+      <button
+        onClick={() => setShowShare(true)}
+        className="flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-bold transition-all active:scale-[0.99]"
+        style={{ background: "rgba(29,158,117,0.12)", border: "1px solid rgba(29,158,117,0.35)", color: "#5DCAA5" }}
+      >
+        <Share2 className="size-4" />
+        {lang === "el" ? "Κοινοποίηση επίδοσης" : "Share result"}
+      </button>
+
       {/* actions */}
       <div className="flex gap-3 pt-2">
         <Button asChild variant="outline" className="flex-1 gap-2">
@@ -392,6 +413,20 @@ function DiveDetail() {
           <Trash2 className="size-4" /> {t("common.delete")}
         </Button>
       </div>
+
+      {showShare && (
+        <ShareCardModal
+          data={{
+            athleteName: profile?.displayName || (lang === "el" ? "Ελεύθερος Δύτης" : "Freediver"),
+            disciplineLabel: disciplineName(dive.discipline, lang),
+            resultLabel: formatResult(dive.discipline, dive.result),
+            dateLabel: dateStr,
+            isPB: dive.is_personal_best,
+            lang,
+          }}
+          onClose={() => setShowShare(false)}
+        />
+      )}
     </div>
   );
 }

@@ -1,0 +1,145 @@
+// Premium shareable result card (Instagram/Facebook portrait, 1080×1350).
+// Built as a self-contained SVG (no external fonts/images so it rasterises
+// cleanly to PNG) then shared via the Web Share API or downloaded as fallback.
+
+export interface ShareCardData {
+  athleteName: string;
+  disciplineLabel: string;
+  resultLabel: string;   // "5:30" or "150 m"
+  dateLabel: string;
+  isPB: boolean;
+  lang: string;
+}
+
+const W = 1080;
+const H = 1350;
+
+function esc(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+const FONT = "Inter, 'Helvetica Neue', Arial, sans-serif";
+
+function bubbles(): string {
+  const spec = [
+    [140, 1180, 10], [230, 1240, 6], [330, 1120, 14], [180, 980, 5],
+    [860, 1200, 12], [780, 1090, 7], [940, 1250, 9], [700, 1260, 5],
+    [520, 1180, 8], [610, 1130, 6], [420, 1240, 7], [90, 1080, 6],
+  ];
+  return spec
+    .map(([cx, cy, r], i) => `<circle cx="${cx}" cy="${cy}" r="${r}" fill="#9FE1CB" opacity="${(0.1 + (i % 4) * 0.06).toFixed(2)}"/>`)
+    .join("");
+}
+
+export function buildShareSvg(d: ShareCardData): string {
+  const pbBadge = d.isPB
+    ? `<g transform="translate(540 848)">
+         <rect x="-160" y="-34" width="320" height="68" rx="34" fill="#EF9F27" opacity="0.16" stroke="#EF9F27" stroke-width="1.5" stroke-opacity="0.5"/>
+         <text x="0" y="10" text-anchor="middle" font-family="${FONT}" font-size="30" font-weight="700" letter-spacing="6" fill="#EF9F27">${d.lang === "el" ? "ΑΤΟΜΙΚΟ ΡΕΚΟΡ" : "PERSONAL BEST"}</text>
+       </g>`
+    : "";
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0.3" y2="1">
+      <stop offset="0" stop-color="#1a3a5c"/>
+      <stop offset="0.45" stop-color="#10293f"/>
+      <stop offset="1" stop-color="#070a10"/>
+    </linearGradient>
+    <radialGradient id="sun" cx="0.5" cy="-0.05" r="0.75">
+      <stop offset="0" stop-color="#5DCAA5" stop-opacity="0.30"/>
+      <stop offset="1" stop-color="#1D9E75" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="${W}" height="${H}" fill="url(#bg)"/>
+  <rect width="${W}" height="${H}" fill="url(#sun)"/>
+
+  <!-- light rays -->
+  <g stroke="#5DCAA5" stroke-width="2" opacity="0.06">
+    <line x1="240" y1="0" x2="320" y2="900"/>
+    <line x1="540" y1="0" x2="500" y2="900"/>
+    <line x1="840" y1="0" x2="760" y2="900"/>
+  </g>
+
+  ${bubbles()}
+
+  <!-- wordmark -->
+  <text x="540" y="150" text-anchor="middle" font-family="${FONT}" font-size="46" font-weight="800" letter-spacing="14" fill="#9FE1CB">APNOS</text>
+  <text x="540" y="192" text-anchor="middle" font-family="${FONT}" font-size="22" font-weight="600" letter-spacing="8" fill="#5DCAA5" opacity="0.7">${d.lang === "el" ? "ΗΜΕΡΟΛΟΓΙΟ ΑΠΝΟΙΑΣ" : "FREEDIVING LOG"}</text>
+
+  <!-- discipline -->
+  <text x="540" y="560" text-anchor="middle" font-family="${FONT}" font-size="40" font-weight="600" letter-spacing="6" fill="#5DCAA5">${esc(d.disciplineLabel.toUpperCase())}</text>
+
+  <!-- result -->
+  <text x="540" y="740" text-anchor="middle" font-family="${FONT}" font-size="210" font-weight="300" letter-spacing="-4" fill="#ffffff">${esc(d.resultLabel)}</text>
+
+  ${pbBadge}
+
+  <!-- divider -->
+  <rect x="360" y="1010" width="360" height="2" rx="1" fill="#ffffff" opacity="0.12"/>
+
+  <!-- athlete + date -->
+  <text x="540" y="1105" text-anchor="middle" font-family="${FONT}" font-size="54" font-weight="700" fill="#ffffff">${esc(d.athleteName)}</text>
+  <text x="540" y="1160" text-anchor="middle" font-family="${FONT}" font-size="34" font-weight="400" fill="#ffffff" opacity="0.5">${esc(d.dateLabel)}</text>
+
+  <!-- footer -->
+  <text x="540" y="1285" text-anchor="middle" font-family="${FONT}" font-size="30" font-weight="600" letter-spacing="2" fill="#5DCAA5">apnos.app</text>
+</svg>`;
+}
+
+export function svgDataUrl(svg: string): string {
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}
+
+export async function svgToPngBlob(svg: string): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = W;
+      canvas.height = H;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) { reject(new Error("no canvas context")); return; }
+      ctx.drawImage(img, 0, 0, W, H);
+      canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("toBlob failed"))), "image/png");
+    };
+    img.onerror = () => reject(new Error("svg image load failed"));
+    img.src = svgDataUrl(svg);
+  });
+}
+
+export async function shareOrDownload(
+  pngBlob: Blob,
+  filename: string,
+  shareText: string,
+): Promise<"shared" | "downloaded"> {
+  const file = new File([pngBlob], filename, { type: "image/png" });
+  const nav = navigator as Navigator & {
+    canShare?: (d: { files: File[] }) => boolean;
+    share?: (d: { files: File[]; text?: string; title?: string }) => Promise<void>;
+  };
+  if (nav.canShare && nav.share && nav.canShare({ files: [file] })) {
+    try {
+      await nav.share({ files: [file], text: shareText, title: "Apnos" });
+      return "shared";
+    } catch (e) {
+      if ((e as Error).name === "AbortError") return "shared"; // user cancelled
+      // otherwise fall back to download
+    }
+  }
+  const url = URL.createObjectURL(pngBlob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  return "downloaded";
+}

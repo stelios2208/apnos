@@ -1,13 +1,15 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Plus, Trophy, Waves } from "lucide-react";
+import { Plus, Share2, Trophy, Waves } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { useAuth } from "@/hooks/use-auth";
 import { fetchDives, personalBests } from "@/lib/dives";
 import { disciplineName, formatResult, type DisciplineCode } from "@/lib/diving";
+import { fetchProfile } from "@/lib/profile";
 import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
-import { useEffect, useRef } from "react";
+import { ShareCardModal } from "@/components/ShareCard";
+import { useEffect, useRef, useState } from "react";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard — Apnos" }] }),
@@ -103,6 +105,14 @@ function Dashboard() {
     enabled:  !!user,
   });
 
+  const { data: profile } = useQuery({
+    queryKey: ["profile", user?.id],
+    queryFn: fetchProfile,
+    enabled: !!user,
+  });
+
+  const [showShare, setShowShare] = useState(false);
+
   const bests     = personalBests(dives);
   const bestCount = Object.keys(bests).length;
   const bestDive  = dives.length > 0 ? dives.reduce((a, b) => (a.result > b.result ? a : b)) : null;
@@ -143,6 +153,14 @@ function Dashboard() {
                 day: "numeric", month: "long",
               })}
             </p>
+            <button
+              onClick={() => setShowShare(true)}
+              className="absolute right-4 top-4 flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[0.65rem] font-bold transition-all active:scale-95"
+              style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.15)", color: "#fff" }}
+            >
+              <Share2 className="size-3.5" />
+              {lang === "el" ? "Κοινοποίηση" : "Share"}
+            </button>
           </>
         ) : (
           <>
@@ -235,6 +253,20 @@ function Dashboard() {
           {lang === "el" ? "Νέα Βουτιά" : "New Dive"}
         </Link>
       </Button>
+
+      {showShare && bestDive && (
+        <ShareCardModal
+          data={{
+            athleteName: profile?.displayName || (lang === "el" ? "Ελεύθερος Δύτης" : "Freediver"),
+            disciplineLabel: disciplineName(bestDive.discipline as DisciplineCode, lang),
+            resultLabel: formatResult(bestDive.discipline as DisciplineCode, bestDive.result),
+            dateLabel: new Date(bestDive.dive_date).toLocaleDateString(lang === "el" ? "el-GR" : "en-GB", { day: "numeric", month: "long", year: "numeric" }),
+            isPB: true,
+            lang,
+          }}
+          onClose={() => setShowShare(false)}
+        />
+      )}
 
     </div>
   );
