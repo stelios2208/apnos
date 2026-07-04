@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as YouRouteImport } from './routes/you'
 import { Route as WarmupRouteImport } from './routes/warmup'
 import { Route as TrainRouteImport } from './routes/train'
+import { Route as TipsRouteImport } from './routes/tips'
 import { Route as StaTrainerRouteImport } from './routes/sta-trainer'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as SettingsRouteImport } from './routes/settings'
@@ -45,6 +46,11 @@ const WarmupRoute = WarmupRouteImport.update({
 const TrainRoute = TrainRouteImport.update({
   id: '/train',
   path: '/train',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TipsRoute = TipsRouteImport.update({
+  id: '/tips',
+  path: '/tips',
   getParentRoute: () => rootRouteImport,
 } as any)
 const StaTrainerRoute = StaTrainerRouteImport.update({
@@ -159,6 +165,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/sta-trainer': typeof StaTrainerRoute
+  '/tips': typeof TipsRoute
   '/train': typeof TrainRoute
   '/warmup': typeof WarmupRoute
   '/you': typeof YouRoute
@@ -182,6 +189,7 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/sta-trainer': typeof StaTrainerRoute
+  '/tips': typeof TipsRoute
   '/train': typeof TrainRoute
   '/warmup': typeof WarmupRoute
   '/you': typeof YouRoute
@@ -207,6 +215,7 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/sta-trainer': typeof StaTrainerRoute
+  '/tips': typeof TipsRoute
   '/train': typeof TrainRoute
   '/warmup': typeof WarmupRoute
   '/you': typeof YouRoute
@@ -233,6 +242,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/sitemap.xml'
     | '/sta-trainer'
+    | '/tips'
     | '/train'
     | '/warmup'
     | '/you'
@@ -256,6 +266,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/sitemap.xml'
     | '/sta-trainer'
+    | '/tips'
     | '/train'
     | '/warmup'
     | '/you'
@@ -280,6 +291,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/sitemap.xml'
     | '/sta-trainer'
+    | '/tips'
     | '/train'
     | '/warmup'
     | '/you'
@@ -305,6 +317,7 @@ export interface RootRouteChildren {
   SettingsRoute: typeof SettingsRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   StaTrainerRoute: typeof StaTrainerRoute
+  TipsRoute: typeof TipsRoute
   TrainRoute: typeof TrainRoute
   WarmupRoute: typeof WarmupRoute
   YouRoute: typeof YouRoute
@@ -333,6 +346,13 @@ declare module '@tanstack/react-router' {
       path: '/train'
       fullPath: '/train'
       preLoaderRoute: typeof TrainRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tips': {
+      id: '/tips'
+      path: '/tips'
+      fullPath: '/tips'
+      preLoaderRoute: typeof TipsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sta-trainer': {
@@ -499,6 +519,7 @@ const rootRouteChildren: RootRouteChildren = {
   SettingsRoute: SettingsRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   StaTrainerRoute: StaTrainerRoute,
+  TipsRoute: TipsRoute,
   TrainRoute: TrainRoute,
   WarmupRoute: WarmupRoute,
   YouRoute: YouRoute,
