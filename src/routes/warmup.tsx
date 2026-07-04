@@ -1,11 +1,12 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft, Play, Pause, SkipForward, X, Bell, BellPlus, Check, Volume2, VolumeX, Vibrate } from "lucide-react";
+import { ArrowLeft, Play, Pause, SkipForward, X, Bell, BellPlus, Check, Volume2, VolumeX, Vibrate, Plus, Pencil, Trash2, ChevronUp, ChevronDown } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import {
-  type WarmupPreset, type WarmupStep,
+  type WarmupPreset, type WarmupStep, type WarmupStepKind,
   WARMUP_PRESETS, presetTotalSecs, holdCount, fmtClock,
   loadAlarms, saveAlarms,
+  loadCustomWarmups, upsertCustomWarmup, deleteCustomWarmup, newCustomWarmup,
 } from "@/lib/warmups";
 import {
   type FxSettings, loadFxSettings, saveFxSettings,
@@ -44,6 +45,9 @@ function Warmup() {
   const [remaining, setRemaining] = useState(0);
   const [paused, setPaused]     = useState(false);
   const [done, setDone]         = useState(false);
+
+  const [customs, setCustoms]   = useState<WarmupPreset[]>(() => loadCustomWarmups());
+  const [builder, setBuilder]   = useState<WarmupPreset | null>(null);
 
   const [alarms, setAlarms] = useState<number[]>(() => loadAlarms());
   const [fx, setFx]         = useState<FxSettings>(() => loadFxSettings());
@@ -178,6 +182,17 @@ function Warmup() {
       if (key === "sound" && !next.sound) engineRef.current?.stop();
       return next;
     });
+  };
+
+  // ── custom warm-up builder ──────────────────────────────────────────────────
+  const saveBuilder = (p: WarmupPreset) => {
+    const name = (p.name_el || p.name_en || (lang === "el" ? "Ζέσταμα" : "Warm-up")).trim();
+    const clean: WarmupPreset = { ...p, name_el: name, name_en: name, custom: true };
+    setCustoms(upsertCustomWarmup(clean));
+    setBuilder(null);
+  };
+  const removeCustom = (id: string) => {
+    if (confirm(lang === "el" ? "Διαγραφή ζεστάματος;" : "Delete warm-up?")) setCustoms(deleteCustomWarmup(id));
   };
 
   // ── PLAYER SCREEN ───────────────────────────────────────────────────────
@@ -332,6 +347,169 @@ function Warmup() {
             </div>
           </button>
         ))}
+      </div>
+
+      {/* custom warm-ups */}
+      <div className="mt-7">
+        <p className="mb-3 text-[0.6rem] font-bold tracking-[0.25em] text-white/30">
+          {lang === "el" ? "ΔΙΚΑ ΣΟΥ ΖΕΣΤΑΜΑΤΑ" : "YOUR WARM-UPS"}
+        </p>
+        <div className="space-y-3">
+          {customs.map((p) => (
+            <div
+              key={p.id}
+              className="flex items-center gap-3 rounded-2xl px-4 py-4"
+              style={{ background: "#0d1320", border: "1px solid rgba(255,255,255,0.06)", borderLeft: `3px solid ${p.accent}` }}
+            >
+              <button onClick={() => startPreset(p)} className="flex min-w-0 flex-1 items-center gap-3 text-left">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full" style={{ background: `${p.accent}18`, color: p.accent }}>
+                  <Play className="size-4" />
+                </div>
+                <div className="min-w-0">
+                  <span className="block truncate text-sm font-bold text-white">{p.name_el || p.name_en}</span>
+                  <span className="text-[0.65rem] text-white/30">⏱ {fmtClock(presetTotalSecs(p))} · {holdCount(p)} {lang === "el" ? "κρατήσεις" : "holds"}</span>
+                </div>
+              </button>
+              <button onClick={() => setBuilder(p)} className="rounded-lg p-2 text-white/25 hover:text-white/60"><Pencil className="size-4" /></button>
+              <button onClick={() => removeCustom(p.id)} className="rounded-lg p-2 text-white/20 hover:text-red-400/70"><Trash2 className="size-4" /></button>
+            </div>
+          ))}
+
+          <button
+            onClick={() => setBuilder(newCustomWarmup())}
+            className="flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-sm font-semibold transition-all"
+            style={{ background: "rgba(255,255,255,0.015)", border: "1px dashed rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.5)" }}
+          >
+            <Plus className="size-4" />
+            {lang === "el" ? "Δημιούργησε ζέσταμα" : "Create warm-up"}
+          </button>
+        </div>
+      </div>
+
+      {builder && (
+        <WarmupBuilder
+          initial={builder}
+          lang={lang}
+          onCancel={() => setBuilder(null)}
+          onSave={saveBuilder}
+        />
+      )}
+    </div>
+  );
+}
+
+// ── WarmupBuilder ────────────────────────────────────────────────────────────
+
+const KIND_META: Record<WarmupStepKind, { color: string; el: string; en: string }> = {
+  breathe: { color: "#5DCAA5", el: "Αναπνοή", en: "Breathe" },
+  hold:    { color: "#1D9E75", el: "Κράτα",   en: "Hold" },
+  rest:    { color: "#9FE1CB", el: "Ξεκούραση", en: "Rest" },
+};
+
+const ACCENTS = ["#4FA8E0", "#1D9E75", "#EF9F27", "#B58BE8", "#5DCAA5", "#E87DA8"];
+
+function WarmupBuilder({ initial, lang, onCancel, onSave }: {
+  initial: WarmupPreset; lang: string; onCancel: () => void; onSave: (p: WarmupPreset) => void;
+}) {
+  const [name, setName]     = useState(initial.name_el || initial.name_en);
+  const [accent, setAccent] = useState(initial.accent);
+  const [steps, setSteps]   = useState<WarmupStep[]>(initial.steps);
+
+  const total = steps.reduce((s, x) => s + x.secs, 0);
+
+  const setStep = (i: number, patch: Partial<WarmupStep>) =>
+    setSteps((prev) => prev.map((s, j) => (j === i ? { ...s, ...patch } : s)));
+  const addStep = () => setSteps((prev) => [...prev, { kind: "hold", secs: 60 }]);
+  const delStep = (i: number) => setSteps((prev) => prev.filter((_, j) => j !== i));
+  const move = (i: number, dir: -1 | 1) => setSteps((prev) => {
+    const j = i + dir;
+    if (j < 0 || j >= prev.length) return prev;
+    const next = [...prev];
+    [next[i], next[j]] = [next[j]!, next[i]!];
+    return next;
+  });
+
+  const save = () => {
+    if (steps.length === 0) return;
+    onSave({ ...initial, name_el: name, name_en: name, accent, steps });
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col justify-end" style={{ background: "rgba(0,0,0,0.65)" }} onClick={onCancel}>
+      <div className="max-h-[92vh] overflow-y-auto rounded-t-3xl p-5" style={{ background: "#0a0f1a" }} onClick={(e) => e.stopPropagation()}>
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-base font-bold text-white">{lang === "el" ? "Ζέσταμα" : "Warm-up"}</h2>
+          <button onClick={onCancel} className="rounded-lg p-1.5 text-white/40"><X className="size-5" /></button>
+        </div>
+
+        {/* name */}
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder={lang === "el" ? "Όνομα ζεστάματος" : "Warm-up name"}
+          className="mb-3 w-full rounded-xl bg-white/5 px-3 py-2.5 text-sm font-semibold text-white outline-none focus:ring-1 focus:ring-[#1D9E75]"
+        />
+
+        {/* accent */}
+        <div className="mb-4 flex gap-2">
+          {ACCENTS.map((c) => (
+            <button key={c} onClick={() => setAccent(c)} className="h-7 w-7 rounded-full transition-all" style={{ background: c, outline: accent === c ? "2px solid #fff" : "none", outlineOffset: 2 }} />
+          ))}
+        </div>
+
+        {/* phases */}
+        <p className="mb-2 text-[0.6rem] font-bold tracking-wider text-white/35">{lang === "el" ? "ΒΗΜΑΤΑ" : "PHASES"} · {fmtClock(total)}</p>
+        <div className="space-y-2">
+          {steps.map((s, i) => {
+            const meta = KIND_META[s.kind];
+            return (
+              <div key={i} className="rounded-xl p-2.5" style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${meta.color}30` }}>
+                <div className="flex items-center gap-2">
+                  <span className="w-5 text-center text-xs font-bold text-white/25">{i + 1}</span>
+                  {/* kind pills */}
+                  <div className="flex flex-1 gap-1">
+                    {(Object.keys(KIND_META) as WarmupStepKind[]).map((k) => (
+                      <button
+                        key={k}
+                        onClick={() => setStep(i, { kind: k })}
+                        className="flex-1 rounded-lg py-1.5 text-[0.6rem] font-bold transition-all"
+                        style={s.kind === k
+                          ? { background: `${KIND_META[k].color}22`, color: KIND_META[k].color, border: `1px solid ${KIND_META[k].color}55` }
+                          : { background: "transparent", color: "rgba(255,255,255,0.3)", border: "1px solid rgba(255,255,255,0.06)" }}
+                      >
+                        {lang === "el" ? KIND_META[k].el : KIND_META[k].en}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="mt-2 flex items-center gap-2">
+                  {/* secs stepper */}
+                  <div className="flex flex-1 items-center justify-between rounded-lg bg-white/5 px-2 py-1.5">
+                    <button onClick={() => setStep(i, { secs: Math.max(5, s.secs - 5) })} className="px-2 text-lg text-white/50">−</button>
+                    <span className="font-mono text-sm font-bold text-white">{fmtClock(s.secs)}</span>
+                    <button onClick={() => setStep(i, { secs: s.secs + 5 })} className="px-2 text-lg text-white/50">+</button>
+                  </div>
+                  <button onClick={() => move(i, -1)} disabled={i === 0} className="rounded-lg p-1.5 text-white/30 disabled:opacity-20"><ChevronUp className="size-4" /></button>
+                  <button onClick={() => move(i, 1)} disabled={i === steps.length - 1} className="rounded-lg p-1.5 text-white/30 disabled:opacity-20"><ChevronDown className="size-4" /></button>
+                  <button onClick={() => delStep(i)} disabled={steps.length <= 1} className="rounded-lg p-1.5 text-white/20 hover:text-red-400/70 disabled:opacity-20"><Trash2 className="size-4" /></button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <button
+          onClick={addStep}
+          className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl py-3 text-xs font-semibold"
+          style={{ background: "rgba(255,255,255,0.02)", border: "1px dashed rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.5)" }}
+        >
+          <Plus className="size-3.5" />
+          {lang === "el" ? "Προσθήκη βήματος" : "Add phase"}
+        </button>
+
+        <button onClick={save} className="mt-4 w-full rounded-xl py-3.5 text-sm font-bold" style={{ background: "#1D9E75", color: "#fff" }}>
+          {lang === "el" ? "Αποθήκευση" : "Save"}
+        </button>
       </div>
     </div>
   );

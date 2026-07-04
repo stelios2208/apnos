@@ -19,6 +19,7 @@ export interface WarmupPreset {
   level: "beginner" | "intermediate" | "advanced";
   accent: string;
   steps: WarmupStep[];
+  custom?: boolean;
 }
 
 const b = (secs: number): WarmupStep => ({ kind: "breathe", secs });
@@ -67,6 +68,58 @@ export const WARMUP_PRESETS: WarmupPreset[] = [
     steps: [b(120), h(60), r(120), h(90), r(120), h(120), r(120), h(150)],
   },
 ];
+
+// ── Custom warm-ups (user-built, stored locally — no migration needed) ───────
+
+export const CUSTOM_STORE_KEY = "apnos.warmup.custom";
+
+export function loadCustomWarmups(): WarmupPreset[] {
+  if (typeof localStorage === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(CUSTOM_STORE_KEY);
+    if (!raw) return [];
+    const arr = JSON.parse(raw) as unknown;
+    if (!Array.isArray(arr)) return [];
+    return (arr as WarmupPreset[])
+      .filter((p) => p && Array.isArray(p.steps) && p.steps.length > 0)
+      .map((p) => ({ ...p, custom: true }));
+  } catch {
+    return [];
+  }
+}
+
+export function saveCustomWarmups(list: WarmupPreset[]): void {
+  try { localStorage.setItem(CUSTOM_STORE_KEY, JSON.stringify(list)); } catch { /* ignore */ }
+}
+
+export function upsertCustomWarmup(p: WarmupPreset): WarmupPreset[] {
+  const list = loadCustomWarmups();
+  const idx = list.findIndex((x) => x.id === p.id);
+  if (idx >= 0) list[idx] = p;
+  else list.unshift(p);
+  saveCustomWarmups(list);
+  return list;
+}
+
+export function deleteCustomWarmup(id: string): WarmupPreset[] {
+  const list = loadCustomWarmups().filter((x) => x.id !== id);
+  saveCustomWarmups(list);
+  return list;
+}
+
+export function newCustomWarmup(): WarmupPreset {
+  return {
+    id: crypto.randomUUID(),
+    name_el: "",
+    name_en: "",
+    desc_el: "",
+    desc_en: "",
+    level: "intermediate",
+    accent: "#4FA8E0",
+    steps: [{ kind: "breathe", secs: 120 }, { kind: "hold", secs: 60 }, { kind: "rest", secs: 90 }],
+    custom: true,
+  };
+}
 
 export function presetTotalSecs(p: WarmupPreset): number {
   return p.steps.reduce((sum, s) => sum + s.secs, 0);
