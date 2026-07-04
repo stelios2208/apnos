@@ -57,6 +57,8 @@ export interface StaConditions {
   roomTemp?: number | null;      // °C, for dry training
   breatheInSec?: number | null;  // breathe-up inhale seconds (e.g. 3)
   breatheOutSec?: number | null; // breathe-up exhale seconds (e.g. 3)
+  warmupName?: string;           // warm-up used before the dive (any discipline)
+  warmupId?: string;
 }
 
 export interface Dive {

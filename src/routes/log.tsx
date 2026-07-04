@@ -2,8 +2,8 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { zodValidator, fallback } from "@tanstack/zod-adapter";
 import { z } from "zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ChevronDown, Flame } from "lucide-react";
 import { toast } from "sonner";
 import { AppLayout } from "@/components/AppLayout";
 import { useAuth } from "@/hooks/use-auth";
@@ -20,7 +20,9 @@ import {
   type StaPosture,
   type StaEnvironment,
   type StaFace,
+  type StaConditions,
 } from "@/lib/diving";
+import { WARMUP_PRESETS, loadCustomWarmups } from "@/lib/warmups";
 import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -94,6 +96,11 @@ function LogDive() {
   const [breatheIn, setBreatheIn] = useState("");
   const [breatheOut, setBreatheOut] = useState("");
 
+  // warm-up used before the dive (any discipline)
+  const [warmupId, setWarmupId] = useState("");
+  const [warmupName, setWarmupName] = useState("");
+  const allWarmups = useMemo(() => [...loadCustomWarmups(), ...WARMUP_PRESETS], []);
+
   // Derive fins category from discipline — no manual override needed
   const finsCategory = (d: DisciplineCode): "monofin" | "bifins" | "none" => {
     if (["DYN", "CWT"].includes(d))   return "monofin";
@@ -129,6 +136,8 @@ function LogDive() {
     setRoomTemp(c.roomTemp != null ? String(c.roomTemp) : "");
     setBreatheIn(c.breatheInSec != null ? String(c.breatheInSec) : "");
     setBreatheOut(c.breatheOutSec != null ? String(c.breatheOutSec) : "");
+    setWarmupId(c.warmupId ?? "");
+    setWarmupName(c.warmupName ?? "");
   }, [editing]);
 
   const mutation = useMutation({
@@ -156,8 +165,8 @@ function LogDive() {
       toast.error(t("log.enterValid"));
       return;
     }
-    const staConditions =
-      discipline === "STA"
+    const conditions: StaConditions = {
+      ...(discipline === "STA"
         ? {
             posture,
             environment,
@@ -166,11 +175,13 @@ function LogDive() {
             breatheInSec: breatheIn ? Number(breatheIn) : null,
             breatheOutSec: breatheOut ? Number(breatheOut) : null,
           }
-        : null;
+        : {}),
+      ...(warmupName ? { warmupName, warmupId } : {}),
+    };
     const hasConditions =
-      !!staConditions &&
-      (staConditions.posture || staConditions.environment || staConditions.face ||
-        staConditions.roomTemp != null || staConditions.breatheInSec != null || staConditions.breatheOutSec != null);
+      !!conditions.posture || !!conditions.environment || !!conditions.face ||
+      conditions.roomTemp != null || conditions.breatheInSec != null || conditions.breatheOutSec != null ||
+      !!conditions.warmupName;
 
     mutation.mutate({
       discipline,
@@ -192,7 +203,7 @@ function LogDive() {
       fins_model: finsModel || null,
       water_temp: waterTemp ? Number(waterTemp) : null,
       foot_pocket: footPocket || null,
-      conditions: hasConditions ? staConditions : null,
+      conditions: hasConditions ? conditions : null,
     });
   };
 
@@ -462,6 +473,32 @@ function LogDive() {
               )}
             </div>
           )}
+        </div>
+
+        {/* warm-up used before the dive — any discipline */}
+        <div className="glass-card space-y-2 rounded-2xl p-5">
+          <span className="flex items-center gap-2 text-sm font-semibold" style={{ color: "#EF9F27" }}>
+            <Flame className="size-4" /> {lang === "el" ? "Ζέσταμα που έκανες" : "Warm-up used"}
+          </span>
+          <Select
+            value={warmupId || "none"}
+            onValueChange={(v) => {
+              if (v === "none") { setWarmupId(""); setWarmupName(""); return; }
+              const w = allWarmups.find((x) => x.id === v);
+              setWarmupId(v);
+              setWarmupName(w ? (lang === "el" ? w.name_el : w.name_en) : "");
+            }}
+          >
+            <SelectTrigger><SelectValue placeholder={lang === "el" ? "Κανένα" : "None"} /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">{lang === "el" ? "— Κανένα" : "— None"}</SelectItem>
+              {allWarmups.map((w) => (
+                <SelectItem key={w.id} value={w.id}>
+                  {lang === "el" ? w.name_el : w.name_en}{w.custom ? " · custom" : ""}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {/* STA session conditions — only for static apnea */}

@@ -372,6 +372,13 @@ function DiveDetail() {
         </Section>
       )}
 
+      {/* warm-up used — any discipline */}
+      {c?.warmupName && (
+        <Section title={lang === "el" ? "ΖΕΣΤΑΜΑ" : "WARM-UP"}>
+          <Row label={lang === "el" ? "Ζέσταμα που έγινε" : "Warm-up used"} value={c.warmupName} />
+        </Section>
+      )}
+
       {/* notes — STA sessions get structured display; plain text is shown as-is */}
       {dive.notes && (
         dive.discipline === "STA" && dive.notes.includes("Rounds:")
