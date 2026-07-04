@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Plus, Waves, Flame, Timer, Users, CalendarDays, Brain, ChevronRight } from "lucide-react";
+import { Plus, Waves, Flame, Timer, TimerReset, Users, CalendarDays, Brain, ChevronRight } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { useI18n } from "@/lib/i18n";
@@ -24,6 +24,7 @@ interface HubItem {
 const ITEMS: HubItem[] = [
   { to: "/log",         icon: Plus,         accent: "#1D9E75", title_el: "Καταγραφή βουτιάς", title_en: "Log a dive",      sub_el: "Γρήγορη καταχώρηση επίδοσης",   sub_en: "Quick record a performance" },
   { to: "/sta-trainer", icon: Waves,        accent: "#5DCAA5", title_el: "Στατική Trainer",   title_en: "Static Trainer",  sub_el: "Καθοδηγούμενη στατική με ήχο",  sub_en: "Guided static with soundscape" },
+  { to: "/stopwatch",   icon: TimerReset,   accent: "#4FA8E0", title_el: "Χρονόμετρο",        title_en: "Stopwatch",       sub_el: "Lap chrono πισίνας — γίνεται βουτιά", sub_en: "Pool lap chrono — becomes a dive" },
   { to: "/warmup",      icon: Flame,        accent: "#EF9F27", title_el: "Ζέσταμα",           title_en: "Warm-up",         sub_el: "Έτοιμα ζεστάματα + ειδοποιήσεις", sub_en: "Ready warm-ups + hold alerts" },
   { to: "/planner",     icon: Timer,        accent: "#4FA8E0", title_el: "Σχεδίασε τη βουτιά σου", title_en: "Plan your dive",  sub_el: "Στόχος, top time, ζέσταμα & συνθήκες", sub_en: "Target, top time, warm-up & conditions" },
   { to: "/tips",        icon: Brain,        accent: "#B58BE8", title_el: "Συμβουλές & Νους",  title_en: "Tips & Mind",     sub_el: "Εξίσωση, νους, χαλάρωση, ασφάλεια", sub_en: "EQ, mind, relaxation, safety" },
