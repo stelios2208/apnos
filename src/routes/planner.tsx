@@ -1,11 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   Play, Square, Bell, Volume2, VolumeX, Plus, Pencil, Trash2, X,
-  Clock, Target, Flame, Moon, Waves, Calendar, Check,
+  Clock, Target, Flame, Moon, Waves, Calendar, Check, ClipboardList,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AppLayout } from "@/components/AppLayout";
+import { useAuth } from "@/hooks/use-auth";
+import { fetchAthletes } from "@/lib/athletes";
 import { useI18n } from "@/lib/i18n";
 import {
   DISCIPLINES, DISCIPLINE_MAP, disciplineName, isTimeDiscipline,
@@ -98,10 +101,21 @@ function fmtDayLabel(iso: string, lang: string): string {
 
 function DivePlanPage() {
   const { lang } = useI18n();
+  const { user } = useAuth();
   const [plans, setPlans] = useState<DivePlan[]>([]);
   const [editing, setEditing] = useState<DivePlan | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [running, setRunning] = useState<DivePlan | null>(null);
+
+  const { data: athletes = [] } = useQuery({
+    queryKey: ["coach_athletes", user?.id],
+    queryFn: () => fetchAthletes(user!.id),
+    enabled: !!user,
+  });
+  const programmes = useMemo(
+    () => athletes.flatMap((a) => (a.programs ?? []).map((p) => ({ name: p.name, athleteName: a.name }))),
+    [athletes],
+  );
 
   useEffect(() => { setPlans(loadPlans()); }, []);
 
@@ -149,7 +163,7 @@ function DivePlanPage() {
       )}
 
       {showForm && editing && (
-        <PlanFormModal plan={editing} lang={lang} onClose={() => setShowForm(false)} onSaved={onSaved} />
+        <PlanFormModal plan={editing} lang={lang} programmes={programmes} onClose={() => setShowForm(false)} onSaved={onSaved} />
       )}
       {running && (
         <CountdownPanel plan={running} lang={lang} onClose={() => setRunning(null)} />
@@ -174,6 +188,7 @@ function PlanCard({ plan, lang, onEdit, onDelete, onStart }: {
             {plan.topTime && <span className="flex items-center gap-1"><Clock className="size-3" /> {plan.topTime}</span>}
             {plan.target && <span className="flex items-center gap-1"><Target className="size-3" /> {plan.target}</span>}
             {plan.warmupName && <span className="flex items-center gap-1"><Flame className="size-3" style={{ color: "#EF9F27" }} /> {plan.warmupName}</span>}
+            {plan.programName && <span className="flex items-center gap-1"><ClipboardList className="size-3" style={{ color: "#B58BE8" }} /> {plan.programName}</span>}
           </div>
         </div>
         <button onClick={onEdit} className="rounded-lg p-2 text-white/25 hover:text-white/60"><Pencil className="size-3.5" /></button>
@@ -190,11 +205,13 @@ function PlanCard({ plan, lang, onEdit, onDelete, onStart }: {
 
 // ── form ─────────────────────────────────────────────────────────────────────
 
-function PlanFormModal({ plan, lang, onClose, onSaved }: {
-  plan: DivePlan; lang: string; onClose: () => void; onSaved: (p: DivePlan) => void;
+function PlanFormModal({ plan, lang, programmes, onClose, onSaved }: {
+  plan: DivePlan; lang: string; programmes: { name: string; athleteName: string }[];
+  onClose: () => void; onSaved: (p: DivePlan) => void;
 }) {
   const [p, setP] = useState<DivePlan>(plan);
   const [showWarmups, setShowWarmups] = useState(false);
+  const [showProgrammes, setShowProgrammes] = useState(false);
   const set = (patch: Partial<DivePlan>) => setP((prev) => ({ ...prev, ...patch }));
 
   const time = isTimeDiscipline(p.discipline);
@@ -282,6 +299,23 @@ function PlanFormModal({ plan, lang, onClose, onSaved }: {
             <button onClick={() => set({ warmupId: null, warmupName: "" })} className="ml-auto text-[0.65rem] text-white/30 hover:text-red-400/70">{lang === "el" ? "αφαίρεση" : "remove"}</button>
           </div>
         )}
+        {!p.warmupId && <div className="mb-3" />}
+
+        {/* programme loader (from your coach programmes) */}
+        {programmes.length > 0 && (
+          <>
+            <label className={labelCls}>{lang === "el" ? "ΠΡΟΓΡΑΜΜΑ" : "PROGRAMME"}</label>
+            <button onClick={() => setShowProgrammes(true)} className="mb-3 flex w-full items-center justify-between rounded-xl px-3 py-3" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+              <span className="flex items-center gap-2 text-sm">
+                <ClipboardList className="size-4" style={{ color: "#B58BE8" }} />
+                <span className={p.programName ? "text-white/80" : "text-white/35"}>{p.programName || (lang === "el" ? "Φόρτωσε πρόγραμμα…" : "Load a programme…")}</span>
+              </span>
+              {p.programName
+                ? <button onClick={(e) => { e.stopPropagation(); set({ programName: "" }); }} className="text-[0.65rem] text-white/30 hover:text-red-400/70">{lang === "el" ? "αφαίρεση" : "remove"}</button>
+                : null}
+            </button>
+          </>
+        )}
 
         {/* STA wet + sleep */}
         <div className="mb-3 grid grid-cols-2 gap-3">
@@ -307,6 +341,35 @@ function PlanFormModal({ plan, lang, onClose, onSaved }: {
         {showWarmups && (
           <WarmupPicker presets={WARMUP_PRESETS} custom={custom} lang={lang} onPick={pickWarmup} onClose={() => setShowWarmups(false)} />
         )}
+        {showProgrammes && (
+          <ProgrammePicker programmes={programmes} lang={lang} onPick={(name) => { set({ programName: name }); setShowProgrammes(false); }} onClose={() => setShowProgrammes(false)} />
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ProgrammePicker({ programmes, lang, onPick, onClose }: {
+  programmes: { name: string; athleteName: string }[]; lang: string; onPick: (name: string) => void; onClose: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-[60] flex flex-col justify-end" style={{ background: "rgba(0,0,0,0.7)" }} onClick={onClose}>
+      <div className="max-h-[75vh] overflow-y-auto rounded-t-3xl p-5" style={{ background: "#0a0f1a" }} onClick={(e) => e.stopPropagation()}>
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="text-sm font-bold text-white">{lang === "el" ? "Διάλεξε πρόγραμμα" : "Choose a programme"}</h3>
+          <button onClick={onClose} className="rounded-lg p-1.5 text-white/40"><X className="size-5" /></button>
+        </div>
+        <div className="space-y-2">
+          {programmes.map((pr, i) => (
+            <button key={i} onClick={() => onPick(pr.name)} className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left" style={{ background: "#0d1320", border: "1px solid rgba(255,255,255,0.05)", borderLeft: "3px solid #B58BE8" }}>
+              <ClipboardList className="size-4 shrink-0" style={{ color: "#B58BE8" }} />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold text-white">{pr.name}</p>
+                <p className="text-[0.65rem] text-white/40">{pr.athleteName}</p>
+              </div>
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );
