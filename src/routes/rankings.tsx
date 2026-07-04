@@ -48,6 +48,12 @@ function parseMMSS(s: string): number {
   return mm * 60 + ss;
 }
 
+function fmtMMSS(secs: number): string {
+  const m = Math.floor(secs / 60);
+  const s = secs % 60;
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
 // ── main ─────────────────────────────────────────────────────────────────────
 
 function RankingsPage() {
@@ -381,7 +387,8 @@ function ResultFormModal({ existing, lang, onClose, onSaved }: {
       onSaved();
     } catch (e) {
       console.error(e);
-      toast.error(lang === "el" ? "Σφάλμα αποθήκευσης" : "Save failed");
+      const msg = (e as { message?: string })?.message ?? String(e);
+      toast.error(`${lang === "el" ? "Σφάλμα αποθήκευσης" : "Save failed"}: ${msg}`);
     } finally {
       setSaving(false);
     }
@@ -422,6 +429,7 @@ function ResultFormModal({ existing, lang, onClose, onSaved }: {
               inputMode="numeric"
               value={resultStr}
               onChange={(e) => setResultStr(e.target.value.replace(time ? /[^0-9:]/g : /[^0-9]/g, ""))}
+              onBlur={() => { if (time) { const s = parseMMSS(resultStr); setResultStr(s > 0 ? fmtMMSS(s) : ""); } }}
               placeholder={time ? "5:30" : "150"}
               className="w-full rounded-xl bg-white/5 px-3 py-2.5 text-center text-lg font-bold text-white outline-none focus:ring-1 focus:ring-[#1D9E75]"
             />
