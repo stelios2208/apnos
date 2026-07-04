@@ -46,7 +46,7 @@ export function disciplineName(code: DisciplineCode, lang: "el" | "en"): string 
 export type SessionType = "training" | "competition";
 
 // STA-specific session conditions, stored in the dives.conditions JSONB column.
-export type StaPosture = "" | "supine" | "seated" | "float";
+export type StaPosture = "" | "supine" | "seated" | "float" | "prone";
 export type StaEnvironment = "" | "dry" | "wet";
 export type StaFace = "" | "noseclip" | "mask" | "goggles";
 

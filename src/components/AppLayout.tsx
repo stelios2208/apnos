@@ -1,6 +1,6 @@
 import React, { useEffect, type ReactNode } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { LayoutDashboard, Plus, History, LogOut, Dumbbell, UserRound } from "lucide-react";
+import { LayoutDashboard, Plus, History, LogOut, Waves, UserRound } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { useAuth } from "@/hooks/use-auth";
 import { useI18n } from "@/lib/i18n";
@@ -49,7 +49,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
   const sideItems = [
     { to: "/dashboard", label: lang === "el" ? "Αρχική"     : "Home",     icon: LayoutDashboard, active: homeActive },
-    { to: "/train",     label: lang === "el" ? "Προπόνηση"  : "Train",    icon: Dumbbell,        active: trainActive },
+    { to: "/train",     label: lang === "el" ? "Προπόνηση"  : "Train",    icon: Waves,           active: trainActive },
   ] as const;
 
   const endItems = [

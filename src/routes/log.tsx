@@ -183,8 +183,8 @@ function LogDive() {
       food_notes: foodNotes || null,
       mental_state: mentalState,
       notes: notes || null,
-      neck_weight: neckWeight ? Number(neckWeight) : null,
-      belt_weight: beltWeight ? Number(beltWeight) : null,
+      neck_weight: discipline === "STA" ? null : (neckWeight ? Number(neckWeight) : null),
+      belt_weight: discipline === "STA" ? null : (beltWeight ? Number(beltWeight) : null),
       wetsuit_mm: wetsuitMm ? Number(wetsuitMm) : null,
       buoyancy: buoyancy || null,
       fins_type: finsCat !== "none" ? finsCat : null,
@@ -358,17 +358,21 @@ function LogDive() {
               className="px-5 pb-5"
               style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", alignItems: "start" }}
             >
-              {/* row: neck weight | belt weight */}
-              <div className="space-y-1.5">
-                <Label htmlFor="neck-weight">{t("log.neckWeight")}</Label>
-                <Input id="neck-weight" type="number" inputMode="decimal" step="0.1" min="0"
-                  value={neckWeight} onChange={(e) => setNeckWeight(e.target.value)} placeholder="0.0" />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="belt-weight">{t("log.beltWeight")}</Label>
-                <Input id="belt-weight" type="number" inputMode="decimal" step="0.1" min="0"
-                  value={beltWeight} onChange={(e) => setBeltWeight(e.target.value)} placeholder="0.0" />
-              </div>
+              {/* row: neck weight | belt weight — not applicable to static apnea */}
+              {discipline !== "STA" && (
+                <>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="neck-weight">{t("log.neckWeight")}</Label>
+                    <Input id="neck-weight" type="number" inputMode="decimal" step="0.1" min="0"
+                      value={neckWeight} onChange={(e) => setNeckWeight(e.target.value)} placeholder="0.0" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="belt-weight">{t("log.beltWeight")}</Label>
+                    <Input id="belt-weight" type="number" inputMode="decimal" step="0.1" min="0"
+                      value={beltWeight} onChange={(e) => setBeltWeight(e.target.value)} placeholder="0.0" />
+                  </div>
+                </>
+              )}
 
               {/* row: wetsuit | water temp */}
               <div className="space-y-1.5">
@@ -471,7 +475,12 @@ function LogDive() {
               <Label>{lang === "el" ? "Περιβάλλον" : "Environment"}</Label>
               <PillGroup
                 value={environment}
-                onChange={setEnvironment}
+                onChange={(v) => {
+                  setEnvironment(v);
+                  // wet static is always face-down (prone); dry is supine/seated
+                  if (v === "wet") setPosture("prone");
+                  else if (posture === "prone") setPosture("");
+                }}
                 options={[
                   { value: "dry", label: lang === "el" ? "Ξηρή" : "Dry" },
                   { value: "wet", label: lang === "el" ? "Υγρή" : "Wet" },
@@ -484,11 +493,12 @@ function LogDive() {
               <PillGroup
                 value={posture}
                 onChange={setPosture}
-                options={[
-                  { value: "supine", label: lang === "el" ? "Ανάσκελα" : "Supine" },
-                  { value: "seated", label: lang === "el" ? "Καθιστή" : "Seated" },
-                  { value: "float",  label: lang === "el" ? "Επίπλευση" : "Float" },
-                ]}
+                options={environment === "wet"
+                  ? [{ value: "prone", label: lang === "el" ? "Μπρούμυτα" : "Face down" }]
+                  : [
+                      { value: "supine", label: lang === "el" ? "Ανάσκελα" : "Supine" },
+                      { value: "seated", label: lang === "el" ? "Καθιστή" : "Seated" },
+                    ]}
               />
             </div>
 

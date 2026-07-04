@@ -55,6 +55,12 @@ export function buildShareSvg(d: ShareCardData): string {
       <stop offset="0" stop-color="#5DCAA5" stop-opacity="0.30"/>
       <stop offset="1" stop-color="#1D9E75" stop-opacity="0"/>
     </radialGradient>
+    <linearGradient id="mk-breath" x1="6" y1="6" x2="34" y2="34" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#5DCAA5"/><stop offset="1" stop-color="#1D9E75"/>
+    </linearGradient>
+    <radialGradient id="mk-fall" cx="50%" cy="38%" r="65%">
+      <stop offset="0" stop-color="#7BD9B8"/><stop offset="1" stop-color="#1D9E75"/>
+    </radialGradient>
   </defs>
 
   <rect width="${W}" height="${H}" fill="url(#bg)"/>
@@ -69,9 +75,17 @@ export function buildShareSvg(d: ShareCardData): string {
 
   ${bubbles()}
 
+  <!-- Apnos logo mark -->
+  <g transform="translate(487 74) scale(2.6)">
+    <path d="M25.47 4.96 A16 16 0 1 1 14.53 4.96" stroke="url(#mk-breath)" stroke-width="2.6" stroke-linecap="round" fill="none"/>
+    <circle cx="20" cy="25" r="4.2" fill="url(#mk-fall)"/>
+    <circle cx="20" cy="15.5" r="1.05" fill="#5DCAA5" opacity="0.55"/>
+    <circle cx="20" cy="19.2" r="1.5" fill="#5DCAA5" opacity="0.8"/>
+  </g>
+
   <!-- wordmark -->
-  <text x="540" y="150" text-anchor="middle" font-family="${FONT}" font-size="46" font-weight="800" letter-spacing="14" fill="#9FE1CB">APNOS</text>
-  <text x="540" y="192" text-anchor="middle" font-family="${FONT}" font-size="22" font-weight="600" letter-spacing="8" fill="#5DCAA5" opacity="0.7">${d.lang === "el" ? "ΗΜΕΡΟΛΟΓΙΟ ΑΠΝΟΙΑΣ" : "FREEDIVING LOG"}</text>
+  <text x="540" y="250" text-anchor="middle" font-family="${FONT}" font-size="46" font-weight="800" letter-spacing="14" fill="#9FE1CB">APNOS</text>
+  <text x="540" y="292" text-anchor="middle" font-family="${FONT}" font-size="22" font-weight="600" letter-spacing="8" fill="#5DCAA5" opacity="0.7">${d.lang === "el" ? "ΗΜΕΡΟΛΟΓΙΟ ΑΠΝΟΙΑΣ" : "FREEDIVING LOG"}</text>
 
   <!-- discipline -->
   <text x="540" y="560" text-anchor="middle" font-family="${FONT}" font-size="40" font-weight="600" letter-spacing="6" fill="#5DCAA5">${esc(d.disciplineLabel.toUpperCase())}</text>
