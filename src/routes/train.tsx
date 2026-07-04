@@ -25,7 +25,7 @@ const ITEMS: HubItem[] = [
   { to: "/log",         icon: Plus,         accent: "#1D9E75", title_el: "Καταγραφή βουτιάς", title_en: "Log a dive",      sub_el: "Γρήγορη καταχώρηση επίδοσης",   sub_en: "Quick record a performance" },
   { to: "/sta-trainer", icon: Waves,        accent: "#5DCAA5", title_el: "Στατική Trainer",   title_en: "Static Trainer",  sub_el: "Καθοδηγούμενη στατική με ήχο",  sub_en: "Guided static with soundscape" },
   { to: "/warmup",      icon: Flame,        accent: "#EF9F27", title_el: "Ζέσταμα",           title_en: "Warm-up",         sub_el: "Έτοιμα ζεστάματα + ειδοποιήσεις", sub_en: "Ready warm-ups + hold alerts" },
-  { to: "/planner",     icon: Timer,        accent: "#4FA8E0", title_el: "Planner",           title_en: "Planner",         sub_el: "Σχεδίασε πίνακες προπόνησης",   sub_en: "Plan training tables" },
+  { to: "/planner",     icon: Timer,        accent: "#4FA8E0", title_el: "Σχεδίασε τη βουτιά σου", title_en: "Plan your dive",  sub_el: "Στόχος, top time, ζέσταμα & συνθήκες", sub_en: "Target, top time, warm-up & conditions" },
   { to: "/tips",        icon: Brain,        accent: "#B58BE8", title_el: "Συμβουλές & Νους",  title_en: "Tips & Mind",     sub_el: "Εξίσωση, νους, χαλάρωση, ασφάλεια", sub_en: "EQ, mind, relaxation, safety" },
   { to: "/coach",       icon: Users,        accent: "#7ED9C3", title_el: "Coach Programs",    title_en: "Coach Programs",  sub_el: "Η ομάδα & τα προγράμματά σου",  sub_en: "Your team & programmes" },
   { to: "/calendar",    icon: CalendarDays, accent: "#7ED9C3", title_el: "Ημερολόγιο",        title_en: "Calendar",        sub_el: "Οι προπονήσεις σου στο χρόνο",  sub_en: "Your sessions over time" },
