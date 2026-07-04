@@ -1,5 +1,6 @@
 -- Competition results feed the public rankings, so SELECT must be allowed
 -- across users for rows marked public (own rows always visible).
+-- Idempotent: safe to re-run (drops policies before recreating).
 
 create table if not exists competition_results (
   id                 uuid        default gen_random_uuid() primary key,
@@ -20,19 +21,23 @@ create table if not exists competition_results (
 
 alter table competition_results enable row level security;
 
+drop policy if exists "read public or own competition_results" on competition_results;
 create policy "read public or own competition_results"
   on competition_results for select
   using (is_public = true or auth.uid() = user_id);
 
+drop policy if exists "insert own competition_results" on competition_results;
 create policy "insert own competition_results"
   on competition_results for insert
   with check (auth.uid() = user_id);
 
+drop policy if exists "update own competition_results" on competition_results;
 create policy "update own competition_results"
   on competition_results for update
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
 
+drop policy if exists "delete own competition_results" on competition_results;
 create policy "delete own competition_results"
   on competition_results for delete
   using (auth.uid() = user_id);
