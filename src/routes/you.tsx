@@ -23,13 +23,13 @@ interface HubItem {
 
 const ITEMS: HubItem[] = [
   { to: "/profile",   icon: UserCircle, accent: "#1D9E75", title_el: "Προφίλ Αθλητή", title_en: "Athlete Profile", sub_el: "Στοιχεία, δημόσιο/ιδιωτικό", sub_en: "Details, public/private" },
+  { to: "/rankings",  icon: Trophy, accent: "#EF9F27", title_el: "Ρεκόρ & Κατατάξεις", title_en: "Records & Rankings", sub_el: "CMAS/AIDA, πανελλήνια, θάλασσα & πισίνα", sub_en: "CMAS/AIDA, national, sea & pool" },
   { to: "/equipment", icon: Backpack, accent: "#EF9F27", title_el: "Εξοπλισμός",  title_en: "Equipment", sub_el: "Στολές, πτερύγια, βαρίδια, checklist", sub_en: "Suits, fins, weights, checklist" },
   { to: "/rules",     icon: BookOpen, accent: "#5DCAA5", title_el: "Κανόνες",     title_en: "Rules",     sub_el: "Πειθαρχίες & κανονισμοί αγώνων",       sub_en: "Disciplines & competition rules" },
   { to: "/settings",  icon: Settings, accent: "#9FE1CB", title_el: "Ρυθμίσεις",   title_en: "Settings",  sub_el: "Γλώσσα, λογαριασμός, προτιμήσεις",     sub_en: "Language, account, preferences" },
 ];
 
 const SOON: { icon: LucideIcon; title_el: string; title_en: string; sub_el: string; sub_en: string }[] = [
-  { icon: Trophy,     title_el: "Ρεκόρ & Κατατάξεις", title_en: "Records & Rankings", sub_el: "CMAS/AIDA, πανελλήνια, θάλασσα & πισίνα", sub_en: "CMAS/AIDA, national, sea & pool" },
   { icon: Store,      title_el: "Directory", title_en: "Directory", sub_el: "Εκπαιδευτές & εξοπλισμός",         sub_en: "Instructors & gear" },
 ];
 
