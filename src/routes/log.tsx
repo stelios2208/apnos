@@ -3,7 +3,7 @@ import { zodValidator, fallback } from "@tanstack/zod-adapter";
 import { z } from "zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, Flame } from "lucide-react";
+import { ChevronDown, Flame, HeartPulse, Backpack, Waves } from "lucide-react";
 import { toast } from "sonner";
 import { AppLayout } from "@/components/AppLayout";
 import { useAuth } from "@/hooks/use-auth";
@@ -298,7 +298,9 @@ function LogDive() {
         </div>
 
         <div className="glass-card space-y-4 rounded-2xl p-5">
-          <h2 className="text-sm font-semibold text-muted-foreground">{t("log.condition")}</h2>
+          <h2 className="flex items-center gap-2 text-sm font-semibold" style={{ color: "#B58BE8" }}>
+            <HeartPulse className="size-4" /> {t("log.condition")}
+          </h2>
 
           <div className="space-y-1.5">
             <Label htmlFor="sleep">{t("log.sleep")}</Label>
@@ -355,12 +357,12 @@ function LogDive() {
             onClick={() => setGearOpen((o) => !o)}
             className="flex w-full items-center justify-between p-5 text-left"
           >
-            <span className="text-sm font-semibold" style={{ color: "#5DCAA5" }}>
-              {t("log.gear")}
+            <span className="flex items-center gap-2 text-sm font-semibold" style={{ color: "#EF9F27" }}>
+              <Backpack className="size-4" /> {t("log.gear")}
             </span>
             <ChevronDown
               className="size-4 transition-transform duration-200"
-              style={{ color: "#5DCAA5", transform: gearOpen ? "rotate(180deg)" : "rotate(0deg)" }}
+              style={{ color: "#EF9F27", transform: gearOpen ? "rotate(180deg)" : "rotate(0deg)" }}
             />
           </button>
 
@@ -504,8 +506,8 @@ function LogDive() {
         {/* STA session conditions — only for static apnea */}
         {discipline === "STA" && (
           <div className="glass-card space-y-4 rounded-2xl p-5">
-            <span className="text-sm font-semibold" style={{ color: "#5DCAA5" }}>
-              {lang === "el" ? "Συνθήκες Στατικής" : "Static Conditions"}
+            <span className="flex items-center gap-2 text-sm font-semibold" style={{ color: "#5DCAA5" }}>
+              <Waves className="size-4" /> {lang === "el" ? "Συνθήκες Στατικής" : "Static Conditions"}
             </span>
 
             <div className="space-y-1.5">
