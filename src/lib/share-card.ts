@@ -107,6 +107,85 @@ export function buildShareSvg(d: ShareCardData): string {
 </svg>`;
 }
 
+// ── Programme card (for coaches to send their athletes) ──────────────────────
+
+export interface ProgramCardData {
+  title: string;
+  disciplineCode: string;
+  disciplineLabel: string;
+  accent: string;
+  lines: string[];       // one readable line per set/round
+  footerName: string;    // coach or athlete name
+  lang: string;
+}
+
+export function buildProgramSvg(d: ProgramCardData): string {
+  const MAX = 9;
+  const shown = d.lines.slice(0, MAX);
+  const extra = d.lines.length - shown.length;
+  const trunc = (s: string) => (s.length > 42 ? s.slice(0, 41) + "…" : s);
+  const y0 = 640, step = 62;
+
+  const lineEls = shown.map((ln, i) => {
+    const y = y0 + i * step;
+    return `<circle cx="150" cy="${y - 11}" r="5" fill="${d.accent}"/>`
+      + `<text x="180" y="${y}" font-family="${FONT}" font-size="34" font-weight="500" fill="#e8f2ee">${esc(trunc(ln))}</text>`;
+  }).join("");
+  const extraEl = extra > 0
+    ? `<text x="540" y="${y0 + shown.length * step + 12}" text-anchor="middle" font-family="${FONT}" font-size="28" font-weight="600" fill="#5DCAA5">+${extra} ${d.lang === "el" ? "ακόμα" : "more"}</text>`
+    : "";
+  const title = d.title.length > 26 ? d.title.slice(0, 25) + "…" : d.title;
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+  <defs>
+    <linearGradient id="pbg" x1="0" y1="0" x2="0.3" y2="1">
+      <stop offset="0" stop-color="#1a3a5c"/><stop offset="0.45" stop-color="#10293f"/><stop offset="1" stop-color="#070a10"/>
+    </linearGradient>
+    <radialGradient id="psun" cx="0.5" cy="-0.05" r="0.75">
+      <stop offset="0" stop-color="#5DCAA5" stop-opacity="0.28"/><stop offset="1" stop-color="#1D9E75" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="pmk-breath" x1="6" y1="6" x2="34" y2="34" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#5DCAA5"/><stop offset="1" stop-color="#1D9E75"/>
+    </linearGradient>
+    <radialGradient id="pmk-fall" cx="50%" cy="38%" r="65%">
+      <stop offset="0" stop-color="#7BD9B8"/><stop offset="1" stop-color="#1D9E75"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="${W}" height="${H}" fill="url(#pbg)"/>
+  <rect width="${W}" height="${H}" fill="url(#psun)"/>
+  ${bubbles()}
+
+  <!-- logo + wordmark -->
+  <g transform="translate(487 74) scale(2.6)">
+    <path d="M25.47 4.96 A16 16 0 1 1 14.53 4.96" stroke="url(#pmk-breath)" stroke-width="2.6" stroke-linecap="round" fill="none"/>
+    <circle cx="20" cy="25" r="4.2" fill="url(#pmk-fall)"/>
+    <circle cx="20" cy="15.5" r="1.05" fill="#5DCAA5" opacity="0.55"/>
+    <circle cx="20" cy="19.2" r="1.5" fill="#5DCAA5" opacity="0.8"/>
+  </g>
+  <text x="540" y="250" text-anchor="middle" font-family="${FONT}" font-size="42" font-weight="800" letter-spacing="12" fill="#9FE1CB">APNOS</text>
+
+  <!-- discipline badge -->
+  <g transform="translate(540 360)">
+    <rect x="-90" y="-30" width="180" height="60" rx="30" fill="${d.accent}" opacity="0.16" stroke="${d.accent}" stroke-width="1.5" stroke-opacity="0.5"/>
+    <text x="0" y="11" text-anchor="middle" font-family="${FONT}" font-size="30" font-weight="800" letter-spacing="3" fill="${d.accent}">${esc(d.disciplineCode)}</text>
+  </g>
+
+  <!-- title -->
+  <text x="540" y="470" text-anchor="middle" font-family="${FONT}" font-size="52" font-weight="700" fill="#ffffff">${esc(title)}</text>
+  <text x="540" y="522" text-anchor="middle" font-family="${FONT}" font-size="28" font-weight="500" letter-spacing="3" fill="#5DCAA5">${esc(d.disciplineLabel.toUpperCase())}</text>
+
+  <!-- sets panel -->
+  <rect x="90" y="565" width="900" height="${Math.max(120, shown.length * step + 70)}" rx="28" fill="#ffffff" opacity="0.03"/>
+  ${lineEls}
+  ${extraEl}
+
+  <!-- footer -->
+  <text x="540" y="1250" text-anchor="middle" font-family="${FONT}" font-size="36" font-weight="700" fill="#ffffff" opacity="0.85">${esc(d.footerName)}</text>
+  <text x="540" y="1298" text-anchor="middle" font-family="${FONT}" font-size="28" font-weight="600" letter-spacing="2" fill="#5DCAA5">${d.lang === "el" ? "Πρόγραμμα" : "Programme"} · apnos.app</text>
+</svg>`;
+}
+
 export function svgDataUrl(svg: string): string {
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }

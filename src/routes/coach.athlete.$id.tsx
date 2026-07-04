@@ -3,11 +3,13 @@ import { type CSSProperties, useEffect, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, ChevronUp,
-  Copy, CopyPlus, LayoutList, Loader2, Pencil, Plus, Trash2, X, Zap,
+  Copy, CopyPlus, LayoutList, Loader2, Pencil, Plus, Share2, Trash2, X, Zap,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AppLayout } from "@/components/AppLayout";
 import { AthleteFormModal } from "@/components/AthleteFormModal";
+import { ProgramShareModal } from "@/components/ShareCard";
+import { disciplineName } from "@/lib/diving";
 import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -56,6 +58,7 @@ function AthletePage() {
   const [activeDiscipline, setActiveDiscipline] = useState<DisciplineCode | null>(null);
   const [selectedDate, setSelectedDate]     = useState(todayISO());
   const [showCopy, setShowCopy]             = useState(false);
+  const [showShareCard, setShowShareCard]   = useState(false);
   const [showEdit, setShowEdit]             = useState(false);
   const [saved, setSaved]                   = useState(true);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -395,6 +398,7 @@ function AthletePage() {
                   onDelete={() => deleteProgram(active.id)}
                   onCopy={() => setShowCopy(true)}
                   onDuplicate={() => duplicateProgram(active)}
+                  onShare={() => setShowShareCard(true)}
                   onDateChange={setSelectedDate}
                 />
               )}
@@ -444,6 +448,22 @@ function AthletePage() {
           isPending={editMutation.isPending}
           onSubmit={(values) => editMutation.mutate(values)}
           onClose={() => setShowEdit(false)}
+        />
+      )}
+
+      {/* programme share card */}
+      {showShareCard && active && athlete && (
+        <ProgramShareModal
+          data={{
+            title: active.name,
+            disciplineCode: active.discipline ?? "—",
+            disciplineLabel: active.discipline ? disciplineName(active.discipline, lang === "el" ? "el" : "en") : "",
+            accent: DISCIPLINE_COLORS[active.discipline ?? ""] ?? "#5DCAA5",
+            lines: active.sets.map((r) => programRowLine(r, lang)),
+            footerName: athlete.name,
+            lang,
+          }}
+          onClose={() => setShowShareCard(false)}
         />
       )}
 
@@ -500,6 +520,18 @@ const DISCIPLINE_COLORS: Record<string, string> = {
   DYN: "#1D9E75", DYNB: "#1D9E75", DNF: "#5DCAA5",
   CWT: "#EF9F27", CWTB: "#EF9F27", CNF: "#e8a020", FIM: "#d4912a",
 };
+
+// One readable line per set/round, for the shareable programme card.
+function programRowLine(row: ProgramRow, lang: string): string {
+  if (row.kind === "sta") {
+    return `${row.tableType} · ${lang === "el" ? "κράτ." : "hold"} ${row.holdTime} · rec ${row.recovery}`;
+  }
+  if (row.kind === "dyn") {
+    const bm = row.breathingMode !== "normal" ? ` · ${row.breathingMode}` : "";
+    return `${row.reps}×${row.distance}m · rest ${row.rest} · ${dynSetLabel(row.setType)}${bm}`;
+  }
+  return `${row.targetDepth}m · ${row.totalTime} · SI ${row.surfaceInterval}`;
+}
 
 // ── Week View helpers ──────────────────────────────────────────────────────
 
@@ -654,7 +686,7 @@ function WeekView({ programs, activeDiscipline, lang, weekOffset, onWeekChange, 
   );
 }
 
-function ProgramBuilder({ program, lang, saved, onChange, onSave, onDelete, onCopy, onDuplicate, onDateChange }: {
+function ProgramBuilder({ program, lang, saved, onChange, onSave, onDelete, onCopy, onDuplicate, onShare, onDateChange }: {
   program: TrainingProgram;
   lang: string;
   saved: boolean;
@@ -663,6 +695,7 @@ function ProgramBuilder({ program, lang, saved, onChange, onSave, onDelete, onCo
   onDelete: () => void;
   onCopy: () => void;
   onDuplicate: () => void;
+  onShare: () => void;
   onDateChange: (date: string) => void;
 }) {
   const update = (partial: Partial<TrainingProgram>) => onChange({ ...program, ...partial });
@@ -813,6 +846,14 @@ function ProgramBuilder({ program, lang, saved, onChange, onSave, onDelete, onCo
           style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.5)" }}
         >
           <Copy className="size-3.5" />
+        </button>
+        <button
+          onClick={onShare}
+          title={lang === "el" ? "Κάρτα προγράμματος" : "Programme card"}
+          className="flex items-center justify-center rounded-xl px-3.5 py-3 transition-all"
+          style={{ background: "rgba(29,158,117,0.1)", border: "1px solid rgba(29,158,117,0.3)", color: "#5DCAA5" }}
+        >
+          <Share2 className="size-3.5" />
         </button>
         <button
           onClick={onSave}
