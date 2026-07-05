@@ -5,8 +5,12 @@ import type { LucideIcon } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { useI18n } from "@/lib/i18n";
 import {
-  TIPS, TIP_CATEGORIES, categoryColor, categoryLabel,
-  type Tip, type TipCategory,
+  TIPS,
+  TIP_CATEGORIES,
+  categoryColor,
+  categoryLabel,
+  type Tip,
+  type TipCategory,
 } from "@/lib/tips";
 
 export const Route = createFileRoute("/tips")({
@@ -36,9 +40,13 @@ function TipsPage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold text-white">{lang === "el" ? "Συμβουλές & Νους" : "Tips & Mind"}</h1>
-        <p className="text-xs text-white/35">
-          {lang === "el" ? "Εξίσωση, νοητική προετοιμασία, χαλάρωση, τεχνική & ασφάλεια" : "Equalization, mental prep, relaxation, technique & safety"}
+        <h1 className="text-2xl font-bold text-foreground">
+          {lang === "el" ? "Συμβουλές & Νους" : "Tips & Mind"}
+        </h1>
+        <p className="text-xs text-foreground/35">
+          {lang === "el"
+            ? "Εξίσωση, νοητική προετοιμασία, χαλάρωση, τεχνική & ασφάλεια"
+            : "Equalization, mental prep, relaxation, technique & safety"}
         </p>
       </div>
 
@@ -48,7 +56,12 @@ function TipsPage() {
           {lang === "el" ? "Όλα" : "All"}
         </FilterChip>
         {TIP_CATEGORIES.map((c) => (
-          <FilterChip key={c.id} active={filter === c.id} color={c.color} onClick={() => setFilter(c.id)}>
+          <FilterChip
+            key={c.id}
+            active={filter === c.id}
+            color={c.color}
+            onClick={() => setFilter(c.id)}
+          >
             {lang === "el" ? c.el : c.en}
           </FilterChip>
         ))}
@@ -64,25 +77,40 @@ function TipsPage() {
               key={tip.id}
               onClick={() => setOpen(tip)}
               className="flex w-full items-center gap-3.5 rounded-2xl px-4 py-3.5 text-left transition-all active:scale-[0.99]"
-              style={{ background: "#0d1320", border: "1px solid rgba(255,255,255,0.06)", borderLeft: `3px solid ${color}` }}
+              style={{
+                background: "var(--card)",
+                border: "1px solid rgba(var(--ink),0.06)",
+                borderLeft: `3px solid ${color}`,
+              }}
             >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full" style={{ background: `${color}18`, color }}>
+              <div
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
+                style={{ background: `${color}18`, color }}
+              >
                 <Icon className="size-5" />
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <p className="truncate text-sm font-bold text-white">{lang === "el" ? tip.title_el : tip.title_en}</p>
+                  <p className="truncate text-sm font-bold text-foreground">
+                    {lang === "el" ? tip.title_el : tip.title_en}
+                  </p>
                   {tip.premium && (
-                    <span className="shrink-0 rounded px-1.5 py-0.5 text-[0.5rem] font-bold" style={{ background: "rgba(239,159,39,0.18)", color: "#EF9F27" }}>
+                    <span
+                      className="shrink-0 rounded px-1.5 py-0.5 text-[0.5rem] font-bold"
+                      style={{ background: "rgba(239,159,39,0.18)", color: "#EF9F27" }}
+                    >
                       {lang === "el" ? "ΠΡΟΧ." : "ADV"}
                     </span>
                   )}
                 </div>
-                <p className="mt-0.5 text-[0.65rem] font-semibold uppercase tracking-wider" style={{ color: `${color}cc` }}>
+                <p
+                  className="mt-0.5 text-[0.65rem] font-semibold uppercase tracking-wider"
+                  style={{ color: `${color}cc` }}
+                >
                   {categoryLabel(tip.category, lang)}
                 </p>
               </div>
-              <ChevronRight className="size-4 shrink-0 text-white/20" />
+              <ChevronRight className="size-4 shrink-0 text-foreground/20" />
             </button>
           );
         })}
@@ -93,16 +121,30 @@ function TipsPage() {
   );
 }
 
-function FilterChip({ active, color, onClick, children }: {
-  active: boolean; color: string; onClick: () => void; children: React.ReactNode;
+function FilterChip({
+  active,
+  color,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  color: string;
+  onClick: () => void;
+  children: React.ReactNode;
 }) {
   return (
     <button
       onClick={onClick}
       className="rounded-lg px-3 py-1.5 text-xs font-bold transition-all"
-      style={active
-        ? { background: `${color}22`, color, border: `1px solid ${color}55` }
-        : { background: "rgba(255,255,255,0.03)", color: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.06)" }}
+      style={
+        active
+          ? { background: `${color}22`, color, border: `1px solid ${color}55` }
+          : {
+              background: "rgba(var(--ink),0.03)",
+              color: "rgba(var(--ink),0.4)",
+              border: "1px solid rgba(var(--ink),0.06)",
+            }
+      }
     >
       {children}
     </button>
@@ -113,27 +155,56 @@ function TipSheet({ tip, lang, onClose }: { tip: Tip; lang: string; onClose: () 
   const color = categoryColor(tip.category);
   const Icon = CAT_ICON[tip.category];
   return (
-    <div className="fixed inset-0 z-50 flex flex-col justify-end" style={{ background: "rgba(0,0,0,0.6)" }} onClick={onClose}>
-      <div className="max-h-[85vh] overflow-y-auto rounded-t-3xl p-6" style={{ background: "#0a0f1a" }} onClick={(e) => e.stopPropagation()}>
+    <div
+      className="fixed inset-0 z-50 flex flex-col justify-end"
+      style={{ background: "rgba(0,0,0,0.6)" }}
+      onClick={onClose}
+    >
+      <div
+        className="max-h-[85vh] overflow-y-auto rounded-t-3xl p-6"
+        style={{ background: "var(--popover)" }}
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="mb-4 flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full" style={{ background: `${color}18`, color }}>
+            <div
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full"
+              style={{ background: `${color}18`, color }}
+            >
               <Icon className="size-5" />
             </div>
             <div>
-              <p className="text-[0.6rem] font-bold uppercase tracking-widest" style={{ color: `${color}cc` }}>
+              <p
+                className="text-[0.6rem] font-bold uppercase tracking-widest"
+                style={{ color: `${color}cc` }}
+              >
                 {categoryLabel(tip.category, lang)}
               </p>
-              <h2 className="text-lg font-bold leading-tight text-white">{lang === "el" ? tip.title_el : tip.title_en}</h2>
+              <h2 className="text-lg font-bold leading-tight text-foreground">
+                {lang === "el" ? tip.title_el : tip.title_en}
+              </h2>
             </div>
           </div>
-          <button onClick={onClose} className="shrink-0 rounded-lg p-1.5 text-white/40"><X className="size-5" /></button>
+          <button onClick={onClose} className="shrink-0 rounded-lg p-1.5 text-foreground/40">
+            <X className="size-5" />
+          </button>
         </div>
-        <p className="text-sm leading-relaxed text-white/70">{lang === "el" ? tip.body_el : tip.body_en}</p>
+        <p className="text-sm leading-relaxed text-foreground/70">
+          {lang === "el" ? tip.body_el : tip.body_en}
+        </p>
 
         {tip.category === "safety" && (
-          <p className="mt-4 rounded-xl px-3 py-2 text-[0.7rem]" style={{ background: "rgba(239,107,94,0.08)", border: "1px solid rgba(239,107,94,0.25)", color: "#EF6B5E" }}>
-            {lang === "el" ? "Η ασφάλεια είναι πάνω από κάθε επίδοση." : "Safety comes before any performance."}
+          <p
+            className="mt-4 rounded-xl px-3 py-2 text-[0.7rem]"
+            style={{
+              background: "rgba(239,107,94,0.08)",
+              border: "1px solid rgba(239,107,94,0.25)",
+              color: "#EF6B5E",
+            }}
+          >
+            {lang === "el"
+              ? "Η ασφάλεια είναι πάνω από κάθε επίδοση."
+              : "Safety comes before any performance."}
           </p>
         )}
       </div>

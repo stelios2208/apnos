@@ -12,6 +12,7 @@ import {
   VolumeX,
   Vibrate,
   SlidersHorizontal,
+  Waves,
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/hooks/use-auth";
@@ -425,7 +426,7 @@ function STATrainer() {
       className="fixed inset-0 flex flex-col overflow-hidden select-none"
       style={{ background: "#020a13" }}
     >
-      <UnderwaterScene />
+      {fx.scene && <UnderwaterScene />}
       {/* phase background wash */}
       <div
         className="pointer-events-none absolute inset-0 transition-all duration-700"
@@ -454,6 +455,13 @@ function STATrainer() {
         onMouseDown={(e) => e.stopPropagation()}
         onTouchStart={(e) => e.stopPropagation()}
       >
+        <FxToggle
+          active={fx.scene}
+          onClick={() => toggleFx("scene")}
+          on={<Waves className="size-4" />}
+          off={<Waves className="size-4" />}
+          label={lang === "el" ? "Βυθός" : "Scene"}
+        />
         <FxToggle
           active={fx.voice}
           onClick={() => toggleFx("voice")}

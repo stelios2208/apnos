@@ -138,7 +138,11 @@ export function loadCustomWarmups(): WarmupPreset[] {
 }
 
 export function saveCustomWarmups(list: WarmupPreset[]): void {
-  try { localStorage.setItem(CUSTOM_STORE_KEY, JSON.stringify(list)); } catch { /* ignore */ }
+  try {
+    localStorage.setItem(CUSTOM_STORE_KEY, JSON.stringify(list));
+  } catch {
+    /* ignore */
+  }
 }
 
 export function upsertCustomWarmup(p: WarmupPreset): WarmupPreset[] {
@@ -165,7 +169,11 @@ export function newCustomWarmup(): WarmupPreset {
     desc_en: "",
     level: "intermediate",
     accent: "#4FA8E0",
-    steps: [{ kind: "breathe", secs: 120 }, { kind: "hold", secs: 60 }, { kind: "rest", secs: 90 }],
+    steps: [
+      { kind: "breathe", secs: 120 },
+      { kind: "hold", secs: 60 },
+      { kind: "rest", secs: 90 },
+    ],
     custom: true,
   };
 }
@@ -230,11 +238,11 @@ export function newRound(): WarmupRound {
 // data module); this just fixes the id → colour so both stay in sync.
 
 export const WARMUP_ACCENTS: { id: string; color: string }[] = [
-  { id: "waves",   color: "#4FA8E0" },
-  { id: "wind",    color: "#5DCAA5" },
-  { id: "flame",   color: "#EF9F27" },
+  { id: "waves", color: "#4FA8E0" },
+  { id: "wind", color: "#5DCAA5" },
+  { id: "flame", color: "#EF9F27" },
   { id: "droplet", color: "#1D9E75" },
-  { id: "moon",    color: "#B58BE8" },
+  { id: "moon", color: "#B58BE8" },
   { id: "sparkle", color: "#E87DA8" },
 ];
 
@@ -266,5 +274,7 @@ export function saveAlarms(marks: number[]): void {
   try {
     const clean = Array.from(new Set(marks.filter((n) => n > 0))).sort((a, b2) => a - b2);
     localStorage.setItem(ALARM_STORE_KEY, JSON.stringify(clean));
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 }

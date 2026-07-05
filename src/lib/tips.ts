@@ -8,17 +8,19 @@ export type TipCategory = "eq" | "mental" | "relax" | "technique" | "safety";
 export interface Tip {
   id: string;
   category: TipCategory;
-  title_el: string; title_en: string;
-  body_el: string;  body_en: string;
+  title_el: string;
+  title_en: string;
+  body_el: string;
+  body_en: string;
   premium?: boolean;
 }
 
 export const TIP_CATEGORIES: { id: TipCategory; el: string; en: string; color: string }[] = [
-  { id: "safety",    el: "Ασφάλεια",   en: "Safety",        color: "#EF6B5E" },
-  { id: "eq",        el: "Εξίσωση",    en: "Equalization",  color: "#4FA8E0" },
-  { id: "mental",    el: "Νους",       en: "Mental",        color: "#B58BE8" },
-  { id: "relax",     el: "Χαλάρωση",   en: "Relaxation",    color: "#5DCAA5" },
-  { id: "technique", el: "Τεχνική",    en: "Technique",     color: "#1D9E75" },
+  { id: "safety", el: "Ασφάλεια", en: "Safety", color: "#EF6B5E" },
+  { id: "eq", el: "Εξίσωση", en: "Equalization", color: "#4FA8E0" },
+  { id: "mental", el: "Νους", en: "Mental", color: "#B58BE8" },
+  { id: "relax", el: "Χαλάρωση", en: "Relaxation", color: "#5DCAA5" },
+  { id: "technique", el: "Τεχνική", en: "Technique", color: "#1D9E75" },
 ];
 
 export function categoryColor(cat: TipCategory): string {
@@ -80,7 +82,7 @@ export const TIPS: Tip[] = [
     body_el:
       "Το LMC («samba») είναι απώλεια κινητικού ελέγχου· το blackout είναι απώλεια συνείδησης. Και τα δύο θέλουν άμεση αντίδραση: κράτα τον αεραγωγό έξω από το νερό, αφαίρεσε εξοπλισμό προσώπου, μίλα του, φύσα στο πρόσωπο. Μην ξανακαταδυθείς αν συνέβη — τελείωσε η προπόνηση.",
     body_en:
-      "LMC (\"samba\") is loss of motor control; blackout is loss of consciousness. Both need immediate action: keep the airway out of the water, remove face gear, talk to them, blow on the face. If it happened, don't dive again — the session is over.",
+      'LMC ("samba") is loss of motor control; blackout is loss of consciousness. Both need immediate action: keep the airway out of the water, remove face gear, talk to them, blow on the face. If it happened, don\'t dive again — the session is over.',
   },
 
   // ── Equalization ────────────────────────────────────────────────────────────

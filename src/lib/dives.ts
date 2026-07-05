@@ -71,7 +71,10 @@ async function recomputePersonalBest(userId: string, discipline: DisciplineCode)
   const bestId = rows[0].id;
   await Promise.all(
     rows.map((r) =>
-      supabase.from("dives").update({ is_personal_best: r.id === bestId }).eq("id", r.id),
+      supabase
+        .from("dives")
+        .update({ is_personal_best: r.id === bestId })
+        .eq("id", r.id),
     ),
   );
 }
@@ -97,12 +100,13 @@ export async function createDive(userId: string, input: NewDiveInput): Promise<D
   return { ...dive, is_personal_best: refreshed?.is_personal_best ?? dive.is_personal_best };
 }
 
-export async function updateDive(
-  userId: string,
-  id: string,
-  input: NewDiveInput,
-): Promise<Dive> {
-  let { data, error } = await supabase.from("dives").update(input).eq("id", id).select("*").single();
+export async function updateDive(userId: string, id: string, input: NewDiveInput): Promise<Dive> {
+  let { data, error } = await supabase
+    .from("dives")
+    .update(input)
+    .eq("id", id)
+    .select("*")
+    .single();
   if (error && isMissingConditionsColumn(error)) {
     const { conditions: _drop, ...rest } = input;
     ({ data, error } = await supabase.from("dives").update(rest).eq("id", id).select("*").single());
@@ -112,7 +116,11 @@ export async function updateDive(
   return data as Dive;
 }
 
-export async function deleteDive(id: string, userId?: string, discipline?: DisciplineCode): Promise<void> {
+export async function deleteDive(
+  id: string,
+  userId?: string,
+  discipline?: DisciplineCode,
+): Promise<void> {
   const { error } = await supabase.from("dives").delete().eq("id", id);
   if (error) throw error;
   if (userId && discipline) await recomputePersonalBest(userId, discipline);

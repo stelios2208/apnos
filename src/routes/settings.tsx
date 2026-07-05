@@ -1,9 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Check, Globe, User, Download } from "lucide-react";
+import { useState } from "react";
+import { Check, Globe, User, Download, Moon, Sun, Waves } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { useAuth } from "@/hooks/use-auth";
 import { useI18n, type Lang } from "@/lib/i18n";
+import { useTheme, type Theme } from "@/hooks/use-theme";
+import { loadFxSettings, saveFxSettings } from "@/lib/trainer-fx";
 import { divesToCsv, downloadCsv, fetchDives } from "@/lib/dives";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -20,6 +23,15 @@ export const Route = createFileRoute("/settings")({
 function Settings() {
   const { user } = useAuth();
   const { t, lang, setLang } = useI18n();
+  const { theme, setTheme } = useTheme();
+  const [scene, setScene] = useState(() => loadFxSettings().scene);
+
+  const toggleScene = () => {
+    const fx = loadFxSettings();
+    const next = !fx.scene;
+    saveFxSettings({ ...fx, scene: next });
+    setScene(next);
+  };
   const { data: dives = [] } = useQuery({
     queryKey: ["dives", user?.id],
     queryFn: () => fetchDives(user!.id),
@@ -61,6 +73,52 @@ function Settings() {
 
       <section className="glass-card space-y-3 rounded-2xl p-5">
         <div className="flex items-center gap-2 text-sm font-semibold">
+          <Sun className="size-4 text-primary" /> {t("set.appearance")}
+        </div>
+        <p className="text-xs text-muted-foreground">{t("set.appearanceDesc")}</p>
+        <div className="grid grid-cols-2 gap-3 pt-1">
+          {(
+            [
+              { code: "dark", label: t("set.dark"), icon: Moon },
+              { code: "light", label: t("set.light"), icon: Sun },
+            ] as { code: Theme; label: string; icon: typeof Sun }[]
+          ).map(({ code, label, icon: Icon }) => (
+            <button
+              key={code}
+              onClick={() => setTheme(code)}
+              className={cn(
+                "flex items-center justify-between rounded-xl border px-4 py-3 text-sm font-medium transition-colors",
+                theme === code
+                  ? "border-primary bg-primary/10 text-foreground"
+                  : "border-border text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <span className="flex items-center gap-2">
+                <Icon className="size-4" /> {label}
+              </span>
+              {theme === code && <Check className="size-4 text-primary" />}
+            </button>
+          ))}
+        </div>
+        <button
+          onClick={toggleScene}
+          className={cn(
+            "flex w-full items-center justify-between rounded-xl border px-4 py-3 text-sm font-medium transition-colors",
+            scene
+              ? "border-primary bg-primary/10 text-foreground"
+              : "border-border text-muted-foreground hover:text-foreground",
+          )}
+        >
+          <span className="flex items-center gap-2">
+            <Waves className="size-4" /> {t("set.scene")}
+          </span>
+          {scene && <Check className="size-4 text-primary" />}
+        </button>
+        <p className="text-xs text-muted-foreground">{t("set.sceneDesc")}</p>
+      </section>
+
+      <section className="glass-card space-y-3 rounded-2xl p-5">
+        <div className="flex items-center gap-2 text-sm font-semibold">
           <User className="size-4 text-primary" /> {t("set.account")}
         </div>
         <p className="text-xs text-muted-foreground">
@@ -78,7 +136,10 @@ function Settings() {
           className="gap-1.5"
           disabled={dives.length === 0}
           onClick={() =>
-            downloadCsv(`apnos-dives-${new Date().toISOString().slice(0, 10)}.csv`, divesToCsv(dives))
+            downloadCsv(
+              `apnos-dives-${new Date().toISOString().slice(0, 10)}.csv`,
+              divesToCsv(dives),
+            )
           }
         >
           <Download className="size-4" /> {t("common.export")}

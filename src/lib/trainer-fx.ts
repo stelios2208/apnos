@@ -3,28 +3,35 @@
 // synthesized relaxing soundscape, and haptics. All client-side, offline,
 // zero asset files — synth built with the Web Audio API.
 
-export type FxSettings = { voice: boolean; sound: boolean; haptics: boolean };
+export type FxSettings = { voice: boolean; sound: boolean; haptics: boolean; scene: boolean };
 
 const STORE_KEY = "apnos.trainer.fx";
 
+const FX_DEFAULTS: FxSettings = { voice: true, sound: true, haptics: true, scene: true };
+
 export function loadFxSettings(): FxSettings {
-  if (typeof localStorage === "undefined") return { voice: true, sound: true, haptics: true };
+  if (typeof localStorage === "undefined") return { ...FX_DEFAULTS };
   try {
     const raw = localStorage.getItem(STORE_KEY);
-    if (!raw) return { voice: true, sound: true, haptics: true };
+    if (!raw) return { ...FX_DEFAULTS };
     const p = JSON.parse(raw) as Partial<FxSettings>;
     return {
-      voice:   p.voice   ?? true,
-      sound:   p.sound   ?? true,
+      voice: p.voice ?? true,
+      sound: p.sound ?? true,
       haptics: p.haptics ?? true,
+      scene: p.scene ?? true,
     };
   } catch {
-    return { voice: true, sound: true, haptics: true };
+    return { ...FX_DEFAULTS };
   }
 }
 
 export function saveFxSettings(s: FxSettings): void {
-  try { localStorage.setItem(STORE_KEY, JSON.stringify(s)); } catch { /* ignore */ }
+  try {
+    localStorage.setItem(STORE_KEY, JSON.stringify(s));
+  } catch {
+    /* ignore */
+  }
 }
 
 // ── Haptics ──────────────────────────────────────────────────────────────────
@@ -36,7 +43,11 @@ export function hapticsSupported(): boolean {
 
 export function vibrate(pattern: number | number[]): void {
   if (hapticsSupported()) {
-    try { navigator.vibrate(pattern); } catch { /* ignore */ }
+    try {
+      navigator.vibrate(pattern);
+    } catch {
+      /* ignore */
+    }
   }
 }
 
@@ -47,14 +58,24 @@ export function vibrate(pattern: number | number[]): void {
 // Missing files simply don't play — no synthetic fallback.
 
 export type CueKey =
-  | "breathe" | "hold" | "recovery"
-  | "m30" | "m60" | "m90" | "m120" | "m150" | "m180" | "m210" | "m240" | "m300";
+  | "breathe"
+  | "hold"
+  | "recovery"
+  | "m30"
+  | "m60"
+  | "m90"
+  | "m120"
+  | "m150"
+  | "m180"
+  | "m210"
+  | "m240"
+  | "m300";
 
 // Hold-time thresholds (seconds) → which cue clip to play when crossed.
 export const HOLD_MILESTONES: { at: number; key: CueKey }[] = [
-  { at: 30,  key: "m30"  },
-  { at: 60,  key: "m60"  },
-  { at: 90,  key: "m90"  },
+  { at: 30, key: "m30" },
+  { at: 60, key: "m60" },
+  { at: 90, key: "m90" },
   { at: 120, key: "m120" },
   { at: 150, key: "m150" },
   { at: 180, key: "m180" },
@@ -65,10 +86,15 @@ export const HOLD_MILESTONES: { at: number; key: CueKey }[] = [
 
 // Catalog of every cue, used by the management UI. Milestone rows reuse the
 // timing from HOLD_MILESTONES; phases come first.
-export const CUE_CATALOG: { key: CueKey; group: "phase" | "milestone"; labelEl: string; labelEn: string }[] = [
-  { key: "breathe",  group: "phase",     labelEl: "Έναρξη αναπνοών",   labelEn: "Breathe-up start" },
-  { key: "hold",     group: "phase",     labelEl: "Έναρξη κράτησης",   labelEn: "Hold start" },
-  { key: "recovery", group: "phase",     labelEl: "Έναρξη ανάκαμψης",  labelEn: "Recovery start" },
+export const CUE_CATALOG: {
+  key: CueKey;
+  group: "phase" | "milestone";
+  labelEl: string;
+  labelEn: string;
+}[] = [
+  { key: "breathe", group: "phase", labelEl: "Έναρξη αναπνοών", labelEn: "Breathe-up start" },
+  { key: "hold", group: "phase", labelEl: "Έναρξη κράτησης", labelEn: "Hold start" },
+  { key: "recovery", group: "phase", labelEl: "Έναρξη ανάκαμψης", labelEn: "Recovery start" },
   ...HOLD_MILESTONES.map((m) => {
     const mm = Math.floor(m.at / 60);
     const ss = String(m.at % 60).padStart(2, "0");
@@ -100,18 +126,31 @@ export class CuePlayer {
     }
     // cut off any currently-playing cue so they don't overlap
     if (this.current && this.current !== el) {
-      try { this.current.pause(); this.current.currentTime = 0; } catch { /* ignore */ }
+      try {
+        this.current.pause();
+        this.current.currentTime = 0;
+      } catch {
+        /* ignore */
+      }
     }
     this.current = el;
     try {
       el.currentTime = 0;
-      void el.play().catch(() => { /* blocked / unsupported → silent */ });
-    } catch { /* ignore */ }
+      void el.play().catch(() => {
+        /* blocked / unsupported → silent */
+      });
+    } catch {
+      /* ignore */
+    }
   }
 
   stop(): void {
     if (this.current) {
-      try { this.current.pause(); } catch { /* ignore */ }
+      try {
+        this.current.pause();
+      } catch {
+        /* ignore */
+      }
     }
     this.current = null;
   }
@@ -130,17 +169,25 @@ export class SoundscapeEngine {
   private oscs: OscillatorNode[] = [];
   private running = false;
 
-  get isRunning(): boolean { return this.running; }
+  get isRunning(): boolean {
+    return this.running;
+  }
 
   async start(): Promise<void> {
     if (this.running) return;
-    const Ctx = (typeof window !== "undefined"
-      ? (window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext)
-      : undefined);
+    const Ctx =
+      typeof window !== "undefined"
+        ? (window.AudioContext ??
+          (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext)
+        : undefined;
     if (!Ctx) return;
 
     const ctx = new Ctx();
-    try { await ctx.resume(); } catch { /* ignore */ }
+    try {
+      await ctx.resume();
+    } catch {
+      /* ignore */
+    }
     // iOS unlock: play one silent buffer inside the gesture chain
     try {
       const buf = ctx.createBuffer(1, 1, ctx.sampleRate);
@@ -148,7 +195,9 @@ export class SoundscapeEngine {
       src.buffer = buf;
       src.connect(ctx.destination);
       src.start(0);
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     const now = ctx.currentTime;
 
     const master = ctx.createGain();
@@ -165,9 +214,9 @@ export class SoundscapeEngine {
     // pad — a warm calming chord in a register phone speakers can reproduce
     const partials: { freq: number; gain: number }[] = [
       { freq: 196, gain: 0.34 }, // G3
-      { freq: 294, gain: 0.30 }, // D4 (fifth)
+      { freq: 294, gain: 0.3 }, // D4 (fifth)
       { freq: 392, gain: 0.22 }, // G4 (octave)
-      { freq: 588, gain: 0.10 }, // D5 shimmer
+      { freq: 588, gain: 0.1 }, // D5 shimmer
     ];
     partials.forEach((p, i) => {
       const o = ctx.createOscillator();
@@ -215,27 +264,38 @@ export class SoundscapeEngine {
       this.master!.gain.linearRampToValueAtTime(v, now + secs);
     };
     if (phase === "breathe") {
-      rampLfo(0.1, 1);   // paced ~10s inhale/exhale
+      rampLfo(0.1, 1); // paced ~10s inhale/exhale
       rampBase(0.22, 1.5);
     } else if (phase === "hold") {
-      rampLfo(0.04, 2);  // very slow, still
+      rampLfo(0.04, 2); // very slow, still
       rampBase(0.14, 3);
     } else if (phase === "recovery") {
-      rampLfo(0.18, 1);  // quicker recovery breaths
+      rampLfo(0.18, 1); // quicker recovery breaths
       rampBase(0.2, 1);
     }
   }
 
   stop(): void {
-    if (!this.ctx || !this.master) { this.running = false; return; }
+    if (!this.ctx || !this.master) {
+      this.running = false;
+      return;
+    }
     const ctx = this.ctx;
     const now = ctx.currentTime;
     try {
       this.master.gain.cancelScheduledValues(now);
       this.master.gain.setValueAtTime(this.master.gain.value, now);
       this.master.gain.linearRampToValueAtTime(0, now + 1.2);
-    } catch { /* ignore */ }
-    setTimeout(() => { try { ctx.close(); } catch { /* ignore */ } }, 1400);
+    } catch {
+      /* ignore */
+    }
+    setTimeout(() => {
+      try {
+        ctx.close();
+      } catch {
+        /* ignore */
+      }
+    }, 1400);
     this.ctx = null;
     this.master = null;
     this.lfo = null;

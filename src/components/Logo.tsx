@@ -1,14 +1,25 @@
 import { Link } from "@tanstack/react-router";
 import { useI18n } from "@/lib/i18n";
 
-export function Logo({ className, size = 40 }: { className?: string; size?: number }) {
+export function Logo({
+  className,
+  size = 40,
+  onDark = false,
+}: {
+  className?: string;
+  size?: number;
+  /** Force the white wordmark on always-dark screens (landing) regardless of theme. */
+  onDark?: boolean;
+}) {
   const { t } = useI18n();
   return (
     <Link to="/" className={className} aria-label="Apnos — breathe, dive, repeat">
       <span className="flex items-center gap-2.5">
         <BreathMark size={size} />
         <span className="block">
-          <span className="block text-2xl font-semibold lowercase leading-none tracking-tight text-white">
+          <span
+            className={`block text-2xl font-semibold lowercase leading-none tracking-tight ${onDark ? "text-white" : "text-foreground"}`}
+          >
             apnos
           </span>
           <span className="mt-1 block text-[0.55rem] font-medium lowercase tracking-[0.28em] text-[#5DCAA5]">
@@ -31,7 +42,14 @@ export function BreathMark({ size = 40, className }: { size?: number; className?
       aria-hidden="true"
     >
       <defs>
-        <linearGradient id="apnos-breath" x1="6" y1="6" x2="34" y2="34" gradientUnits="userSpaceOnUse">
+        <linearGradient
+          id="apnos-breath"
+          x1="6"
+          y1="6"
+          x2="34"
+          y2="34"
+          gradientUnits="userSpaceOnUse"
+        >
           <stop stopColor="#5DCAA5" />
           <stop offset="1" stopColor="#1D9E75" />
         </linearGradient>
@@ -59,9 +77,7 @@ export function ApnosHeroLogo({ className }: { className?: string }) {
   return (
     <div className={`flex flex-col items-center text-center ${className ?? ""}`}>
       <BreathMark size={132} />
-      <span className="mt-5 text-5xl font-light lowercase tracking-[0.22em] text-white">
-        apnos
-      </span>
+      <span className="mt-5 text-5xl font-light lowercase tracking-[0.22em] text-white">apnos</span>
       <span className="mt-3 text-xs font-medium lowercase tracking-[0.3em] text-[#5DCAA5]">
         {t("tagline")}
       </span>

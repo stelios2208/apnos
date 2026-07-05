@@ -37,12 +37,32 @@ const WEEKDAYS_EL = ["Δε", "Τρ", "Τε", "Πε", "Πα", "Σα", "Κυ"];
 const WEEKDAYS_EN = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
 
 const MONTHS_EL = [
-  "Ιανουάριος","Φεβρουάριος","Μάρτιος","Απρίλιος","Μάιος","Ιούνιος",
-  "Ιούλιος","Αύγουστος","Σεπτέμβριος","Οκτώβριος","Νοέμβριος","Δεκέμβριος",
+  "Ιανουάριος",
+  "Φεβρουάριος",
+  "Μάρτιος",
+  "Απρίλιος",
+  "Μάιος",
+  "Ιούνιος",
+  "Ιούλιος",
+  "Αύγουστος",
+  "Σεπτέμβριος",
+  "Οκτώβριος",
+  "Νοέμβριος",
+  "Δεκέμβριος",
 ];
 const MONTHS_EN = [
-  "January","February","March","April","May","June",
-  "July","August","September","October","November","December",
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
 ];
 
 // ── component ──────────────────────────────────────────────────────────────────
@@ -52,9 +72,9 @@ function Calendar() {
   const { lang } = useI18n();
   const today = new Date();
 
-  const [viewYear, setViewYear]   = useState(today.getFullYear());
+  const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
-  const [selected, setSelected]   = useState<string | null>(toYMD(today));
+  const [selected, setSelected] = useState<string | null>(toYMD(today));
 
   const { data: dives = [] } = useQuery({
     queryKey: ["dives", user?.id],
@@ -69,15 +89,19 @@ function Calendar() {
   }, {});
 
   const prevMonth = () => {
-    if (viewMonth === 0) { setViewYear(y => y - 1); setViewMonth(11); }
-    else setViewMonth(m => m - 1);
+    if (viewMonth === 0) {
+      setViewYear((y) => y - 1);
+      setViewMonth(11);
+    } else setViewMonth((m) => m - 1);
   };
   const nextMonth = () => {
-    if (viewMonth === 11) { setViewYear(y => y + 1); setViewMonth(0); }
-    else setViewMonth(m => m + 1);
+    if (viewMonth === 11) {
+      setViewYear((y) => y + 1);
+      setViewMonth(0);
+    } else setViewMonth((m) => m + 1);
   };
 
-  const days   = daysInMonth(viewYear, viewMonth);
+  const days = daysInMonth(viewYear, viewMonth);
   const offset = firstWeekday(viewYear, viewMonth);
   const todayStr = toYMD(today);
   const weekdays = lang === "el" ? WEEKDAYS_EL : WEEKDAYS_EN;
@@ -89,16 +113,14 @@ function Calendar() {
     <div className="space-y-5">
       {/* header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">
-          {lang === "el" ? "Ημερολόγιο" : "Calendar"}
-        </h1>
+        <h1 className="text-2xl font-bold">{lang === "el" ? "Ημερολόγιο" : "Calendar"}</h1>
         <Link
           to="/log"
           className="flex h-9 w-9 items-center justify-center rounded-full transition-colors"
           style={{ background: "#1D9E75" }}
           aria-label={lang === "el" ? "Νέα βουτιά" : "New dive"}
         >
-          <Plus className="size-5 text-white" />
+          <Plus className="size-5 text-foreground" />
         </Link>
       </div>
 
@@ -106,21 +128,30 @@ function Calendar() {
       <div className="glass-card rounded-2xl p-4 space-y-3">
         {/* month nav */}
         <div className="flex items-center justify-between">
-          <button onClick={prevMonth} className="rounded-lg p-1.5 text-white/40 hover:text-white transition-colors">
+          <button
+            onClick={prevMonth}
+            className="rounded-lg p-1.5 text-foreground/40 hover:text-foreground transition-colors"
+          >
             <ChevronLeft className="size-5" />
           </button>
-          <span className="text-sm font-semibold text-white">
+          <span className="text-sm font-semibold text-foreground">
             {monthName} {viewYear}
           </span>
-          <button onClick={nextMonth} className="rounded-lg p-1.5 text-white/40 hover:text-white transition-colors">
+          <button
+            onClick={nextMonth}
+            className="rounded-lg p-1.5 text-foreground/40 hover:text-foreground transition-colors"
+          >
             <ChevronRight className="size-5" />
           </button>
         </div>
 
         {/* weekday labels */}
         <div className="grid grid-cols-7 gap-0.5">
-          {weekdays.map(d => (
-            <div key={d} className="py-1 text-center text-[0.6rem] font-bold tracking-wider text-white/25">
+          {weekdays.map((d) => (
+            <div
+              key={d}
+              className="py-1 text-center text-[0.6rem] font-bold tracking-wider text-foreground/25"
+            >
               {d}
             </div>
           ))}
@@ -129,17 +160,19 @@ function Calendar() {
         {/* day cells */}
         <div className="grid grid-cols-7 gap-0.5">
           {/* leading empty cells */}
-          {Array.from({ length: offset }).map((_, i) => <div key={`e${i}`} />)}
+          {Array.from({ length: offset }).map((_, i) => (
+            <div key={`e${i}`} />
+          ))}
 
           {Array.from({ length: days }).map((_, i) => {
             const day = i + 1;
             const ymd = `${viewYear}-${String(viewMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
             const dayDives = byDate[ymd] ?? [];
-            const isToday   = ymd === todayStr;
+            const isToday = ymd === todayStr;
             const isSelected = ymd === selected;
-            const isFuture  = ymd > todayStr;
-            const hasComp   = dayDives.some(d => d.session_type === "competition");
-            const hasTraining = dayDives.some(d => d.session_type !== "competition");
+            const isFuture = ymd > todayStr;
+            const hasComp = dayDives.some((d) => d.session_type === "competition");
+            const hasTraining = dayDives.some((d) => d.session_type !== "competition");
 
             return (
               <button
@@ -147,7 +180,11 @@ function Calendar() {
                 onClick={() => setSelected(isSelected ? null : ymd)}
                 className="relative flex flex-col items-center rounded-lg py-1.5 transition-colors"
                 style={{
-                  background: isSelected ? "rgba(29,158,117,0.25)" : isToday ? "rgba(93,202,165,0.1)" : "transparent",
+                  background: isSelected
+                    ? "rgba(29,158,117,0.25)"
+                    : isToday
+                      ? "rgba(93,202,165,0.1)"
+                      : "transparent",
                 }}
               >
                 <span
@@ -156,10 +193,10 @@ function Calendar() {
                     color: isSelected
                       ? "#5DCAA5"
                       : isToday
-                      ? "#5DCAA5"
-                      : isFuture
-                      ? "rgba(255,255,255,0.3)"
-                      : "rgba(255,255,255,0.7)",
+                        ? "#5DCAA5"
+                        : isFuture
+                          ? "rgba(var(--ink),0.3)"
+                          : "rgba(var(--ink),0.7)",
                   }}
                 >
                   {day}
@@ -169,10 +206,16 @@ function Calendar() {
                 {dayDives.length > 0 && (
                   <div className="mt-0.5 flex gap-0.5">
                     {hasTraining && (
-                      <span className="h-1.5 w-1.5 rounded-full" style={{ background: "#5DCAA5" }} />
+                      <span
+                        className="h-1.5 w-1.5 rounded-full"
+                        style={{ background: "#5DCAA5" }}
+                      />
                     )}
                     {hasComp && (
-                      <span className="h-1.5 w-1.5 rounded-full" style={{ background: "#EF9F27" }} />
+                      <span
+                        className="h-1.5 w-1.5 rounded-full"
+                        style={{ background: "#EF9F27" }}
+                      />
                     )}
                   </div>
                 )}
@@ -183,11 +226,11 @@ function Calendar() {
 
         {/* legend */}
         <div className="flex items-center gap-4 pt-1">
-          <span className="flex items-center gap-1.5 text-[0.6rem] text-white/30">
+          <span className="flex items-center gap-1.5 text-[0.6rem] text-foreground/30">
             <span className="h-2 w-2 rounded-full bg-[#5DCAA5]" />
             {lang === "el" ? "Προπόνηση" : "Training"}
           </span>
-          <span className="flex items-center gap-1.5 text-[0.6rem] text-white/30">
+          <span className="flex items-center gap-1.5 text-[0.6rem] text-foreground/30">
             <span className="h-2 w-2 rounded-full bg-[#EF9F27]" />
             {lang === "el" ? "Αγώνας" : "Competition"}
           </span>
@@ -198,9 +241,7 @@ function Calendar() {
       {selected && (
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-bold tracking-[0.18em] text-white/30">
-              {selected}
-            </p>
+            <p className="text-xs font-bold tracking-[0.18em] text-foreground/30">{selected}</p>
             <Link
               to="/log"
               className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors"
@@ -212,12 +253,12 @@ function Calendar() {
           </div>
 
           {selectedDives.length === 0 ? (
-            <p className="text-sm text-white/25">
+            <p className="text-sm text-foreground/25">
               {lang === "el" ? "Καμία βουτιά αυτή την ημέρα." : "No dives logged this day."}
             </p>
           ) : (
             <div className="space-y-2">
-              {selectedDives.map(dive => (
+              {selectedDives.map((dive) => (
                 <DayDiveRow key={dive.id} dive={dive} lang={lang as "el" | "en"} />
               ))}
             </div>
@@ -232,11 +273,12 @@ function Calendar() {
 
 function parseSTANotes(notes: string | null): { best: string; rounds: number } | null {
   if (!notes) return null;
-  const roundsMatch = notes.match(/Total rounds:\s*(\d+)/i) ?? notes.match(/"total_rounds":\s*(\d+)/);
-  const bestMatch   = notes.match(/Best:\s*([\d:]+)/i);
+  const roundsMatch =
+    notes.match(/Total rounds:\s*(\d+)/i) ?? notes.match(/"total_rounds":\s*(\d+)/);
+  const bestMatch = notes.match(/Best:\s*([\d:]+)/i);
   if (!bestMatch) return null;
   return {
-    best:   bestMatch[1],
+    best: bestMatch[1],
     rounds: roundsMatch ? Number(roundsMatch[1]) : 0,
   };
 }
@@ -253,7 +295,7 @@ function DayDiveRow({ dive, lang }: { dive: Dive; lang: "el" | "en" }) {
       to="/dive/$id"
       params={{ id: dive.id }}
       className="flex items-center gap-3 rounded-xl px-4 py-3 transition-colors"
-      style={{ background: "#0d1320", borderLeft: `3px solid ${border}` }}
+      style={{ background: "var(--card)", borderLeft: `3px solid ${border}` }}
     >
       <span
         className="shrink-0 rounded-md px-2 py-0.5 text-[0.6rem] font-bold tracking-wider"
@@ -264,10 +306,10 @@ function DayDiveRow({ dive, lang }: { dive: Dive; lang: "el" | "en" }) {
 
       {isSTATraining && staParsed ? (
         <div className="flex flex-col gap-0.5">
-          <span className="text-xs font-semibold text-white/80">
+          <span className="text-xs font-semibold text-foreground/80">
             {lang === "el" ? "STA Προπόνηση" : "STA Training"}
           </span>
-          <span className="text-[0.6rem] text-white/35">
+          <span className="text-[0.6rem] text-foreground/35">
             {lang === "el"
               ? `Best hold: ${staParsed.best} · ${staParsed.rounds} γύροι`
               : `Best hold: ${staParsed.best} · ${staParsed.rounds} rounds`}
@@ -275,8 +317,10 @@ function DayDiveRow({ dive, lang }: { dive: Dive; lang: "el" | "en" }) {
         </div>
       ) : (
         <>
-          <span className="text-xs text-white/40">{disciplineName(dive.discipline, lang)}</span>
-          <span className="ml-auto font-mono text-sm font-bold text-white">
+          <span className="text-xs text-foreground/40">
+            {disciplineName(dive.discipline, lang)}
+          </span>
+          <span className="ml-auto font-mono text-sm font-bold text-foreground">
             {formatResult(dive.discipline, dive.result)}
           </span>
         </>
@@ -289,7 +333,9 @@ function DayDiveRow({ dive, lang }: { dive: Dive; lang: "el" | "en" }) {
       )}
 
       {dive.is_personal_best && (
-        <span className="text-[0.6rem]" style={{ color: "#EF9F27" }}>🏆</span>
+        <span className="text-[0.6rem]" style={{ color: "#EF9F27" }}>
+          🏆
+        </span>
       )}
     </Link>
   );

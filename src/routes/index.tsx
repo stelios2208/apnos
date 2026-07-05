@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef } from "react";
 import { Timer, TrendingUp, Waves, ArrowRight } from "lucide-react";
 import { Logo } from "@/components/Logo";
-import { Bubbles } from "@/components/Bubbles";
+import { UnderwaterScene } from "@/components/UnderwaterScene";
 import { useAuth } from "@/hooks/use-auth";
 import { useI18n } from "@/lib/i18n";
 
@@ -12,7 +12,8 @@ export const Route = createFileRoute("/")({
       { title: "Apnos — Freediving Training Log" },
       {
         name: "description",
-        content: "Log every freediving session, track personal bests across STA, DYN, CWT and more. Breathe · dive · repeat.",
+        content:
+          "Log every freediving session, track personal bests across STA, DYN, CWT and more. Breathe · dive · repeat.",
       },
     ],
   }),
@@ -29,30 +30,30 @@ function Landing() {
   }, [loading, user, navigate]);
 
   return (
-    <div className="relative min-h-screen overflow-hidden" style={{ background: "#070a10" }}>
-      <Bubbles />
-
-      {/* subtle background glow */}
-      <div className="pointer-events-none absolute inset-0" style={{
-        background: "radial-gradient(ellipse 80% 50% at 50% -10%, rgba(29,158,117,0.18), transparent 65%)",
-      }} />
+    <div className="relative min-h-screen overflow-hidden" style={{ background: "#020a13" }}>
+      <UnderwaterScene />
 
       <div className="relative mx-auto flex min-h-screen w-full max-w-sm flex-col px-5 py-8">
-
         {/* HEADER */}
         <header className="mb-8">
-          <Logo />
+          <Logo onDark />
         </header>
 
         <main className="flex flex-1 flex-col justify-center gap-5">
-
           {/* HERO CARD */}
-          <div className="relative overflow-hidden rounded-2xl border border-white/10" style={{
-            background: "linear-gradient(160deg, #1a3a5c 0%, #10293f 45%, #070a10 100%)",
-            minHeight: 200,
-          }}>
+          <div
+            className="relative overflow-hidden rounded-2xl border border-white/10"
+            style={{
+              background: "linear-gradient(160deg, #1a3a5c 0%, #10293f 45%, #070a10 100%)",
+              minHeight: 200,
+            }}
+          >
             {/* light rays */}
-            <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none" aria-hidden="true">
+            <svg
+              className="absolute inset-0 w-full h-full"
+              preserveAspectRatio="none"
+              aria-hidden="true"
+            >
               <defs>
                 <radialGradient id="hero-glow" cx="50%" cy="-10%" r="70%">
                   <stop offset="0%" stopColor="#5DCAA5" stopOpacity="0.3" />
@@ -60,9 +61,33 @@ function Landing() {
                 </radialGradient>
               </defs>
               <rect width="100%" height="100%" fill="url(#hero-glow)" />
-              <line x1="20%" y1="0" x2="28%" y2="100%" stroke="#5DCAA5" strokeWidth="1" opacity="0.07" />
-              <line x1="55%" y1="0" x2="50%" y2="100%" stroke="#5DCAA5" strokeWidth="1" opacity="0.07" />
-              <line x1="80%" y1="0" x2="73%" y2="100%" stroke="#5DCAA5" strokeWidth="1" opacity="0.07" />
+              <line
+                x1="20%"
+                y1="0"
+                x2="28%"
+                y2="100%"
+                stroke="#5DCAA5"
+                strokeWidth="1"
+                opacity="0.07"
+              />
+              <line
+                x1="55%"
+                y1="0"
+                x2="50%"
+                y2="100%"
+                stroke="#5DCAA5"
+                strokeWidth="1"
+                opacity="0.07"
+              />
+              <line
+                x1="80%"
+                y1="0"
+                x2="73%"
+                y2="100%"
+                stroke="#5DCAA5"
+                strokeWidth="1"
+                opacity="0.07"
+              />
             </svg>
 
             {/* hero bubbles */}
@@ -74,16 +99,24 @@ function Landing() {
                 {lang === "el" ? "Freediving Training Log" : "Freediving Training Log"}
               </p>
               <h1 className="text-2xl font-semibold leading-tight text-white mb-2">
-                {lang === "el"
-                  ? <>Η κατάδυσή σου,<br /><span style={{ color: "#5DCAA5" }}>με απόλυτη ακρίβεια.</span></>
-                  : <>Your freedive,<br /><span style={{ color: "#5DCAA5" }}>measured.</span></>
-                }
+                {lang === "el" ? (
+                  <>
+                    Η κατάδυσή σου,
+                    <br />
+                    <span style={{ color: "#5DCAA5" }}>με απόλυτη ακρίβεια.</span>
+                  </>
+                ) : (
+                  <>
+                    Your freedive,
+                    <br />
+                    <span style={{ color: "#5DCAA5" }}>measured.</span>
+                  </>
+                )}
               </h1>
               <p className="text-xs text-white/50 leading-relaxed">
                 {lang === "el"
                   ? "Κατέγραψε βουτιές, παρακολούθησε PBs και ανάλυσε την πρόοδό σου."
-                  : "Log dives, track personal bests and analyse your progress."
-                }
+                  : "Log dives, track personal bests and analyse your progress."}
               </p>
             </div>
           </div>
@@ -91,11 +124,27 @@ function Landing() {
           {/* STAT PREVIEW CARDS */}
           <div className="grid grid-cols-3 gap-3">
             {[
-              { icon: Timer, label: lang === "el" ? "STA · DYN · DNF" : "STA · DYN · DNF", val: "Pool" },
-              { icon: TrendingUp, label: lang === "el" ? "Προσωπικά ρεκόρ" : "Personal bests", val: "PB" },
-              { icon: Waves, label: lang === "el" ? "CWT · CNF · FIM" : "CWT · CNF · FIM", val: "Depth" },
+              {
+                icon: Timer,
+                label: lang === "el" ? "STA · DYN · DNF" : "STA · DYN · DNF",
+                val: "Pool",
+              },
+              {
+                icon: TrendingUp,
+                label: lang === "el" ? "Προσωπικά ρεκόρ" : "Personal bests",
+                val: "PB",
+              },
+              {
+                icon: Waves,
+                label: lang === "el" ? "CWT · CNF · FIM" : "CWT · CNF · FIM",
+                val: "Depth",
+              },
             ].map(({ icon: Icon, label, val }) => (
-              <div key={val} className="rounded-xl border border-white/10 p-3 flex flex-col gap-2" style={{ background: "#0d1320" }}>
+              <div
+                key={val}
+                className="rounded-xl border border-white/10 p-3 flex flex-col gap-2"
+                style={{ background: "#0d1320" }}
+              >
                 <Icon className="size-4 text-[#5DCAA5]" />
                 <p className="text-[0.65rem] text-white/40 leading-tight">{label}</p>
                 <p className="text-xs font-semibold text-white">{val}</p>
@@ -119,7 +168,6 @@ function Landing() {
               {lang === "el" ? "Σύνδεση" : "Sign in"}
             </Link>
           </p>
-
         </main>
 
         {/* FOOTER */}
@@ -128,7 +176,6 @@ function Landing() {
             breathe · dive · repeat
           </p>
         </footer>
-
       </div>
     </div>
   );
@@ -159,12 +206,21 @@ function HeroBubbles() {
     }
     return () => els.forEach((e) => e.remove());
   }, []);
-  return <svg ref={ref} className="absolute inset-0 w-full h-full pointer-events-none" aria-hidden="true" />;
+  return (
+    <svg
+      ref={ref}
+      className="absolute inset-0 w-full h-full pointer-events-none"
+      aria-hidden="true"
+    />
+  );
 }
 
 function Feature({ icon: Icon, title, text }: { icon: typeof Waves; title: string; text: string }) {
   return (
-    <div className="rounded-xl border border-white/10 p-4 text-left" style={{ background: "#0d1320" }}>
+    <div
+      className="rounded-xl border border-white/10 p-4 text-left"
+      style={{ background: "#0d1320" }}
+    >
       <Icon className="size-5 text-[#5DCAA5]" />
       <h3 className="mt-2 text-xs font-semibold text-white">{title}</h3>
       <p className="mt-1 text-[0.65rem] text-white/40 leading-relaxed">{text}</p>

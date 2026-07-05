@@ -8,7 +8,7 @@ type Dict = Record<string, string>;
 
 const en: Dict = {
   // tagline / brand
-  "tagline": "breathe · dive · repeat",
+  tagline: "breathe · dive · repeat",
   // nav
   "nav.dashboard": "Dashboard",
   "nav.calendar": "Calendar",
@@ -39,7 +39,8 @@ const en: Dict = {
   // landing
   "landing.headline1": "Your freedive,",
   "landing.headline2": "measured",
-  "landing.sub": "Track dives, recovery and personal bests across every discipline — from static apnea to constant weight. Quiet, focused, made for the deep.",
+  "landing.sub":
+    "Track dives, recovery and personal bests across every discipline — from static apnea to constant weight. Quiet, focused, made for the deep.",
   "landing.cta": "Start logging",
   "landing.f1.title": "Every discipline",
   "landing.f1.text": "STA, DYN, DNF, CWT, CNF, FIM & more.",
@@ -145,6 +146,12 @@ const en: Dict = {
   "set.data": "Your data",
   "set.exportDesc": "Download all your dives as a CSV file.",
   "set.signedInAs": "Signed in as",
+  "set.appearance": "Appearance",
+  "set.appearanceDesc": "The light theme applies to content pages — training screens stay dark.",
+  "set.dark": "Dark",
+  "set.light": "Light",
+  "set.scene": "Underwater scene",
+  "set.sceneDesc": "Animated deep-sea backdrop in Warm-up, Trainer and Stopwatch.",
   // planner
   "plan.title": "Dive planner",
   "plan.sub": "Plan your warm-up and official top.",
@@ -176,7 +183,7 @@ const en: Dict = {
 };
 
 const el: Dict = {
-  "tagline": "breathe · dive · repeat",
+  tagline: "breathe · dive · repeat",
   "nav.dashboard": "Πίνακας",
   "nav.calendar": "Ημερολόγιο",
   "nav.log": "Νέα Βουτιά",
@@ -205,7 +212,8 @@ const el: Dict = {
   "common.export": "Εξαγωγή CSV",
   "landing.headline1": "Η κατάδυσή σου,",
   "landing.headline2": " με απόλυτη ακρίβεια",
-  "landing.sub": "Κατάγραψε επιδόσεις, χρόνους και PB σε κάθε αγώνισμα, από τη στατική μέχρι τα σταθερά βάρη. Σχεδιασμένο για απόλυτη εστίαση στην επόμενη βουτιά.",
+  "landing.sub":
+    "Κατάγραψε επιδόσεις, χρόνους και PB σε κάθε αγώνισμα, από τη στατική μέχρι τα σταθερά βάρη. Σχεδιασμένο για απόλυτη εστίαση στην επόμενη βουτιά.",
   "landing.cta": "Ξεκίνα την καταγραφή",
   "landing.f1.title": "Κάθε αγώνισμα",
   "landing.f1.text": "STA, DYN, DNF, CWT, CNF, FIM & άλλα.",
@@ -304,6 +312,13 @@ const el: Dict = {
   "set.data": "Τα δεδομένα σου",
   "set.exportDesc": "Κατέβασε όλες τις βουτιές σου ως αρχείο CSV.",
   "set.signedInAs": "Συνδεδεμένος ως",
+  "set.appearance": "Εμφάνιση",
+  "set.appearanceDesc":
+    "Το ανοιχτό θέμα ισχύει στις σελίδες περιεχομένου — οι οθόνες προπόνησης μένουν σκοτεινές.",
+  "set.dark": "Σκούρο",
+  "set.light": "Ανοιχτό",
+  "set.scene": "Υποβρύχιο σκηνικό",
+  "set.sceneDesc": "Κινούμενος βυθός σε Ζέσταμα, Trainer και Χρονόμετρο.",
   "plan.title": "Πρόγραμμα βουτιάς",
   "plan.sub": "Σχεδίασε το ζέσταμα και το επίσημο top.",
   "plan.topTime": "Top Time (TT)",
@@ -350,7 +365,8 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   const [lang, setLangState] = useState<Lang>("el");
 
   useEffect(() => {
-    const stored = typeof window !== "undefined" ? (localStorage.getItem(STORAGE_KEY) as Lang | null) : null;
+    const stored =
+      typeof window !== "undefined" ? (localStorage.getItem(STORAGE_KEY) as Lang | null) : null;
     if (stored === "el" || stored === "en") setLangState(stored);
   }, []);
 

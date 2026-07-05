@@ -41,23 +41,55 @@ export function AppLayout({ children }: { children: ReactNode }) {
     paths.some((p) => pathname === p || pathname.startsWith(p + "/"));
 
   // 5 hubs: Home · Train · (+) · Progress · You
-  const homeActive     = matches(["/dashboard"]);
-  const trainActive    = matches(["/train", "/sta-trainer", "/warmup", "/planner", "/coach", "/calendar"]);
-  const logActive      = matches(["/log"]);
+  const homeActive = matches(["/dashboard"]);
+  const trainActive = matches([
+    "/train",
+    "/sta-trainer",
+    "/warmup",
+    "/planner",
+    "/coach",
+    "/calendar",
+  ]);
+  const logActive = matches(["/log"]);
   const progressActive = matches(["/history"]);
-  const youActive      = matches(["/you", "/profile", "/equipment", "/rules", "/settings"]);
+  const youActive = matches(["/you", "/profile", "/equipment", "/rules", "/settings"]);
 
   const sideItems = [
-    { to: "/dashboard", label: lang === "el" ? "Αρχική"     : "Home",     icon: LayoutDashboard, active: homeActive },
-    { to: "/train",     label: lang === "el" ? "Προπόνηση"  : "Train",    icon: Waves,           active: trainActive },
+    {
+      to: "/dashboard",
+      label: lang === "el" ? "Αρχική" : "Home",
+      icon: LayoutDashboard,
+      active: homeActive,
+    },
+    {
+      to: "/train",
+      label: lang === "el" ? "Προπόνηση" : "Train",
+      icon: Waves,
+      active: trainActive,
+    },
   ] as const;
 
   const endItems = [
-    { to: "/history",   label: lang === "el" ? "Πρόοδος"    : "Progress", icon: History,    active: progressActive },
-    { to: "/you",       label: lang === "el" ? "Εσύ"        : "You",      icon: UserRound,  active: youActive },
+    {
+      to: "/history",
+      label: lang === "el" ? "Πρόοδος" : "Progress",
+      icon: History,
+      active: progressActive,
+    },
+    { to: "/you", label: lang === "el" ? "Εσύ" : "You", icon: UserRound, active: youActive },
   ] as const;
 
-  const NavLink = ({ to, label, icon: Icon, active }: { to: string; label: string; icon: typeof History; active: boolean }) => (
+  const NavLink = ({
+    to,
+    label,
+    icon: Icon,
+    active,
+  }: {
+    to: string;
+    label: string;
+    icon: typeof History;
+    active: boolean;
+  }) => (
     <Link
       to={to}
       style={NAV_ITEM_STYLE}
@@ -77,7 +109,12 @@ export function AppLayout({ children }: { children: ReactNode }) {
     <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col px-4 pb-28 pt-6">
       <header className="flex items-center justify-between">
         <Logo />
-        <Button variant="ghost" size="icon" onClick={() => signOut()} aria-label={t("common.signOut")}>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => signOut()}
+          aria-label={t("common.signOut")}
+        >
           <LogOut className="size-5" />
         </Button>
       </header>
@@ -86,7 +123,9 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-background/80 backdrop-blur-lg">
         <div className="mx-auto flex max-w-2xl items-center justify-around px-2">
-          {sideItems.map((item) => <NavLink key={item.to} {...item} />)}
+          {sideItems.map((item) => (
+            <NavLink key={item.to} {...item} />
+          ))}
 
           {/* central record / log button */}
           <Link
@@ -108,7 +147,9 @@ export function AppLayout({ children }: { children: ReactNode }) {
             </span>
           </Link>
 
-          {endItems.map((item) => <NavLink key={item.to} {...item} />)}
+          {endItems.map((item) => (
+            <NavLink key={item.to} {...item} />
+          ))}
         </div>
       </nav>
     </div>

@@ -1,12 +1,4 @@
-export type DisciplineCode =
-  | "STA"
-  | "DYN"
-  | "DYNB"
-  | "DNF"
-  | "CWT"
-  | "CWTB"
-  | "CNF"
-  | "FIM";
+export type DisciplineCode = "STA" | "DYN" | "DYNB" | "DNF" | "CWT" | "CWTB" | "CNF" | "FIM";
 
 export type DisciplineUnit = "time" | "distance";
 
@@ -24,13 +16,55 @@ export interface Discipline {
 
 export const DISCIPLINES: Discipline[] = [
   { code: "STA", name: "Static Apnea", name_el: "Στατική Άπνοια", unit: "time", group: "Pool" },
-  { code: "DYN", name: "Dynamic Mono-fin", name_el: "Δυναμική με Μονοπέδιλο", unit: "distance", group: "Pool" },
-  { code: "DYNB", name: "Dynamic Bi-fins", name_el: "Δυναμική με Πτερύγια", unit: "distance", group: "Pool" },
-  { code: "DNF", name: "Dynamic No-fins", name_el: "Δυναμική χωρίς Πτερύγια", unit: "distance", group: "Pool" },
-  { code: "CWT", name: "Constant Weight Mono-fin", name_el: "Σταθερό Βάρος με Μονοπέδιλο", unit: "distance", group: "Depth" },
-  { code: "CWTB", name: "Constant Weight Bi-fins", name_el: "Σταθερό Βάρος με Πτερύγια", unit: "distance", group: "Depth" },
-  { code: "CNF", name: "Constant Weight No-fins", name_el: "Σταθερό Βάρος χωρίς Πτερύγια", unit: "distance", group: "Depth" },
-  { code: "FIM", name: "Free Immersion", name_el: "Ελεύθερη Κατάδυση", unit: "distance", group: "Depth" },
+  {
+    code: "DYN",
+    name: "Dynamic Mono-fin",
+    name_el: "Δυναμική με Μονοπέδιλο",
+    unit: "distance",
+    group: "Pool",
+  },
+  {
+    code: "DYNB",
+    name: "Dynamic Bi-fins",
+    name_el: "Δυναμική με Πτερύγια",
+    unit: "distance",
+    group: "Pool",
+  },
+  {
+    code: "DNF",
+    name: "Dynamic No-fins",
+    name_el: "Δυναμική χωρίς Πτερύγια",
+    unit: "distance",
+    group: "Pool",
+  },
+  {
+    code: "CWT",
+    name: "Constant Weight Mono-fin",
+    name_el: "Σταθερό Βάρος με Μονοπέδιλο",
+    unit: "distance",
+    group: "Depth",
+  },
+  {
+    code: "CWTB",
+    name: "Constant Weight Bi-fins",
+    name_el: "Σταθερό Βάρος με Πτερύγια",
+    unit: "distance",
+    group: "Depth",
+  },
+  {
+    code: "CNF",
+    name: "Constant Weight No-fins",
+    name_el: "Σταθερό Βάρος χωρίς Πτερύγια",
+    unit: "distance",
+    group: "Depth",
+  },
+  {
+    code: "FIM",
+    name: "Free Immersion",
+    name_el: "Ελεύθερη Κατάδυση",
+    unit: "distance",
+    group: "Depth",
+  },
 ];
 
 export const DISCIPLINE_MAP: Record<DisciplineCode, Discipline> = Object.fromEntries(
@@ -57,12 +91,12 @@ export interface StaConditions {
   environment?: StaEnvironment;
   /** @deprecated superseded by faceCover + noseclip, which allow combos */
   face?: StaFace;
-  faceCover?: StaFaceCover;  // mask XOR goggles (or none) — independent of noseclip
-  noseclip?: boolean;        // can be combined with either face cover, or alone
-  roomTemp?: number | null;      // °C, for dry training
-  breatheInSec?: number | null;  // breathe-up inhale seconds (e.g. 3)
+  faceCover?: StaFaceCover; // mask XOR goggles (or none) — independent of noseclip
+  noseclip?: boolean; // can be combined with either face cover, or alone
+  roomTemp?: number | null; // °C, for dry training
+  breatheInSec?: number | null; // breathe-up inhale seconds (e.g. 3)
   breatheOutSec?: number | null; // breathe-up exhale seconds (e.g. 3)
-  warmupName?: string;           // warm-up used before the dive (any discipline)
+  warmupName?: string; // warm-up used before the dive (any discipline)
   warmupId?: string;
 }
 
