@@ -26,9 +26,9 @@ export const Route = createFileRoute("/dive/$id")({
 
 function Row({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="flex items-baseline justify-between gap-3 py-1.5 border-b border-white/5 last:border-0">
-      <span className="text-xs text-white/40">{label}</span>
-      <span className="text-xs font-medium text-white/80 text-right">{value}</span>
+    <div className="flex items-baseline justify-between gap-3 py-1.5 border-b border-foreground/5 last:border-0">
+      <span className="text-xs text-foreground/40">{label}</span>
+      <span className="text-xs font-medium text-foreground/80 text-right">{value}</span>
     </div>
   );
 }
@@ -36,7 +36,7 @@ function Row({ label, value }: { label: string; value: string | number }) {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="glass-card rounded-2xl p-5 space-y-1">
-      <p className="text-[0.65rem] font-bold tracking-[0.2em] text-white/30 mb-2">{title}</p>
+      <p className="text-[0.65rem] font-bold tracking-[0.2em] text-foreground/30 mb-2">{title}</p>
       {children}
     </div>
   );
@@ -44,7 +44,12 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 // ── STASessionNotes ────────────────────────────────────────────────────────────
 
-interface STARound { breathe: string; hold: string; recovery: string; contractions: number }
+interface STARound {
+  breathe: string;
+  hold: string;
+  recovery: string;
+  contractions: number;
+}
 
 function fmtSecs(mmss: string): string {
   // already formatted as MM:SS, strip leading zero from minutes
@@ -63,47 +68,70 @@ function STASessionNotes({ notes, lang }: { notes: string; lang: string }) {
   if (!match) {
     return (
       <Section title={lang === "el" ? "ΣΗΜΕΙΩΣΕΙΣ" : "NOTES"}>
-        <p className="text-sm text-white/60 leading-relaxed whitespace-pre-line">{notes}</p>
+        <p className="text-sm text-foreground/60 leading-relaxed whitespace-pre-line">{notes}</p>
       </Section>
     );
   }
 
   let rounds: STARound[] = [];
-  try { rounds = JSON.parse(match[1]); } catch { /* ignore */ }
+  try {
+    rounds = JSON.parse(match[1]);
+  } catch {
+    /* ignore */
+  }
 
   if (rounds.length === 0) {
     return (
       <Section title={lang === "el" ? "ΣΗΜΕΙΩΣΕΙΣ" : "NOTES"}>
-        <p className="text-sm text-white/60 leading-relaxed whitespace-pre-line">{notes}</p>
+        <p className="text-sm text-foreground/60 leading-relaxed whitespace-pre-line">{notes}</p>
       </Section>
     );
   }
 
-  const holds    = rounds.map((r) => parseHMS(r.hold));
-  const best     = Math.max(...holds);
-  const avg      = Math.round(holds.reduce((a, b) => a + b, 0) / holds.length);
-  const fmtTime  = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+  const holds = rounds.map((r) => parseHMS(r.hold));
+  const best = Math.max(...holds);
+  const avg = Math.round(holds.reduce((a, b) => a + b, 0) / holds.length);
+  const fmtTime = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 
   return (
     <div className="glass-card rounded-2xl p-5 space-y-4">
-      <p className="text-[0.65rem] font-bold tracking-[0.2em] text-white/30">
+      <p className="text-[0.65rem] font-bold tracking-[0.2em] text-foreground/30">
         {lang === "el" ? "ΑΝΑΛΥΣΗ SESSION" : "SESSION BREAKDOWN"}
       </p>
 
       {/* stat strip */}
       <div className="grid grid-cols-3 gap-2">
         {[
-          { label: lang === "el" ? "Καλύτερο Hold" : "Best Hold", value: fmtTime(best), color: "#EF9F27" },
-          { label: lang === "el" ? "Μέσος Όρος" : "Average",     value: fmtTime(avg),  color: "#5DCAA5" },
-          { label: lang === "el" ? "Γύροι" : "Rounds",           value: String(rounds.length), color: "#9FE1CB" },
+          {
+            label: lang === "el" ? "Καλύτερο Hold" : "Best Hold",
+            value: fmtTime(best),
+            color: "#EF9F27",
+          },
+          {
+            label: lang === "el" ? "Μέσος Όρος" : "Average",
+            value: fmtTime(avg),
+            color: "#5DCAA5",
+          },
+          {
+            label: lang === "el" ? "Γύροι" : "Rounds",
+            value: String(rounds.length),
+            color: "#9FE1CB",
+          },
         ].map(({ label, value, color }) => (
           <div
             key={label}
             className="flex flex-col items-center gap-1 rounded-xl py-2.5"
-            style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}
+            style={{
+              background: "rgba(var(--ink),0.03)",
+              border: "1px solid rgba(var(--ink),0.05)",
+            }}
           >
-            <span className="font-mono text-sm font-bold tabular-nums" style={{ color }}>{value}</span>
-            <span className="text-center text-[0.5rem] font-medium tracking-wider text-white/25">{label}</span>
+            <span className="font-mono text-sm font-bold tabular-nums" style={{ color }}>
+              {value}
+            </span>
+            <span className="text-center text-[0.5rem] font-medium tracking-wider text-foreground/25">
+              {label}
+            </span>
           </div>
         ))}
       </div>
@@ -112,10 +140,24 @@ function STASessionNotes({ notes, lang }: { notes: string; lang: string }) {
       <div>
         <div
           className="grid gap-1 rounded-t-lg px-3 py-2"
-          style={{ gridTemplateColumns: "1.5rem 1fr 1fr 1fr 1.5rem", background: "rgba(255,255,255,0.03)" }}
+          style={{
+            gridTemplateColumns: "1.5rem 1fr 1fr 1fr 1.5rem",
+            background: "rgba(var(--ink),0.03)",
+          }}
         >
-          {["#", lang === "el" ? "Αναπνοή" : "Breathe", "Hold", lang === "el" ? "Ανάκαμψη" : "Recovery", lang === "el" ? "Σ" : "C"].map((h, i) => (
-            <span key={i} className="text-center text-[0.55rem] font-bold tracking-wider text-white/25">{h}</span>
+          {[
+            "#",
+            lang === "el" ? "Αναπνοή" : "Breathe",
+            "Hold",
+            lang === "el" ? "Ανάκαμψη" : "Recovery",
+            lang === "el" ? "Σ" : "C",
+          ].map((h, i) => (
+            <span
+              key={i}
+              className="text-center text-[0.55rem] font-bold tracking-wider text-foreground/25"
+            >
+              {h}
+            </span>
           ))}
         </div>
 
@@ -127,20 +169,36 @@ function STASessionNotes({ notes, lang }: { notes: string; lang: string }) {
               className="grid items-center gap-1 border-t px-3 py-2.5"
               style={{
                 gridTemplateColumns: "1.5rem 1fr 1fr 1fr 1.5rem",
-                borderColor: "rgba(255,255,255,0.04)",
+                borderColor: "rgba(var(--ink),0.04)",
                 background: isBest ? "rgba(239,159,39,0.04)" : "transparent",
               }}
             >
-              <span className="text-center text-xs font-bold text-white/20">{i + 1}</span>
-              <span className="text-center font-mono text-xs" style={{ color: "#5DCAA5" }}>{fmtSecs(r.breathe)}</span>
+              <span className="text-center text-xs font-bold text-foreground/20">{i + 1}</span>
+              <span className="text-center font-mono text-xs" style={{ color: "#5DCAA5" }}>
+                {fmtSecs(r.breathe)}
+              </span>
               <div className="flex flex-col items-center">
-                <span className="font-mono text-xs font-bold" style={{ color: isBest ? "#EF9F27" : "#1D9E75" }}>
+                <span
+                  className="font-mono text-xs font-bold"
+                  style={{ color: isBest ? "#EF9F27" : "#1D9E75" }}
+                >
                   {fmtSecs(r.hold)}
                 </span>
-                {isBest && <span className="text-[0.45rem] font-bold tracking-widest" style={{ color: "#EF9F2770" }}>BEST</span>}
+                {isBest && (
+                  <span
+                    className="text-[0.45rem] font-bold tracking-widest"
+                    style={{ color: "#EF9F2770" }}
+                  >
+                    BEST
+                  </span>
+                )}
               </div>
-              <span className="text-center font-mono text-xs" style={{ color: "#9FE1CB" }}>{fmtSecs(r.recovery)}</span>
-              <span className="text-center text-xs text-white/30">{r.contractions > 0 ? r.contractions : "—"}</span>
+              <span className="text-center font-mono text-xs" style={{ color: "#9FE1CB" }}>
+                {fmtSecs(r.recovery)}
+              </span>
+              <span className="text-center text-xs text-foreground/30">
+                {r.contractions > 0 ? r.contractions : "—"}
+              </span>
             </div>
           );
         })}
@@ -154,14 +212,15 @@ function STASessionNotes({ notes, lang }: { notes: string; lang: string }) {
             background: "rgba(29,158,117,0.05)",
           }}
         >
-          <span className="text-center text-[0.55rem] font-bold tracking-wider text-white/25">
+          <span className="text-center text-[0.55rem] font-bold tracking-wider text-foreground/25">
             {lang === "el" ? "ΣΥΝ" : "TOT"}
           </span>
           <span />
           <span className="text-center font-mono text-xs font-bold" style={{ color: "#1D9E75" }}>
             {fmtTime(holds.reduce((a, b) => a + b, 0))}
           </span>
-          <span /><span />
+          <span />
+          <span />
         </div>
       </div>
     </div>
@@ -191,11 +250,11 @@ function DiveDetail() {
 
   const [showShare, setShowShare] = useState(false);
 
-  const dive    = dives.find((d) => d.id === id);
+  const dive = dives.find((d) => d.id === id);
   // prev/next in chronological order (dives array is newest-first from fetchDives)
-  const idx     = dives.findIndex((d) => d.id === id);
-  const prevId  = idx < dives.length - 1 ? dives[idx + 1].id : null;
-  const nextId  = idx > 0                 ? dives[idx - 1].id : null;
+  const idx = dives.findIndex((d) => d.id === id);
+  const prevId = idx < dives.length - 1 ? dives[idx + 1].id : null;
+  const nextId = idx > 0 ? dives[idx - 1].id : null;
 
   const remove = useMutation({
     mutationFn: () => deleteDive(id, user!.id, dive!.discipline),
@@ -218,9 +277,14 @@ function DiveDetail() {
   if (!dive) {
     return (
       <div className="space-y-4">
-        <p className="text-sm text-muted-foreground">{lang === "el" ? "Η βουτιά δεν βρέθηκε." : "Dive not found."}</p>
+        <p className="text-sm text-muted-foreground">
+          {lang === "el" ? "Η βουτιά δεν βρέθηκε." : "Dive not found."}
+        </p>
         <Button asChild variant="outline" size="sm">
-          <Link to="/history"><ArrowLeft className="size-4 mr-1" />{t("common.back")}</Link>
+          <Link to="/history">
+            <ArrowLeft className="size-4 mr-1" />
+            {t("common.back")}
+          </Link>
         </Button>
       </div>
     );
@@ -229,63 +293,104 @@ function DiveDetail() {
   const border = dive.is_personal_best ? "#EF9F27" : "#1D9E75";
   const dateStr = format(new Date(`${dive.dive_date}T${dive.dive_time ?? "00:00"}`), "d MMM yyyy");
 
-  const hasGear = dive.neck_weight != null || dive.belt_weight != null ||
-    dive.wetsuit_mm != null || dive.fins_brand || dive.fins_model ||
-    dive.foot_pocket || dive.water_temp != null || dive.buoyancy;
+  const hasGear =
+    dive.neck_weight != null ||
+    dive.belt_weight != null ||
+    dive.wetsuit_mm != null ||
+    dive.fins_brand ||
+    dive.fins_model ||
+    dive.foot_pocket ||
+    dive.water_temp != null ||
+    dive.buoyancy;
 
-  const wetsuitLabel = dive.wetsuit_mm ? `${dive.wetsuit_mm} mm` : (lang === "el" ? "Χωρίς στολή" : "No wetsuit");
+  const wetsuitLabel = dive.wetsuit_mm
+    ? `${dive.wetsuit_mm} mm`
+    : lang === "el"
+      ? "Χωρίς στολή"
+      : "No wetsuit";
 
-  const buoyancyLabel: Record<string, string> = lang === "el"
-    ? { negative: "Αρνητική", neutral: "Ουδέτερη", positive: "Θετική" }
-    : { negative: "Negative", neutral: "Neutral", positive: "Positive" };
+  const buoyancyLabel: Record<string, string> =
+    lang === "el"
+      ? { negative: "Αρνητική", neutral: "Ουδέτερη", positive: "Θετική" }
+      : { negative: "Negative", neutral: "Neutral", positive: "Positive" };
 
   const c = dive.conditions ?? null;
-  const hasSta = !!c && (!!c.posture || !!c.environment || !!c.faceCover || !!c.noseclip || !!c.face ||
-    c.roomTemp != null || c.breatheInSec != null || c.breatheOutSec != null);
-  const postureLabel: Record<string, string> = lang === "el"
-    ? { supine: "Ανάσκελα", seated: "Καθιστή", float: "Επίπλευση", prone: "Μπρούμυτα" }
-    : { supine: "Supine", seated: "Seated", float: "Float", prone: "Face down" };
-  const envLabel: Record<string, string> = lang === "el"
-    ? { dry: "Ξηρή", wet: "Υγρή" } : { dry: "Dry", wet: "Wet" };
-  const faceCoverLabel: Record<string, string> = lang === "el"
-    ? { mask: "Μάσκα", goggles: "Γυαλάκια" } : { mask: "Mask", goggles: "Goggles" };
+  const hasSta =
+    !!c &&
+    (!!c.posture ||
+      !!c.environment ||
+      !!c.faceCover ||
+      !!c.noseclip ||
+      !!c.face ||
+      c.roomTemp != null ||
+      c.breatheInSec != null ||
+      c.breatheOutSec != null);
+  const postureLabel: Record<string, string> =
+    lang === "el"
+      ? { supine: "Ανάσκελα", seated: "Καθιστή", float: "Επίπλευση", prone: "Μπρούμυτα" }
+      : { supine: "Supine", seated: "Seated", float: "Float", prone: "Face down" };
+  const envLabel: Record<string, string> =
+    lang === "el" ? { dry: "Ξηρή", wet: "Υγρή" } : { dry: "Dry", wet: "Wet" };
+  const faceCoverLabel: Record<string, string> =
+    lang === "el" ? { mask: "Μάσκα", goggles: "Γυαλάκια" } : { mask: "Mask", goggles: "Goggles" };
   // legacy single-select data
-  const faceLabel: Record<string, string> = lang === "el"
-    ? { noseclip: "Κλιπ μύτης", mask: "Μάσκα", goggles: "Γυαλάκια" }
-    : { noseclip: "Noseclip", mask: "Mask", goggles: "Goggles" };
+  const faceLabel: Record<string, string> =
+    lang === "el"
+      ? { noseclip: "Κλιπ μύτης", mask: "Μάσκα", goggles: "Γυαλάκια" }
+      : { noseclip: "Noseclip", mask: "Mask", goggles: "Goggles" };
 
   return (
     <div className="space-y-5">
       {/* back + prev/next */}
       <div className="flex items-center justify-between">
-        <Button asChild variant="ghost" size="sm" className="-ml-2 gap-1.5 text-white/50 hover:text-white">
-          <Link to="/history"><ArrowLeft className="size-4" />{t("common.back")}</Link>
+        <Button
+          asChild
+          variant="ghost"
+          size="sm"
+          className="-ml-2 gap-1.5 text-foreground/50 hover:text-foreground"
+        >
+          <Link to="/history">
+            <ArrowLeft className="size-4" />
+            {t("common.back")}
+          </Link>
         </Button>
         <div className="flex items-center gap-1">
           <Button
             asChild
             variant="ghost"
             size="sm"
-            className="size-8 p-0 text-white/40 hover:text-white disabled:opacity-20"
+            className="size-8 p-0 text-foreground/40 hover:text-foreground disabled:opacity-20"
             disabled={!prevId}
           >
-            {prevId
-              ? <Link to="/dive/$id" params={{ id: prevId }}><ChevronLeft className="size-4" /></Link>
-              : <span><ChevronLeft className="size-4" /></span>
-            }
+            {prevId ? (
+              <Link to="/dive/$id" params={{ id: prevId }}>
+                <ChevronLeft className="size-4" />
+              </Link>
+            ) : (
+              <span>
+                <ChevronLeft className="size-4" />
+              </span>
+            )}
           </Button>
-          <span className="text-[0.6rem] text-white/20">{idx + 1} / {dives.length}</span>
+          <span className="text-[0.6rem] text-foreground/20">
+            {idx + 1} / {dives.length}
+          </span>
           <Button
             asChild
             variant="ghost"
             size="sm"
-            className="size-8 p-0 text-white/40 hover:text-white disabled:opacity-20"
+            className="size-8 p-0 text-foreground/40 hover:text-foreground disabled:opacity-20"
             disabled={!nextId}
           >
-            {nextId
-              ? <Link to="/dive/$id" params={{ id: nextId }}><ChevronRight className="size-4" /></Link>
-              : <span><ChevronRight className="size-4" /></span>
-            }
+            {nextId ? (
+              <Link to="/dive/$id" params={{ id: nextId }}>
+                <ChevronRight className="size-4" />
+              </Link>
+            ) : (
+              <span>
+                <ChevronRight className="size-4" />
+              </span>
+            )}
           </Button>
         </div>
       </div>
@@ -302,7 +407,9 @@ function DiveDetail() {
           >
             {dive.discipline}
           </span>
-          <span className="text-xs text-white/40">{disciplineName(dive.discipline, lang)}</span>
+          <span className="text-xs text-foreground/40">
+            {disciplineName(dive.discipline, lang)}
+          </span>
           {dive.is_personal_best && (
             <span
               className="rounded-md px-2 py-0.5 text-[0.6rem] font-bold"
@@ -314,36 +421,45 @@ function DiveDetail() {
           {dive.federation && (
             <span
               className="rounded-md px-2 py-0.5 text-[0.6rem] font-semibold"
-              style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.45)" }}
+              style={{ background: "rgba(var(--ink),0.06)", color: "rgba(var(--ink),0.45)" }}
             >
               {dive.federation}
             </span>
           )}
-          <span className="ml-auto text-xs text-white/30">
-            {dateStr}{dive.dive_time ? ` · ${dive.dive_time}` : ""}
+          <span className="ml-auto text-xs text-foreground/30">
+            {dateStr}
+            {dive.dive_time ? ` · ${dive.dive_time}` : ""}
           </span>
         </div>
 
         {/* big result */}
         <p
-          className="font-bold tabular-nums text-white"
+          className="font-bold tabular-nums text-foreground"
           style={{ fontFamily: "'Outfit', sans-serif", fontSize: "3.5rem", lineHeight: 1 }}
         >
           {formatResult(dive.discipline, dive.result)}
         </p>
 
-        <p className="text-xs text-white/30 capitalize">
+        <p className="text-xs text-foreground/30 capitalize">
           {dive.session_type === "competition"
-            ? (lang === "el" ? "Αγώνας" : "Competition")
-            : (lang === "el" ? "Προπόνηση" : "Training")}
+            ? lang === "el"
+              ? "Αγώνας"
+              : "Competition"
+            : lang === "el"
+              ? "Προπόνηση"
+              : "Training"}
         </p>
       </div>
 
       {/* condition */}
       {(dive.sleep_hours != null || dive.mental_state != null || dive.food_notes) && (
         <Section title={lang === "el" ? "ΚΑΤΑΣΤΑΣΗ" : "CONDITION"}>
-          {dive.sleep_hours != null && <Row label={t("log.sleep")} value={`${dive.sleep_hours}h`} />}
-          {dive.mental_state != null && <Row label={t("log.mental")} value={`${dive.mental_state} / 5`} />}
+          {dive.sleep_hours != null && (
+            <Row label={t("log.sleep")} value={`${dive.sleep_hours}h`} />
+          )}
+          {dive.mental_state != null && (
+            <Row label={t("log.mental")} value={`${dive.mental_state} / 5`} />
+          )}
           {dive.food_notes && <Row label={t("log.food")} value={dive.food_notes} />}
         </Section>
       )}
@@ -351,11 +467,19 @@ function DiveDetail() {
       {/* equipment */}
       {hasGear && (
         <Section title={lang === "el" ? "ΕΞΟΠΛΙΣΜΟΣ & ΣΥΝΘΗΚΕΣ" : "EQUIPMENT & CONDITIONS"}>
-          {dive.neck_weight != null && <Row label={t("log.neckWeight")} value={`${dive.neck_weight} kg`} />}
-          {dive.belt_weight != null && <Row label={t("log.beltWeight")} value={`${dive.belt_weight} kg`} />}
+          {dive.neck_weight != null && (
+            <Row label={t("log.neckWeight")} value={`${dive.neck_weight} kg`} />
+          )}
+          {dive.belt_weight != null && (
+            <Row label={t("log.beltWeight")} value={`${dive.belt_weight} kg`} />
+          )}
           {dive.wetsuit_mm !== undefined && <Row label={t("log.wetsuit")} value={wetsuitLabel} />}
-          {dive.water_temp != null && <Row label={t("log.waterTemp")} value={`${dive.water_temp} °C`} />}
-          {dive.buoyancy && <Row label={t("log.buoyancy")} value={buoyancyLabel[dive.buoyancy] ?? dive.buoyancy} />}
+          {dive.water_temp != null && (
+            <Row label={t("log.waterTemp")} value={`${dive.water_temp} °C`} />
+          )}
+          {dive.buoyancy && (
+            <Row label={t("log.buoyancy")} value={buoyancyLabel[dive.buoyancy] ?? dive.buoyancy} />
+          )}
           {dive.fins_brand && <Row label={t("log.finsBrand")} value={dive.fins_brand} />}
           {dive.fins_model && <Row label={t("log.finsModel")} value={dive.fins_model} />}
           {dive.foot_pocket && <Row label={t("log.footPocket")} value={dive.foot_pocket} />}
@@ -365,21 +489,45 @@ function DiveDetail() {
       {/* STA session conditions */}
       {hasSta && c && (
         <Section title={lang === "el" ? "ΣΥΝΘΗΚΕΣ ΣΤΑΤΙΚΗΣ" : "STATIC CONDITIONS"}>
-          {c.environment && <Row label={lang === "el" ? "Περιβάλλον" : "Environment"} value={envLabel[c.environment] ?? c.environment} />}
-          {c.posture && <Row label={lang === "el" ? "Στάση" : "Posture"} value={postureLabel[c.posture] ?? c.posture} />}
+          {c.environment && (
+            <Row
+              label={lang === "el" ? "Περιβάλλον" : "Environment"}
+              value={envLabel[c.environment] ?? c.environment}
+            />
+          )}
+          {c.posture && (
+            <Row
+              label={lang === "el" ? "Στάση" : "Posture"}
+              value={postureLabel[c.posture] ?? c.posture}
+            />
+          )}
           {(c.faceCover || c.noseclip) && (
             <Row
               label={lang === "el" ? "Πρόσωπο" : "Face"}
-              value={[
-                c.faceCover ? (faceCoverLabel[c.faceCover] ?? c.faceCover) : null,
-                c.noseclip ? (lang === "el" ? "Κλιπ μύτης" : "Noseclip") : null,
-              ].filter(Boolean).join(" + ") || "—"}
+              value={
+                [
+                  c.faceCover ? (faceCoverLabel[c.faceCover] ?? c.faceCover) : null,
+                  c.noseclip ? (lang === "el" ? "Κλιπ μύτης" : "Noseclip") : null,
+                ]
+                  .filter(Boolean)
+                  .join(" + ") || "—"
+              }
             />
           )}
-          {!c.faceCover && !c.noseclip && c.face && <Row label={lang === "el" ? "Πρόσωπο" : "Face"} value={faceLabel[c.face] ?? c.face} />}
-          {c.roomTemp != null && <Row label={lang === "el" ? "Θερμοκρασία χώρου" : "Room temp"} value={`${c.roomTemp} °C`} />}
+          {!c.faceCover && !c.noseclip && c.face && (
+            <Row label={lang === "el" ? "Πρόσωπο" : "Face"} value={faceLabel[c.face] ?? c.face} />
+          )}
+          {c.roomTemp != null && (
+            <Row
+              label={lang === "el" ? "Θερμοκρασία χώρου" : "Room temp"}
+              value={`${c.roomTemp} °C`}
+            />
+          )}
           {(c.breatheInSec != null || c.breatheOutSec != null) && (
-            <Row label={lang === "el" ? "Ρυθμός breathe-up" : "Breathe-up"} value={`${c.breatheInSec ?? "–"}s / ${c.breatheOutSec ?? "–"}s`} />
+            <Row
+              label={lang === "el" ? "Ρυθμός breathe-up" : "Breathe-up"}
+              value={`${c.breatheInSec ?? "–"}s / ${c.breatheOutSec ?? "–"}s`}
+            />
           )}
         </Section>
       )}
@@ -392,21 +540,26 @@ function DiveDetail() {
       )}
 
       {/* notes — STA sessions get structured display; plain text is shown as-is */}
-      {dive.notes && (
-        dive.discipline === "STA" && dive.notes.includes("Rounds:")
-          ? <STASessionNotes notes={dive.notes} lang={lang} />
-          : (
-            <Section title={lang === "el" ? "ΣΗΜΕΙΩΣΕΙΣ" : "NOTES"}>
-              <p className="text-sm text-white/60 leading-relaxed whitespace-pre-line">{dive.notes}</p>
-            </Section>
-          )
-      )}
+      {dive.notes &&
+        (dive.discipline === "STA" && dive.notes.includes("Rounds:") ? (
+          <STASessionNotes notes={dive.notes} lang={lang} />
+        ) : (
+          <Section title={lang === "el" ? "ΣΗΜΕΙΩΣΕΙΣ" : "NOTES"}>
+            <p className="text-sm text-foreground/60 leading-relaxed whitespace-pre-line">
+              {dive.notes}
+            </p>
+          </Section>
+        ))}
 
       {/* share */}
       <button
         onClick={() => setShowShare(true)}
         className="flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-bold transition-all active:scale-[0.99]"
-        style={{ background: "rgba(29,158,117,0.12)", border: "1px solid rgba(29,158,117,0.35)", color: "#5DCAA5" }}
+        style={{
+          background: "rgba(29,158,117,0.12)",
+          border: "1px solid rgba(29,158,117,0.35)",
+          color: "#5DCAA5",
+        }}
       >
         <Share2 className="size-4" />
         {lang === "el" ? "Κοινοποίηση επίδοσης" : "Share result"}

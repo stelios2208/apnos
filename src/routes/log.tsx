@@ -104,7 +104,7 @@ function LogDive() {
 
   // Derive fins category from discipline — no manual override needed
   const finsCategory = (d: DisciplineCode): "monofin" | "bifins" | "none" => {
-    if (["DYN", "CWT"].includes(d))   return "monofin";
+    if (["DYN", "CWT"].includes(d)) return "monofin";
     if (["DYNB", "CWTB"].includes(d)) return "bifins";
     return "none";
   };
@@ -184,8 +184,13 @@ function LogDive() {
       ...(warmupName ? { warmupName, warmupId } : {}),
     };
     const hasConditions =
-      !!conditions.posture || !!conditions.environment || !!conditions.faceCover || !!conditions.noseclip ||
-      conditions.roomTemp != null || conditions.breatheInSec != null || conditions.breatheOutSec != null ||
+      !!conditions.posture ||
+      !!conditions.environment ||
+      !!conditions.faceCover ||
+      !!conditions.noseclip ||
+      conditions.roomTemp != null ||
+      conditions.breatheInSec != null ||
+      conditions.breatheOutSec != null ||
       !!conditions.warmupName;
 
     mutation.mutate({
@@ -199,8 +204,8 @@ function LogDive() {
       food_notes: foodNotes || null,
       mental_state: mentalState,
       notes: notes || null,
-      neck_weight: discipline === "STA" ? null : (neckWeight ? Number(neckWeight) : null),
-      belt_weight: discipline === "STA" ? null : (beltWeight ? Number(beltWeight) : null),
+      neck_weight: discipline === "STA" ? null : neckWeight ? Number(neckWeight) : null,
+      belt_weight: discipline === "STA" ? null : beltWeight ? Number(beltWeight) : null,
       wetsuit_mm: wetsuitMm ? Number(wetsuitMm) : null,
       buoyancy: buoyancy || null,
       fins_type: finsCat !== "none" ? finsCat : null,
@@ -216,7 +221,9 @@ function LogDive() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">{editId ? t("log.titleEdit") : t("log.titleNew")}</h1>
-        <p className="text-sm text-muted-foreground">{editId ? t("log.subEdit") : t("log.subNew")}</p>
+        <p className="text-sm text-muted-foreground">
+          {editId ? t("log.subEdit") : t("log.subNew")}
+        </p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
@@ -255,24 +262,40 @@ function LogDive() {
               />
             )}
             {!isTime && (
-              <p className="text-[0.7rem] text-muted-foreground">{t("common.meters")} — {unitLabel(discipline)}.</p>
+              <p className="text-[0.7rem] text-muted-foreground">
+                {t("common.meters")} — {unitLabel(discipline)}.
+              </p>
             )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="date">{t("log.date")}</Label>
-              <Input id="date" type="date" value={diveDate} onChange={(e) => setDiveDate(e.target.value)} required />
+              <Input
+                id="date"
+                type="date"
+                value={diveDate}
+                onChange={(e) => setDiveDate(e.target.value)}
+                required
+              />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="time">{t("log.time")}</Label>
-              <Input id="time" type="time" value={diveTime} onChange={(e) => setDiveTime(e.target.value)} />
+              <Input
+                id="time"
+                type="time"
+                value={diveTime}
+                onChange={(e) => setDiveTime(e.target.value)}
+              />
             </div>
           </div>
 
           <div className="space-y-1.5">
             <Label>{t("log.sessionType")}</Label>
-            <Select value={sessionType} onValueChange={(v) => setSessionType(v as "training" | "competition")}>
+            <Select
+              value={sessionType}
+              onValueChange={(v) => setSessionType(v as "training" | "competition")}
+            >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -303,7 +326,10 @@ function LogDive() {
         </div>
 
         <div className="glass-card space-y-4 rounded-2xl p-5">
-          <h2 className="flex items-center gap-2 text-sm font-semibold" style={{ color: "#B58BE8" }}>
+          <h2
+            className="flex items-center gap-2 text-sm font-semibold"
+            style={{ color: "#B58BE8" }}
+          >
             <HeartPulse className="size-4" /> {t("log.condition")}
           </h2>
 
@@ -340,7 +366,13 @@ function LogDive() {
                 {mentalState} · {t(`mental.${mentalState}`)}
               </span>
             </div>
-            <Slider min={1} max={5} step={1} value={[mentalState]} onValueChange={(v) => setMentalState(v[0])} />
+            <Slider
+              min={1}
+              max={5}
+              step={1}
+              value={[mentalState]}
+              onValueChange={(v) => setMentalState(v[0])}
+            />
           </div>
 
           <div className="space-y-1.5">
@@ -362,7 +394,10 @@ function LogDive() {
             onClick={() => setGearOpen((o) => !o)}
             className="flex w-full items-center justify-between p-5 text-left"
           >
-            <span className="flex items-center gap-2 text-sm font-semibold" style={{ color: "#EF9F27" }}>
+            <span
+              className="flex items-center gap-2 text-sm font-semibold"
+              style={{ color: "#EF9F27" }}
+            >
               <Backpack className="size-4" /> {t("log.gear")}
             </span>
             <ChevronDown
@@ -374,20 +409,41 @@ function LogDive() {
           {gearOpen && (
             <div
               className="px-5 pb-5"
-              style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", alignItems: "start" }}
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: "12px",
+                alignItems: "start",
+              }}
             >
               {/* row: neck weight | belt weight — not applicable to static apnea */}
               {discipline !== "STA" && (
                 <>
                   <div className="space-y-1.5">
                     <Label htmlFor="neck-weight">{t("log.neckWeight")}</Label>
-                    <Input id="neck-weight" type="number" inputMode="decimal" step="0.1" min="0"
-                      value={neckWeight} onChange={(e) => setNeckWeight(e.target.value)} placeholder="0.0" />
+                    <Input
+                      id="neck-weight"
+                      type="number"
+                      inputMode="decimal"
+                      step="0.1"
+                      min="0"
+                      value={neckWeight}
+                      onChange={(e) => setNeckWeight(e.target.value)}
+                      placeholder="0.0"
+                    />
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="belt-weight">{t("log.beltWeight")}</Label>
-                    <Input id="belt-weight" type="number" inputMode="decimal" step="0.1" min="0"
-                      value={beltWeight} onChange={(e) => setBeltWeight(e.target.value)} placeholder="0.0" />
+                    <Input
+                      id="belt-weight"
+                      type="number"
+                      inputMode="decimal"
+                      step="0.1"
+                      min="0"
+                      value={beltWeight}
+                      onChange={(e) => setBeltWeight(e.target.value)}
+                      placeholder="0.0"
+                    />
                   </div>
                 </>
               )}
@@ -396,7 +452,9 @@ function LogDive() {
               <div className="space-y-1.5">
                 <Label>{t("log.wetsuit")}</Label>
                 <Select value={wetsuitMm} onValueChange={setWetsuitMm}>
-                  <SelectTrigger><SelectValue placeholder={t("log.wetsuitNone")} /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue placeholder={t("log.wetsuitNone")} />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="">{t("log.wetsuitNone")}</SelectItem>
                     <SelectItem value="1.5">1.5 mm</SelectItem>
@@ -408,15 +466,24 @@ function LogDive() {
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="water-temp">{t("log.waterTemp")}</Label>
-                <Input id="water-temp" type="number" inputMode="decimal" step="0.5"
-                  value={waterTemp} onChange={(e) => setWaterTemp(e.target.value)} placeholder="e.g. 22" />
+                <Input
+                  id="water-temp"
+                  type="number"
+                  inputMode="decimal"
+                  step="0.5"
+                  value={waterTemp}
+                  onChange={(e) => setWaterTemp(e.target.value)}
+                  placeholder="e.g. 22"
+                />
               </div>
 
               {/* row: buoyancy | (empty) */}
               <div className="space-y-1.5">
                 <Label>{t("log.buoyancy")}</Label>
                 <Select value={buoyancy} onValueChange={setBuoyancy}>
-                  <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue placeholder="—" />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="">{" — "}</SelectItem>
                     <SelectItem value="negative">{t("log.buoyancyNeg")}</SelectItem>
@@ -434,16 +501,24 @@ function LogDive() {
                   <div className="space-y-1.5">
                     <Label htmlFor="fins-brand">
                       {finsCat === "monofin"
-                        ? (lang === "el" ? "Μονοπέδιλο — Μάρκα" : "Monofin — Brand")
-                        : (lang === "el" ? "Διπλά πέδιλα — Μάρκα" : "Bifins — Brand")}
+                        ? lang === "el"
+                          ? "Μονοπέδιλο — Μάρκα"
+                          : "Monofin — Brand"
+                        : lang === "el"
+                          ? "Διπλά πέδιλα — Μάρκα"
+                          : "Bifins — Brand"}
                     </Label>
                     <Select value={finsBrand} onValueChange={setFinsBrand}>
-                      <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                      <SelectTrigger>
+                        <SelectValue placeholder="—" />
+                      </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="">{" — "}</SelectItem>
                         <SelectItem value="Cetma">Cetma</SelectItem>
                         <SelectItem value="Sectus">Sectus</SelectItem>
-                        <SelectItem value="other">{lang === "el" ? "Άλλη μάρκα…" : "Other brand…"}</SelectItem>
+                        <SelectItem value="other">
+                          {lang === "el" ? "Άλλη μάρκα…" : "Other brand…"}
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                     {finsBrand === "other" && (
@@ -458,10 +533,13 @@ function LogDive() {
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="fins-model">{t("log.finsModel")}</Label>
-                    <Input id="fins-model" type="text"
+                    <Input
+                      id="fins-model"
+                      type="text"
                       value={finsModel.startsWith("__brand__") ? "" : finsModel}
                       onChange={(e) => setFinsModel(e.target.value)}
-                      placeholder={lang === "el" ? "π.χ. Carbon 500" : "e.g. Carbon 500"} />
+                      placeholder={lang === "el" ? "π.χ. Carbon 500" : "e.g. Carbon 500"}
+                    />
                   </div>
 
                   {/* row: foot pocket (bifins only) | (empty) */}
@@ -469,9 +547,13 @@ function LogDive() {
                     <>
                       <div className="space-y-1.5">
                         <Label htmlFor="foot-pocket">{t("log.footPocket")}</Label>
-                        <Input id="foot-pocket" type="text"
-                          value={footPocket} onChange={(e) => setFootPocket(e.target.value)}
-                          placeholder="e.g. Omer Stingray" />
+                        <Input
+                          id="foot-pocket"
+                          type="text"
+                          value={footPocket}
+                          onChange={(e) => setFootPocket(e.target.value)}
+                          placeholder="e.g. Omer Stingray"
+                        />
                       </div>
                       <div />
                     </>
@@ -484,24 +566,34 @@ function LogDive() {
 
         {/* warm-up used before the dive — any discipline */}
         <div className="glass-card space-y-2 rounded-2xl p-5">
-          <span className="flex items-center gap-2 text-sm font-semibold" style={{ color: "#EF9F27" }}>
+          <span
+            className="flex items-center gap-2 text-sm font-semibold"
+            style={{ color: "#EF9F27" }}
+          >
             <Flame className="size-4" /> {lang === "el" ? "Ζέσταμα που έκανες" : "Warm-up used"}
           </span>
           <Select
             value={warmupId || "none"}
             onValueChange={(v) => {
-              if (v === "none") { setWarmupId(""); setWarmupName(""); return; }
+              if (v === "none") {
+                setWarmupId("");
+                setWarmupName("");
+                return;
+              }
               const w = allWarmups.find((x) => x.id === v);
               setWarmupId(v);
               setWarmupName(w ? (lang === "el" ? w.name_el : w.name_en) : "");
             }}
           >
-            <SelectTrigger><SelectValue placeholder={lang === "el" ? "Κανένα" : "None"} /></SelectTrigger>
+            <SelectTrigger>
+              <SelectValue placeholder={lang === "el" ? "Κανένα" : "None"} />
+            </SelectTrigger>
             <SelectContent>
               <SelectItem value="none">{lang === "el" ? "— Κανένα" : "— None"}</SelectItem>
               {allWarmups.map((w) => (
                 <SelectItem key={w.id} value={w.id}>
-                  {lang === "el" ? w.name_el : w.name_en}{w.custom ? " · custom" : ""}
+                  {lang === "el" ? w.name_el : w.name_en}
+                  {w.custom ? " · custom" : ""}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -511,8 +603,12 @@ function LogDive() {
         {/* STA session conditions — only for static apnea */}
         {discipline === "STA" && (
           <div className="glass-card space-y-4 rounded-2xl p-5">
-            <span className="flex items-center gap-2 text-sm font-semibold" style={{ color: "#5DCAA5" }}>
-              <Waves className="size-4" /> {lang === "el" ? "Συνθήκες Στατικής" : "Static Conditions"}
+            <span
+              className="flex items-center gap-2 text-sm font-semibold"
+              style={{ color: "#5DCAA5" }}
+            >
+              <Waves className="size-4" />{" "}
+              {lang === "el" ? "Συνθήκες Στατικής" : "Static Conditions"}
             </span>
 
             <div className="space-y-1.5">
@@ -537,12 +633,14 @@ function LogDive() {
               <PillGroup
                 value={posture}
                 onChange={setPosture}
-                options={environment === "wet"
-                  ? [{ value: "prone", label: lang === "el" ? "Μπρούμυτα" : "Face down" }]
-                  : [
-                      { value: "supine", label: lang === "el" ? "Ανάσκελα" : "Supine" },
-                      { value: "seated", label: lang === "el" ? "Καθιστή" : "Seated" },
-                    ]}
+                options={
+                  environment === "wet"
+                    ? [{ value: "prone", label: lang === "el" ? "Μπρούμυτα" : "Face down" }]
+                    : [
+                        { value: "supine", label: lang === "el" ? "Ανάσκελα" : "Supine" },
+                        { value: "seated", label: lang === "el" ? "Καθιστή" : "Seated" },
+                      ]
+                }
               />
             </div>
 
@@ -552,8 +650,8 @@ function LogDive() {
                 value={faceCover}
                 onChange={setFaceCover}
                 options={[
-                  { value: "",        label: lang === "el" ? "Κανένα" : "None" },
-                  { value: "mask",    label: lang === "el" ? "Μάσκα" : "Mask" },
+                  { value: "", label: lang === "el" ? "Κανένα" : "None" },
+                  { value: "mask", label: lang === "el" ? "Μάσκα" : "Mask" },
                   { value: "goggles", label: lang === "el" ? "Γυαλάκια" : "Goggles" },
                 ]}
               />
@@ -566,9 +664,19 @@ function LogDive() {
                   type="button"
                   onClick={() => setNoseclip(true)}
                   className="rounded-lg py-2 text-xs font-semibold transition-all"
-                  style={noseclip
-                    ? { background: "rgba(29,158,117,0.2)", color: "#5DCAA5", border: "1px solid rgba(29,158,117,0.4)" }
-                    : { background: "rgba(255,255,255,0.03)", color: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.08)" }}
+                  style={
+                    noseclip
+                      ? {
+                          background: "rgba(29,158,117,0.2)",
+                          color: "#5DCAA5",
+                          border: "1px solid rgba(29,158,117,0.4)",
+                        }
+                      : {
+                          background: "rgba(var(--ink),0.03)",
+                          color: "rgba(var(--ink),0.5)",
+                          border: "1px solid rgba(var(--ink),0.08)",
+                        }
+                  }
                 >
                   {lang === "el" ? "Ναι" : "Yes"}
                 </button>
@@ -576,9 +684,19 @@ function LogDive() {
                   type="button"
                   onClick={() => setNoseclip(false)}
                   className="rounded-lg py-2 text-xs font-semibold transition-all"
-                  style={!noseclip
-                    ? { background: "rgba(29,158,117,0.2)", color: "#5DCAA5", border: "1px solid rgba(29,158,117,0.4)" }
-                    : { background: "rgba(255,255,255,0.03)", color: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.08)" }}
+                  style={
+                    !noseclip
+                      ? {
+                          background: "rgba(29,158,117,0.2)",
+                          color: "#5DCAA5",
+                          border: "1px solid rgba(29,158,117,0.4)",
+                        }
+                      : {
+                          background: "rgba(var(--ink),0.03)",
+                          color: "rgba(var(--ink),0.5)",
+                          border: "1px solid rgba(var(--ink),0.08)",
+                        }
+                  }
                 >
                   {lang === "el" ? "Όχι" : "No"}
                 </button>
@@ -587,23 +705,39 @@ function LogDive() {
 
             {environment === "dry" && (
               <div className="space-y-1.5">
-                <Label htmlFor="room-temp">{lang === "el" ? "Θερμοκρασία χώρου (°C)" : "Room temperature (°C)"}</Label>
-                <Input id="room-temp" type="number" inputMode="decimal" step="0.5"
-                  value={roomTemp} onChange={(e) => setRoomTemp(e.target.value)} placeholder="e.g. 24" />
+                <Label htmlFor="room-temp">
+                  {lang === "el" ? "Θερμοκρασία χώρου (°C)" : "Room temperature (°C)"}
+                </Label>
+                <Input
+                  id="room-temp"
+                  type="number"
+                  inputMode="decimal"
+                  step="0.5"
+                  value={roomTemp}
+                  onChange={(e) => setRoomTemp(e.target.value)}
+                  placeholder="e.g. 24"
+                />
               </div>
             )}
             {environment === "wet" && (
               <p className="text-[0.7rem] text-muted-foreground">
-                {lang === "el" ? "Θερμοκρασία νερού: συμπλήρωσέ την στον Εξοπλισμό & Συνθήκες πιο πάνω." : "Water temperature: set it in Equipment & Conditions above."}
+                {lang === "el"
+                  ? "Θερμοκρασία νερού: συμπλήρωσέ την στον Εξοπλισμό & Συνθήκες πιο πάνω."
+                  : "Water temperature: set it in Equipment & Conditions above."}
               </p>
             )}
 
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <Label>{lang === "el" ? "Ρυθμός breathe-up (δευτ.)" : "Breathe-up rhythm (sec)"}</Label>
+                <Label>
+                  {lang === "el" ? "Ρυθμός breathe-up (δευτ.)" : "Breathe-up rhythm (sec)"}
+                </Label>
                 <button
                   type="button"
-                  onClick={() => { setBreatheIn("3"); setBreatheOut("3"); }}
+                  onClick={() => {
+                    setBreatheIn("3");
+                    setBreatheOut("3");
+                  }}
                   className="rounded-md px-2 py-1 text-[0.6rem] font-bold"
                   style={{ background: "rgba(29,158,117,0.15)", color: "#5DCAA5" }}
                 >
@@ -611,18 +745,36 @@ function LogDive() {
                 </button>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <Input type="number" inputMode="numeric" min="0" step="1"
-                  value={breatheIn} onChange={(e) => setBreatheIn(e.target.value)}
-                  placeholder={lang === "el" ? "Εισπνοή" : "Inhale"} />
-                <Input type="number" inputMode="numeric" min="0" step="1"
-                  value={breatheOut} onChange={(e) => setBreatheOut(e.target.value)}
-                  placeholder={lang === "el" ? "Εκπνοή" : "Exhale"} />
+                <Input
+                  type="number"
+                  inputMode="numeric"
+                  min="0"
+                  step="1"
+                  value={breatheIn}
+                  onChange={(e) => setBreatheIn(e.target.value)}
+                  placeholder={lang === "el" ? "Εισπνοή" : "Inhale"}
+                />
+                <Input
+                  type="number"
+                  inputMode="numeric"
+                  min="0"
+                  step="1"
+                  value={breatheOut}
+                  onChange={(e) => setBreatheOut(e.target.value)}
+                  placeholder={lang === "el" ? "Εκπνοή" : "Exhale"}
+                />
               </div>
             </div>
           </div>
         )}
 
-        <Button type="submit" variant="hero" size="lg" className="w-full" disabled={mutation.isPending}>
+        <Button
+          type="submit"
+          variant="hero"
+          size="lg"
+          className="w-full"
+          disabled={mutation.isPending}
+        >
           {mutation.isPending ? t("common.saving") : editId ? t("log.update") : t("log.save")}
         </Button>
       </form>
@@ -630,7 +782,11 @@ function LogDive() {
   );
 }
 
-function PillGroup<T extends string>({ value, onChange, options }: {
+function PillGroup<T extends string>({
+  value,
+  onChange,
+  options,
+}: {
   value: T;
   onChange: (v: T) => void;
   options: { value: T; label: string }[];
@@ -643,9 +799,19 @@ function PillGroup<T extends string>({ value, onChange, options }: {
           type="button"
           onClick={() => onChange(value === o.value ? ("" as T) : o.value)}
           className="rounded-lg px-2 py-2 text-xs font-semibold transition-all"
-          style={value === o.value
-            ? { background: "rgba(29,158,117,0.2)", color: "#5DCAA5", border: "1px solid rgba(29,158,117,0.4)" }
-            : { background: "rgba(255,255,255,0.03)", color: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.08)" }}
+          style={
+            value === o.value
+              ? {
+                  background: "rgba(29,158,117,0.2)",
+                  color: "#5DCAA5",
+                  border: "1px solid rgba(29,158,117,0.4)",
+                }
+              : {
+                  background: "rgba(var(--ink),0.03)",
+                  color: "rgba(var(--ink),0.5)",
+                  border: "1px solid rgba(var(--ink),0.08)",
+                }
+          }
         >
           {o.label}
         </button>

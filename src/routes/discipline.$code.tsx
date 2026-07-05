@@ -5,7 +5,13 @@ import { format } from "date-fns";
 import { AppLayout } from "@/components/AppLayout";
 import { useAuth } from "@/hooks/use-auth";
 import { fetchDives } from "@/lib/dives";
-import { DISCIPLINE_MAP, disciplineName, formatResult, type Dive, type DisciplineCode } from "@/lib/diving";
+import {
+  DISCIPLINE_MAP,
+  disciplineName,
+  formatResult,
+  type Dive,
+  type DisciplineCode,
+} from "@/lib/diving";
 import { useI18n } from "@/lib/i18n";
 import { PBChart } from "@/components/PBChart";
 import { Badge } from "@/components/ui/badge";
@@ -25,7 +31,9 @@ function DiveRow({ dive }: { dive: Dive }) {
   return (
     <li className="glass-card flex items-center justify-between rounded-xl px-4 py-3">
       <div>
-        <p className="text-lg font-bold tabular-nums">{formatResult(dive.discipline, dive.result)}</p>
+        <p className="text-lg font-bold tabular-nums">
+          {formatResult(dive.discipline, dive.result)}
+        </p>
         <p className="text-xs text-muted-foreground">
           {format(new Date(`${dive.dive_date}T00:00`), "d MMM yyyy")}
           {dive.federation ? ` · ${dive.federation}` : ""}
@@ -67,7 +75,9 @@ function DisciplineDetail() {
         </Button>
         <div>
           <h1 className="text-2xl font-bold">{valid ? discipline : "—"}</h1>
-          <p className="text-sm text-muted-foreground">{valid ? disciplineName(discipline, lang) : ""}</p>
+          <p className="text-sm text-muted-foreground">
+            {valid ? disciplineName(discipline, lang) : ""}
+          </p>
         </div>
       </div>
 
@@ -78,7 +88,9 @@ function DisciplineDetail() {
         </section>
       ) : (
         <section className="glass-card rounded-2xl p-5">
-          <p className="text-sm text-muted-foreground">{dives.length === 0 ? t("disc.noDives") : t("disc.noData")}</p>
+          <p className="text-sm text-muted-foreground">
+            {dives.length === 0 ? t("disc.noDives") : t("disc.noData")}
+          </p>
         </section>
       )}
 

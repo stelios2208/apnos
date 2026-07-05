@@ -95,11 +95,38 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:title", content: "Apnos — Freediving Training Log" },
-      { name: "description", content: "Track your freediving dives, personal bests, nutrition and mental state. Log every discipline — STA, DYN, CWT and more. Built for competitive freedivers." },
-      { property: "og:description", content: "Track your freediving dives, personal bests, nutrition and mental state. Log every discipline — STA, DYN, CWT and more. Built for competitive freedivers." },
-      { name: "twitter:description", content: "Track your freediving dives, personal bests, nutrition and mental state. Log every discipline — STA, DYN, CWT and more. Built for competitive freedivers." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/9dbcc58f-39c3-4237-aa50-3fff6dc38f40/id-preview-225a5f16--5cc244fb-1fab-481f-8259-a5bb9e400730.lovable.app-1781730265401.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/9dbcc58f-39c3-4237-aa50-3fff6dc38f40/id-preview-225a5f16--5cc244fb-1fab-481f-8259-a5bb9e400730.lovable.app-1781730265401.png" },
+      {
+        name: "description",
+        content:
+          "Track your freediving dives, personal bests, nutrition and mental state. Log every discipline — STA, DYN, CWT and more. Built for competitive freedivers.",
+      },
+      {
+        property: "og:description",
+        content:
+          "Track your freediving dives, personal bests, nutrition and mental state. Log every discipline — STA, DYN, CWT and more. Built for competitive freedivers.",
+      },
+      {
+        name: "twitter:description",
+        content:
+          "Track your freediving dives, personal bests, nutrition and mental state. Log every discipline — STA, DYN, CWT and more. Built for competitive freedivers.",
+      },
+      {
+        property: "og:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/9dbcc58f-39c3-4237-aa50-3fff6dc38f40/id-preview-225a5f16--5cc244fb-1fab-481f-8259-a5bb9e400730.lovable.app-1781730265401.png",
+      },
+      {
+        name: "twitter:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/9dbcc58f-39c3-4237-aa50-3fff6dc38f40/id-preview-225a5f16--5cc244fb-1fab-481f-8259-a5bb9e400730.lovable.app-1781730265401.png",
+      },
+    ],
+    scripts: [
+      {
+        // Apply the stored theme before first paint (see src/hooks/use-theme.tsx).
+        children:
+          '(function(){try{if(localStorage.getItem("apnos.theme")==="light"){var c=document.documentElement.classList;c.remove("dark");c.add("light");}}catch(e){}})();',
+      },
     ],
     links: [
       { rel: "stylesheet", href: appCss },

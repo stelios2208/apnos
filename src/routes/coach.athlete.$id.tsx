@@ -2,8 +2,22 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { type CSSProperties, useEffect, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  ArrowLeft, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, ChevronUp,
-  Copy, CopyPlus, LayoutList, Loader2, Pencil, Plus, Share2, Trash2, X, Zap,
+  ArrowLeft,
+  CalendarDays,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronUp,
+  Copy,
+  CopyPlus,
+  LayoutList,
+  Loader2,
+  Pencil,
+  Plus,
+  Share2,
+  Trash2,
+  X,
+  Zap,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AppLayout } from "@/components/AppLayout";
@@ -13,15 +27,36 @@ import { disciplineName } from "@/lib/diving";
 import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/hooks/use-auth";
 import {
-  type Athlete, type DisciplineCode, type ProgramRow,
-  type STARound, type DynSet, type DepthDive, type DynIntensity,
-  type TrainingProgram, type TableType, type DynSetType, type BreathingMode,
-  templateKind, newRow, levelColor, levelLabel, athleteInitials, athleteColor,
-  fetchAthletes, updateAthlete, updateAthletePrograms,
-  totalSTAHoldSecs, totalDynMetres, maxDepthMetres,
-  dynSetColor, dynSetLabel, dynIntensityTag,
-  fmtSeconds, todayISO,
-  TABLE_TYPES, DYN_SET_TYPES,
+  type Athlete,
+  type DisciplineCode,
+  type ProgramRow,
+  type STARound,
+  type DynSet,
+  type DepthDive,
+  type DynIntensity,
+  type TrainingProgram,
+  type TableType,
+  type DynSetType,
+  type BreathingMode,
+  templateKind,
+  newRow,
+  levelColor,
+  levelLabel,
+  athleteInitials,
+  athleteColor,
+  fetchAthletes,
+  updateAthlete,
+  updateAthletePrograms,
+  totalSTAHoldSecs,
+  totalDynMetres,
+  maxDepthMetres,
+  dynSetColor,
+  dynSetLabel,
+  dynIntensityTag,
+  fmtSeconds,
+  todayISO,
+  TABLE_TYPES,
+  DYN_SET_TYPES,
 } from "@/lib/athletes";
 
 export const Route = createFileRoute("/coach/athlete/$id")({
@@ -45,28 +80,28 @@ function defaultProgramName(lang: string, dateISO: string): string {
 // ── AthletePage ────────────────────────────────────────────────────────────
 
 function AthletePage() {
-  const { lang }  = useI18n();
-  const { user }  = useAuth();
-  const { id }    = Route.useParams();
-  const qc        = useQueryClient();
+  const { lang } = useI18n();
+  const { user } = useAuth();
+  const { id } = Route.useParams();
+  const qc = useQueryClient();
 
-  const [tab, setTab]                       = useState<Tab>("program");
-  const [view, setView]                     = useState<"list" | "week">("list");
-  const [weekOffset, setWeekOffset]         = useState(0);
-  const [programs, setPrograms]             = useState<TrainingProgram[]>([]);
-  const [activeId, setActiveId]             = useState<string | null>(null);
+  const [tab, setTab] = useState<Tab>("program");
+  const [view, setView] = useState<"list" | "week">("list");
+  const [weekOffset, setWeekOffset] = useState(0);
+  const [programs, setPrograms] = useState<TrainingProgram[]>([]);
+  const [activeId, setActiveId] = useState<string | null>(null);
   const [activeDiscipline, setActiveDiscipline] = useState<DisciplineCode | null>(null);
-  const [selectedDate, setSelectedDate]     = useState(todayISO());
-  const [showCopy, setShowCopy]             = useState(false);
-  const [showShareCard, setShowShareCard]   = useState(false);
-  const [showEdit, setShowEdit]             = useState(false);
-  const [saved, setSaved]                   = useState(true);
+  const [selectedDate, setSelectedDate] = useState(todayISO());
+  const [showCopy, setShowCopy] = useState(false);
+  const [showShareCard, setShowShareCard] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
+  const [saved, setSaved] = useState(true);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { data: athletes = [], isLoading } = useQuery({
     queryKey: ["coach_athletes", user?.id],
-    queryFn:  () => fetchAthletes(user!.id),
-    enabled:  !!user,
+    queryFn: () => fetchAthletes(user!.id),
+    enabled: !!user,
     staleTime: 5 * 60 * 1000,
   });
 
@@ -75,7 +110,7 @@ function AthletePage() {
   useEffect(() => {
     if (!athlete) return;
     setPrograms(athlete.programs ?? []);
-    setActiveDiscipline((prev) => prev ?? (athlete.disciplines[0] ?? null));
+    setActiveDiscipline((prev) => prev ?? athlete.disciplines[0] ?? null);
     // initialise activeId to first program of first discipline
     setActiveId((prev) => {
       if (prev) return prev;
@@ -147,7 +182,7 @@ function AthletePage() {
   };
 
   const updateProgram = (prog: TrainingProgram) => {
-    scheduleFlush(programs.map((p) => p.id === prog.id ? prog : p));
+    scheduleFlush(programs.map((p) => (p.id === prog.id ? prog : p)));
   };
 
   const deleteProgram = (progId: string) => {
@@ -167,8 +202,11 @@ function AthletePage() {
   // ── edit athlete ──────────────────────────────────────────────────────────
 
   const editMutation = useMutation({
-    mutationFn: (values: { name: string; level: Athlete["level"]; disciplines: Athlete["disciplines"] }) =>
-      updateAthlete(id, values),
+    mutationFn: (values: {
+      name: string;
+      level: Athlete["level"];
+      disciplines: Athlete["disciplines"];
+    }) => updateAthlete(id, values),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["coach_athletes", user?.id] });
       setShowEdit(false);
@@ -199,7 +237,7 @@ function AthletePage() {
   if (isLoading) {
     return (
       <div className="flex justify-center py-20">
-        <Loader2 className="size-6 animate-spin text-white/20" />
+        <Loader2 className="size-6 animate-spin text-foreground/20" />
       </div>
     );
   }
@@ -207,8 +245,13 @@ function AthletePage() {
   if (!athlete) {
     return (
       <div className="space-y-4">
-        <p className="text-sm text-white/40">{lang === "el" ? "Ο αθλητής δεν βρέθηκε." : "Athlete not found."}</p>
-        <Link to="/coach" className="flex items-center gap-1.5 text-sm text-white/40 hover:text-white transition-colors">
+        <p className="text-sm text-foreground/40">
+          {lang === "el" ? "Ο αθλητής δεν βρέθηκε." : "Athlete not found."}
+        </p>
+        <Link
+          to="/coach"
+          className="flex items-center gap-1.5 text-sm text-foreground/40 hover:text-foreground transition-colors"
+        >
           <ArrowLeft className="size-4" />
           {lang === "el" ? "Πίσω" : "Back"}
         </Link>
@@ -222,9 +265,11 @@ function AthletePage() {
 
   return (
     <div className="space-y-5">
-
       {/* back */}
-      <Link to="/coach" className="flex items-center gap-1.5 text-sm text-white/40 hover:text-white transition-colors">
+      <Link
+        to="/coach"
+        className="flex items-center gap-1.5 text-sm text-foreground/40 hover:text-foreground transition-colors"
+      >
         <ArrowLeft className="size-4" />
         {lang === "el" ? "Πίσω στην ομάδα" : "Back to team"}
       </Link>
@@ -232,30 +277,41 @@ function AthletePage() {
       {/* athlete header */}
       <div
         className="flex items-center gap-4 rounded-2xl px-5 py-4"
-        style={{ background: "#0d1320", border: "1px solid rgba(255,255,255,0.05)" }}
+        style={{ background: "var(--card)", border: "1px solid rgba(var(--ink),0.05)" }}
       >
         <div
           className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full text-lg font-bold"
-          style={{ background: `${athleteColor(athlete.id || athlete.name)}22`, color: athleteColor(athlete.id || athlete.name), border: `1px solid ${athleteColor(athlete.id || athlete.name)}45` }}
+          style={{
+            background: `${athleteColor(athlete.id || athlete.name)}22`,
+            color: athleteColor(athlete.id || athlete.name),
+            border: `1px solid ${athleteColor(athlete.id || athlete.name)}45`,
+          }}
         >
           {athleteInitials(athlete.name)}
         </div>
         <div className="flex-1">
           <div className="flex items-center gap-2">
-            <h1 className="text-lg font-bold text-white">{athlete.name}</h1>
+            <h1 className="text-lg font-bold text-foreground">{athlete.name}</h1>
             <button
               onClick={() => setShowEdit(true)}
-              className="rounded-lg p-1.5 text-white/25 transition-colors hover:text-white/60"
+              className="rounded-lg p-1.5 text-foreground/25 transition-colors hover:text-foreground/60"
             >
               <Pencil className="size-3.5" />
             </button>
           </div>
           <div className="mt-1 flex flex-wrap items-center gap-2">
-            <span className="rounded-md px-2 py-0.5 text-[0.6rem] font-bold tracking-wider" style={{ background: `${color}18`, color }}>
+            <span
+              className="rounded-md px-2 py-0.5 text-[0.6rem] font-bold tracking-wider"
+              style={{ background: `${color}18`, color }}
+            >
               {levelLabel(athlete.level, lang)}
             </span>
             {athlete.disciplines.map((d) => (
-              <span key={d} className="rounded px-1.5 py-0.5 text-[0.55rem] font-bold tracking-wider" style={{ background: "rgba(93,202,165,0.1)", color: "#5DCAA5" }}>
+              <span
+                key={d}
+                className="rounded px-1.5 py-0.5 text-[0.55rem] font-bold tracking-wider"
+                style={{ background: "rgba(93,202,165,0.1)", color: "#5DCAA5" }}
+              >
                 {d}
               </span>
             ))}
@@ -264,18 +320,26 @@ function AthletePage() {
       </div>
 
       {/* tabs */}
-      <div className="flex rounded-xl p-1" style={{ background: "rgba(255,255,255,0.04)" }}>
+      <div className="flex rounded-xl p-1" style={{ background: "rgba(var(--ink),0.04)" }}>
         {(["program", "history"] as Tab[]).map((t) => {
-          const label = t === "program"
-            ? (lang === "el" ? "Πρόγραμμα" : "Programme")
-            : (lang === "el" ? "Ιστορικό" : "History");
+          const label =
+            t === "program"
+              ? lang === "el"
+                ? "Πρόγραμμα"
+                : "Programme"
+              : lang === "el"
+                ? "Ιστορικό"
+                : "History";
           const isActive = tab === t;
           return (
             <button
               key={t}
               onClick={() => setTab(t)}
               className="flex-1 rounded-lg py-2.5 text-xs font-semibold transition-all"
-              style={{ background: isActive ? "#1D9E75" : "transparent", color: isActive ? "#fff" : "rgba(255,255,255,0.35)" }}
+              style={{
+                background: isActive ? "#1D9E75" : "transparent",
+                color: isActive ? "#fff" : "rgba(var(--ink),0.35)",
+              }}
             >
               {label}
             </button>
@@ -286,53 +350,68 @@ function AthletePage() {
       {/* ── PROGRAM TAB ── */}
       {tab === "program" && (
         <div className="space-y-4">
-
           {/* discipline tabs + view toggle */}
           <div className="flex items-center gap-2">
             {tabs.length > 1 && (
               <div className="flex flex-1 gap-2 overflow-x-auto pb-0.5">
-              {tabs.map((d) => {
-                const isActive = d === activeDiscipline;
-                const c = DISCIPLINE_COLORS[d] ?? "#5DCAA5";
-                const count = programs.filter((p) => p.discipline === d).length;
-                return (
-                  <button
-                    key={d}
-                    onClick={() => switchDiscipline(d)}
-                    className="shrink-0 flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold tracking-wide transition-all"
-                    style={
-                      isActive
-                        ? { background: `${c}20`, color: c, border: `1.5px solid ${c}60` }
-                        : { background: "rgba(255,255,255,0.03)", color: "rgba(255,255,255,0.3)", border: "1.5px solid rgba(255,255,255,0.07)" }
-                    }
-                  >
-                    {d}
-                    {count > 0 && (
-                      <span
-                        className="rounded-full px-1.5 py-0.5 text-[0.55rem] font-black"
-                        style={{ background: isActive ? `${c}30` : "rgba(255,255,255,0.06)", color: isActive ? c : "rgba(255,255,255,0.25)" }}
-                      >
-                        {count}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
+                {tabs.map((d) => {
+                  const isActive = d === activeDiscipline;
+                  const c = DISCIPLINE_COLORS[d] ?? "#5DCAA5";
+                  const count = programs.filter((p) => p.discipline === d).length;
+                  return (
+                    <button
+                      key={d}
+                      onClick={() => switchDiscipline(d)}
+                      className="shrink-0 flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold tracking-wide transition-all"
+                      style={
+                        isActive
+                          ? { background: `${c}20`, color: c, border: `1.5px solid ${c}60` }
+                          : {
+                              background: "rgba(var(--ink),0.03)",
+                              color: "rgba(var(--ink),0.3)",
+                              border: "1.5px solid rgba(var(--ink),0.07)",
+                            }
+                      }
+                    >
+                      {d}
+                      {count > 0 && (
+                        <span
+                          className="rounded-full px-1.5 py-0.5 text-[0.55rem] font-black"
+                          style={{
+                            background: isActive ? `${c}30` : "rgba(var(--ink),0.06)",
+                            color: isActive ? c : "rgba(var(--ink),0.25)",
+                          }}
+                        >
+                          {count}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             )}
             {/* view toggle */}
-            <div className="shrink-0 flex rounded-lg overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
+            <div
+              className="shrink-0 flex rounded-lg overflow-hidden"
+              style={{ border: "1px solid rgba(var(--ink),0.08)" }}
+            >
               <button
                 onClick={() => setView("list")}
                 className="flex items-center justify-center px-2.5 py-2 transition-colors"
-                style={{ background: view === "list" ? "rgba(29,158,117,0.2)" : "transparent", color: view === "list" ? "#1D9E75" : "rgba(255,255,255,0.3)" }}
+                style={{
+                  background: view === "list" ? "rgba(29,158,117,0.2)" : "transparent",
+                  color: view === "list" ? "#1D9E75" : "rgba(var(--ink),0.3)",
+                }}
               >
                 <LayoutList className="size-3.5" />
               </button>
               <button
                 onClick={() => setView("week")}
                 className="flex items-center justify-center px-2.5 py-2 transition-colors"
-                style={{ background: view === "week" ? "rgba(29,158,117,0.2)" : "transparent", color: view === "week" ? "#1D9E75" : "rgba(255,255,255,0.3)" }}
+                style={{
+                  background: view === "week" ? "rgba(29,158,117,0.2)" : "transparent",
+                  color: view === "week" ? "#1D9E75" : "rgba(var(--ink),0.3)",
+                }}
               >
                 <CalendarDays className="size-3.5" />
               </button>
@@ -340,70 +419,78 @@ function AthletePage() {
           </div>
 
           {/* ── LIST VIEW ── */}
-          {view === "list" && (disciplinePrograms.length === 0 ? (
-            <div
-              className="flex flex-col items-center gap-4 rounded-2xl py-12 text-center"
-              style={{ background: "rgba(255,255,255,0.02)", border: "1px dashed rgba(255,255,255,0.07)" }}
-            >
-              <Zap className="size-8 text-white/10" />
-              <p className="text-sm text-white/30">
-                {lang === "el" ? "Κανένα πρόγραμμα ακόμα" : "No programme yet"}
-                {activeDiscipline ? ` · ${activeDiscipline}` : ""}
-              </p>
-              <button
-                onClick={createProgram}
-                className="flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold"
-                style={{ background: "#1D9E75", color: "#fff" }}
+          {view === "list" &&
+            (disciplinePrograms.length === 0 ? (
+              <div
+                className="flex flex-col items-center gap-4 rounded-2xl py-12 text-center"
+                style={{
+                  background: "rgba(var(--ink),0.02)",
+                  border: "1px dashed rgba(var(--ink),0.07)",
+                }}
               >
-                <Plus className="size-4" />
-                {lang === "el" ? "Νέο Πρόγραμμα" : "New Programme"}
-              </button>
-            </div>
-          ) : (
-            <>
-              <div className="flex items-center gap-2">
-                <div className="flex flex-1 gap-2 overflow-x-auto pb-0.5">
-                  {disciplinePrograms.map((p) => (
-                    <button
-                      key={p.id}
-                      onClick={() => setActiveId(p.id)}
-                      className="shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-all"
-                      style={
-                        p.id === activeId
-                          ? { background: "#1D9E75", color: "#fff" }
-                          : { background: "#0d1320", color: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.07)" }
-                      }
-                    >
-                      {p.name}
-                    </button>
-                  ))}
-                </div>
+                <Zap className="size-8 text-foreground/10" />
+                <p className="text-sm text-foreground/30">
+                  {lang === "el" ? "Κανένα πρόγραμμα ακόμα" : "No programme yet"}
+                  {activeDiscipline ? ` · ${activeDiscipline}` : ""}
+                </p>
                 <button
                   onClick={createProgram}
-                  className="shrink-0 flex size-8 items-center justify-center rounded-lg text-white/40 hover:text-white transition-colors"
-                  style={{ border: "1px solid rgba(255,255,255,0.1)" }}
+                  className="flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold"
+                  style={{ background: "#1D9E75", color: "#fff" }}
                 >
                   <Plus className="size-4" />
+                  {lang === "el" ? "Νέο Πρόγραμμα" : "New Programme"}
                 </button>
               </div>
+            ) : (
+              <>
+                <div className="flex items-center gap-2">
+                  <div className="flex flex-1 gap-2 overflow-x-auto pb-0.5">
+                    {disciplinePrograms.map((p) => (
+                      <button
+                        key={p.id}
+                        onClick={() => setActiveId(p.id)}
+                        className="shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-all"
+                        style={
+                          p.id === activeId
+                            ? { background: "#1D9E75", color: "#fff" }
+                            : {
+                                background: "var(--card)",
+                                color: "rgba(var(--ink),0.4)",
+                                border: "1px solid rgba(var(--ink),0.07)",
+                              }
+                        }
+                      >
+                        {p.name}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    onClick={createProgram}
+                    className="shrink-0 flex size-8 items-center justify-center rounded-lg text-foreground/40 hover:text-foreground transition-colors"
+                    style={{ border: "1px solid rgba(var(--ink),0.1)" }}
+                  >
+                    <Plus className="size-4" />
+                  </button>
+                </div>
 
-              {active && (
-                <ProgramBuilder
-                  key={active.id}
-                  program={active}
-                  lang={lang}
-                  saved={saved}
-                  onChange={updateProgram}
-                  onSave={manualSave}
-                  onDelete={() => deleteProgram(active.id)}
-                  onCopy={() => setShowCopy(true)}
-                  onDuplicate={() => duplicateProgram(active)}
-                  onShare={() => setShowShareCard(true)}
-                  onDateChange={setSelectedDate}
-                />
-              )}
-            </>
-          ))}
+                {active && (
+                  <ProgramBuilder
+                    key={active.id}
+                    program={active}
+                    lang={lang}
+                    saved={saved}
+                    onChange={updateProgram}
+                    onSave={manualSave}
+                    onDelete={() => deleteProgram(active.id)}
+                    onCopy={() => setShowCopy(true)}
+                    onDuplicate={() => duplicateProgram(active)}
+                    onShare={() => setShowShareCard(true)}
+                    onDateChange={setSelectedDate}
+                  />
+                )}
+              </>
+            ))}
 
           {/* ── WEEK VIEW ── */}
           {view === "week" && (
@@ -413,8 +500,14 @@ function AthletePage() {
               lang={lang}
               weekOffset={weekOffset}
               onWeekChange={setWeekOffset}
-              onCreateDay={(dateISO) => { createProgramForDate(dateISO); setView("list"); }}
-              onOpenProgram={(prog) => { setActiveId(prog.id); setView("list"); }}
+              onCreateDay={(dateISO) => {
+                createProgramForDate(dateISO);
+                setView("list");
+              }}
+              onOpenProgram={(prog) => {
+                setActiveId(prog.id);
+                setView("list");
+              }}
             />
           )}
         </div>
@@ -424,7 +517,7 @@ function AthletePage() {
       {tab === "history" && (
         <div className="space-y-3">
           {programs.length === 0 ? (
-            <p className="text-sm text-white/25 text-center py-8">
+            <p className="text-sm text-foreground/25 text-center py-8">
               {lang === "el" ? "Κανένα αποθηκευμένο πρόγραμμα." : "No saved programmes yet."}
             </p>
           ) : (
@@ -433,7 +526,10 @@ function AthletePage() {
                 key={p.id}
                 program={p}
                 lang={lang}
-                onOpen={() => { setActiveId(p.id); setTab("program"); }}
+                onOpen={() => {
+                  setActiveId(p.id);
+                  setTab("program");
+                }}
               />
             ))
           )}
@@ -457,7 +553,9 @@ function AthletePage() {
           data={{
             title: active.name,
             disciplineCode: active.discipline ?? "—",
-            disciplineLabel: active.discipline ? disciplineName(active.discipline, lang === "el" ? "el" : "en") : "",
+            disciplineLabel: active.discipline
+              ? disciplineName(active.discipline, lang === "el" ? "el" : "en")
+              : "",
             accent: DISCIPLINE_COLORS[active.discipline ?? ""] ?? "#5DCAA5",
             lines: active.sets.map((r) => programRowLine(r, lang)),
             footerName: athlete.name,
@@ -472,20 +570,30 @@ function AthletePage() {
         <div
           className="fixed inset-0 z-50 flex flex-col justify-end"
           style={{ background: "rgba(0,0,0,0.75)" }}
-          onClick={(e) => { if (e.target === e.currentTarget) setShowCopy(false); }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowCopy(false);
+          }}
         >
-          <div className="w-full rounded-t-2xl px-5 pb-10 pt-5" style={{ background: "#0d1320" }}>
-            <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-white/10" />
+          <div
+            className="w-full rounded-t-2xl px-5 pb-10 pt-5"
+            style={{ background: "var(--card)" }}
+          >
+            <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-foreground/10" />
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-sm font-bold text-white">
+              <h2 className="text-sm font-bold text-foreground">
                 {lang === "el" ? "Αντιγραφή σε αθλητή" : "Copy to athlete"}
               </h2>
-              <button onClick={() => setShowCopy(false)} className="text-white/30 hover:text-white transition-colors">
+              <button
+                onClick={() => setShowCopy(false)}
+                className="text-foreground/30 hover:text-foreground transition-colors"
+              >
                 <X className="size-5" />
               </button>
             </div>
             {otherAthletes.length === 0 ? (
-              <p className="text-sm text-white/30">{lang === "el" ? "Δεν υπάρχουν άλλοι αθλητές." : "No other athletes."}</p>
+              <p className="text-sm text-foreground/30">
+                {lang === "el" ? "Δεν υπάρχουν άλλοι αθλητές." : "No other athletes."}
+              </p>
             ) : (
               <div className="space-y-2">
                 {otherAthletes.map((a) => (
@@ -493,15 +601,22 @@ function AthletePage() {
                     key={a.id}
                     onClick={() => copyToAthlete(a.id)}
                     className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left transition-colors"
-                    style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
+                    style={{
+                      background: "rgba(var(--ink),0.03)",
+                      border: "1px solid rgba(var(--ink),0.06)",
+                    }}
                   >
                     <div
                       className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold"
-                      style={{ background: `${athleteColor(a.id || a.name)}22`, color: athleteColor(a.id || a.name), border: `1px solid ${athleteColor(a.id || a.name)}45` }}
+                      style={{
+                        background: `${athleteColor(a.id || a.name)}22`,
+                        color: athleteColor(a.id || a.name),
+                        border: `1px solid ${athleteColor(a.id || a.name)}45`,
+                      }}
                     >
                       {athleteInitials(a.name)}
                     </div>
-                    <span className="text-sm font-medium text-white/80">{a.name}</span>
+                    <span className="text-sm font-medium text-foreground/80">{a.name}</span>
                   </button>
                 ))}
               </div>
@@ -517,8 +632,13 @@ function AthletePage() {
 
 const DISCIPLINE_COLORS: Record<string, string> = {
   STA: "#9FE1CB",
-  DYN: "#1D9E75", DYNB: "#1D9E75", DNF: "#5DCAA5",
-  CWT: "#EF9F27", CWTB: "#EF9F27", CNF: "#e8a020", FIM: "#d4912a",
+  DYN: "#1D9E75",
+  DYNB: "#1D9E75",
+  DNF: "#5DCAA5",
+  CWT: "#EF9F27",
+  CWTB: "#EF9F27",
+  CNF: "#e8a020",
+  FIM: "#d4912a",
 };
 
 // One readable line per set/round, for the shareable programme card.
@@ -553,7 +673,13 @@ function getWeekDays(weekOffset: number): Date[] {
   });
 }
 
-function DayCard({ day, programs, lang, onCreateDay, onOpenProgram }: {
+function DayCard({
+  day,
+  programs,
+  lang,
+  onCreateDay,
+  onOpenProgram,
+}: {
   day: Date;
   programs: TrainingProgram[];
   lang: string;
@@ -573,26 +699,32 @@ function DayCard({ day, programs, lang, onCreateDay, onOpenProgram }: {
       style={{
         width: 88,
         minHeight: 88,
-        background: isToday ? "rgba(29,158,117,0.08)" : "rgba(255,255,255,0.02)",
-        border: `1px solid ${isToday ? "rgba(29,158,117,0.3)" : "rgba(255,255,255,0.06)"}`,
+        background: isToday ? "rgba(29,158,117,0.08)" : "rgba(var(--ink),0.02)",
+        border: `1px solid ${isToday ? "rgba(29,158,117,0.3)" : "rgba(var(--ink),0.06)"}`,
       }}
     >
       {/* day header: abbrev + number left, + right */}
       <div className="flex items-start justify-between gap-1">
         <div className="flex flex-col leading-none">
-          <span className="text-[9px] font-semibold uppercase tracking-wide" style={{ color: isToday ? "#1D9E75" : "rgba(255,255,255,0.35)" }}>
+          <span
+            className="text-[9px] font-semibold uppercase tracking-wide"
+            style={{ color: isToday ? "#1D9E75" : "rgba(var(--ink),0.35)" }}
+          >
             {dayName}
           </span>
-          <span className="mt-0.5 text-base font-bold leading-none" style={{ color: isToday ? "#1D9E75" : "rgba(255,255,255,0.75)" }}>
+          <span
+            className="mt-0.5 text-base font-bold leading-none"
+            style={{ color: isToday ? "#1D9E75" : "rgba(var(--ink),0.75)" }}
+          >
             {dayNum}
           </span>
         </div>
         <button
           onClick={() => onCreateDay(iso)}
           className="flex size-5 shrink-0 items-center justify-center rounded-md transition-colors"
-          style={{ color: "rgba(255,255,255,0.25)", background: "rgba(255,255,255,0.04)" }}
+          style={{ color: "rgba(var(--ink),0.25)", background: "rgba(var(--ink),0.04)" }}
           onMouseEnter={(e) => (e.currentTarget.style.color = "#1D9E75")}
-          onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.25)")}
+          onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(var(--ink),0.25)")}
         >
           <Plus className="size-3" />
         </button>
@@ -620,7 +752,15 @@ function DayCard({ day, programs, lang, onCreateDay, onOpenProgram }: {
   );
 }
 
-function WeekView({ programs, activeDiscipline, lang, weekOffset, onWeekChange, onCreateDay, onOpenProgram }: {
+function WeekView({
+  programs,
+  activeDiscipline,
+  lang,
+  weekOffset,
+  onWeekChange,
+  onCreateDay,
+  onOpenProgram,
+}: {
   programs: TrainingProgram[];
   activeDiscipline: DisciplineCode | null;
   lang: string;
@@ -644,13 +784,13 @@ function WeekView({ programs, activeDiscipline, lang, weekOffset, onWeekChange, 
       <div className="flex items-center justify-between">
         <button
           onClick={() => onWeekChange(weekOffset - 1)}
-          className="flex size-8 items-center justify-center rounded-lg text-white/40 hover:text-white transition-colors"
-          style={{ border: "1px solid rgba(255,255,255,0.08)" }}
+          className="flex size-8 items-center justify-center rounded-lg text-foreground/40 hover:text-foreground transition-colors"
+          style={{ border: "1px solid rgba(var(--ink),0.08)" }}
         >
           <ChevronLeft className="size-4" />
         </button>
         <div className="flex flex-col items-center gap-0.5">
-          <span className="text-xs font-medium text-white/60">{rangeLabel}</span>
+          <span className="text-xs font-medium text-foreground/60">{rangeLabel}</span>
           {weekOffset !== 0 && (
             <button
               onClick={() => onWeekChange(0)}
@@ -663,8 +803,8 @@ function WeekView({ programs, activeDiscipline, lang, weekOffset, onWeekChange, 
         </div>
         <button
           onClick={() => onWeekChange(weekOffset + 1)}
-          className="flex size-8 items-center justify-center rounded-lg text-white/40 hover:text-white transition-colors"
-          style={{ border: "1px solid rgba(255,255,255,0.08)" }}
+          className="flex size-8 items-center justify-center rounded-lg text-foreground/40 hover:text-foreground transition-colors"
+          style={{ border: "1px solid rgba(var(--ink),0.08)" }}
         >
           <ChevronRight className="size-4" />
         </button>
@@ -687,7 +827,18 @@ function WeekView({ programs, activeDiscipline, lang, weekOffset, onWeekChange, 
   );
 }
 
-function ProgramBuilder({ program, lang, saved, onChange, onSave, onDelete, onCopy, onDuplicate, onShare, onDateChange }: {
+function ProgramBuilder({
+  program,
+  lang,
+  saved,
+  onChange,
+  onSave,
+  onDelete,
+  onCopy,
+  onDuplicate,
+  onShare,
+  onDateChange,
+}: {
   program: TrainingProgram;
   lang: string;
   saved: boolean;
@@ -702,15 +853,14 @@ function ProgramBuilder({ program, lang, saved, onChange, onSave, onDelete, onCo
   const update = (partial: Partial<TrainingProgram>) => onChange({ ...program, ...partial });
 
   const updateRow = (row: ProgramRow) =>
-    update({ sets: program.sets.map((s) => s.id === row.id ? row : s) });
+    update({ sets: program.sets.map((s) => (s.id === row.id ? row : s)) });
 
   const addRow = () => {
     if (!program.discipline) return;
     update({ sets: [...program.sets, newRow(program.discipline)] });
   };
 
-  const deleteRow = (rowId: string) =>
-    update({ sets: program.sets.filter((s) => s.id !== rowId) });
+  const deleteRow = (rowId: string) => update({ sets: program.sets.filter((s) => s.id !== rowId) });
 
   const moveRow = (rowId: string, dir: -1 | 1) => {
     const sets = [...program.sets];
@@ -727,54 +877,81 @@ function ProgramBuilder({ program, lang, saved, onChange, onSave, onDelete, onCo
     if (kind === "sta") {
       const secs = totalSTAHoldSecs(program.sets);
       return [
-        { label: lang === "el" ? "Rounds" : "Rounds", value: String(program.sets.length), color: "#9FE1CB" },
-        { label: lang === "el" ? "Σύν. Hold" : "Total Hold", value: secs > 0 ? fmtSeconds(secs) : "—", color: "#5DCAA5" },
+        {
+          label: lang === "el" ? "Rounds" : "Rounds",
+          value: String(program.sets.length),
+          color: "#9FE1CB",
+        },
+        {
+          label: lang === "el" ? "Σύν. Hold" : "Total Hold",
+          value: secs > 0 ? fmtSeconds(secs) : "—",
+          color: "#5DCAA5",
+        },
         { label: "Discipline", value: program.discipline ?? "—", color: "#1D9E75" },
       ];
     }
     if (kind === "depth") {
       const maxD = maxDepthMetres(program.sets);
       return [
-        { label: lang === "el" ? "Dives" : "Dives", value: String(program.sets.length), color: "#EF9F27" },
-        { label: lang === "el" ? "Μέγ. Βάθος" : "Max Depth", value: maxD > 0 ? `${maxD}m` : "—", color: "#EF9F27" },
+        {
+          label: lang === "el" ? "Dives" : "Dives",
+          value: String(program.sets.length),
+          color: "#EF9F27",
+        },
+        {
+          label: lang === "el" ? "Μέγ. Βάθος" : "Max Depth",
+          value: maxD > 0 ? `${maxD}m` : "—",
+          color: "#EF9F27",
+        },
         { label: "Discipline", value: program.discipline ?? "—", color: "#e8a020" },
       ];
     }
     if (kind === "dyn") {
       const metres = totalDynMetres(program.sets);
       const tag: DynIntensity = dynIntensityTag(program.sets);
-      const INTENSITY: Record<DynIntensity, { label_el: string; label_en: string; color: string }> = {
-        easy:         { label_el: "Εύκολο",     label_en: "Easy",         color: "#1D9E75" },
-        intermediate: { label_el: "Μέτριο",     label_en: "Intermediate", color: "#5DCAA5" },
-        high:         { label_el: "Υψηλό",      label_en: "High",         color: "#EF9F27" },
-        advanced:     { label_el: "Advanced",   label_en: "Advanced",     color: "#ef4444" },
-      };
+      const INTENSITY: Record<DynIntensity, { label_el: string; label_en: string; color: string }> =
+        {
+          easy: { label_el: "Εύκολο", label_en: "Easy", color: "#1D9E75" },
+          intermediate: { label_el: "Μέτριο", label_en: "Intermediate", color: "#5DCAA5" },
+          high: { label_el: "Υψηλό", label_en: "High", color: "#EF9F27" },
+          advanced: { label_el: "Advanced", label_en: "Advanced", color: "#ef4444" },
+        };
       const { color: iColor } = INTENSITY[tag];
       const iLabel = lang === "el" ? INTENSITY[tag].label_el : INTENSITY[tag].label_en;
       return [
         { label: "Sets", value: String(program.sets.length), color: "#5DCAA5" },
-        { label: lang === "el" ? "Απόσταση" : "Distance", value: metres > 0 ? `${metres}m` : "—", color: "#1D9E75" },
+        {
+          label: lang === "el" ? "Απόσταση" : "Distance",
+          value: metres > 0 ? `${metres}m` : "—",
+          color: "#1D9E75",
+        },
         { label: lang === "el" ? "Ένταση" : "Intensity", value: iLabel, color: iColor },
       ];
     }
     return [];
   })();
 
-  const addLabel = kind === "sta"
-    ? (lang === "el" ? "+ Νέο Round" : "+ Add Round")
-    : kind === "depth"
-    ? (lang === "el" ? "+ Νέο Dive" : "+ Add Dive")
-    : (lang === "el" ? "+ Νέο Set" : "+ Add Set");
+  const addLabel =
+    kind === "sta"
+      ? lang === "el"
+        ? "+ Νέο Round"
+        : "+ Add Round"
+      : kind === "depth"
+        ? lang === "el"
+          ? "+ Νέο Dive"
+          : "+ Add Dive"
+        : lang === "el"
+          ? "+ Νέο Set"
+          : "+ Add Set";
 
   return (
     <div className="space-y-4">
-
       {/* program name + date */}
       <div className="flex items-center gap-3">
         <input
           value={program.name}
           onChange={(e) => update({ name: e.target.value })}
-          className="flex-1 rounded-xl bg-white/5 px-3 py-2.5 text-sm font-semibold text-white outline-none focus:ring-1 focus:ring-[#1D9E75]"
+          className="flex-1 rounded-xl bg-foreground/5 px-3 py-2.5 text-sm font-semibold text-foreground outline-none focus:ring-1 focus:ring-[#1D9E75]"
           placeholder={lang === "el" ? "Όνομα προγράμματος" : "Programme name"}
         />
         <input
@@ -785,7 +962,7 @@ function ProgramBuilder({ program, lang, saved, onChange, onSave, onDelete, onCo
             update({ date: e.target.value });
             onDateChange(e.target.value);
           }}
-          className="rounded-xl bg-white/5 px-3 py-2.5 text-xs text-white/60 outline-none focus:ring-1 focus:ring-[#1D9E75]"
+          className="rounded-xl bg-foreground/5 px-3 py-2.5 text-xs text-foreground/60 outline-none focus:ring-1 focus:ring-[#1D9E75]"
           style={{ colorScheme: "dark" }}
         />
       </div>
@@ -794,12 +971,16 @@ function ProgramBuilder({ program, lang, saved, onChange, onSave, onDelete, onCo
       {summary.length > 0 && (
         <div
           className="grid grid-cols-3 gap-2 rounded-xl px-1 py-3"
-          style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}
+          style={{ background: "rgba(var(--ink),0.02)", border: "1px solid rgba(var(--ink),0.05)" }}
         >
           {summary.map((s) => (
             <div key={s.label} className="flex flex-col items-center gap-1">
-              <span className="font-mono text-sm font-bold tabular-nums" style={{ color: s.color }}>{s.value}</span>
-              <span className="text-[0.5rem] font-bold tracking-widest text-white/25">{s.label}</span>
+              <span className="font-mono text-sm font-bold tabular-nums" style={{ color: s.color }}>
+                {s.value}
+              </span>
+              <span className="text-[0.5rem] font-bold tracking-widest text-foreground/25">
+                {s.label}
+              </span>
             </div>
           ))}
         </div>
@@ -809,11 +990,20 @@ function ProgramBuilder({ program, lang, saved, onChange, onSave, onDelete, onCo
       <div className="space-y-2">
         {program.sets.map((row, i) => {
           const isFirst = i === 0;
-          const isLast  = i === program.sets.length - 1;
-          const common  = { lang, isFirst, isLast, onDelete: () => deleteRow(row.id), onMove: (dir: -1 | 1) => moveRow(row.id, dir) };
-          if (row.kind === "sta")    return <STARow    key={row.id} row={row}    {...common} onChange={updateRow} />;
-          if (row.kind === "dyn")    return <DynRow    key={row.id} row={row}    {...common} onChange={updateRow} />;
-          if (row.kind === "depth")  return <DepthRow  key={row.id} row={row}    {...common} onChange={updateRow} />;
+          const isLast = i === program.sets.length - 1;
+          const common = {
+            lang,
+            isFirst,
+            isLast,
+            onDelete: () => deleteRow(row.id),
+            onMove: (dir: -1 | 1) => moveRow(row.id, dir),
+          };
+          if (row.kind === "sta")
+            return <STARow key={row.id} row={row} {...common} onChange={updateRow} />;
+          if (row.kind === "dyn")
+            return <DynRow key={row.id} row={row} {...common} onChange={updateRow} />;
+          if (row.kind === "depth")
+            return <DepthRow key={row.id} row={row} {...common} onChange={updateRow} />;
           return null;
         })}
       </div>
@@ -823,7 +1013,7 @@ function ProgramBuilder({ program, lang, saved, onChange, onSave, onDelete, onCo
         <button
           onClick={addRow}
           className="flex w-full items-center justify-center gap-2 rounded-xl border py-3 text-sm font-semibold transition-all hover:border-[#1D9E75]/40"
-          style={{ borderColor: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.4)" }}
+          style={{ borderColor: "rgba(var(--ink),0.08)", color: "rgba(var(--ink),0.4)" }}
         >
           <Plus className="size-4" />
           {addLabel}
@@ -836,7 +1026,11 @@ function ProgramBuilder({ program, lang, saved, onChange, onSave, onDelete, onCo
           onClick={onDuplicate}
           title={lang === "el" ? "Διπλότυπο" : "Duplicate"}
           className="flex items-center justify-center rounded-xl px-3.5 py-3 transition-all"
-          style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.5)" }}
+          style={{
+            background: "rgba(var(--ink),0.04)",
+            border: "1px solid rgba(var(--ink),0.08)",
+            color: "rgba(var(--ink),0.5)",
+          }}
         >
           <CopyPlus className="size-3.5" />
         </button>
@@ -844,7 +1038,11 @@ function ProgramBuilder({ program, lang, saved, onChange, onSave, onDelete, onCo
           onClick={onCopy}
           title={lang === "el" ? "Αντιγραφή σε αθλητή" : "Copy to athlete"}
           className="flex items-center justify-center rounded-xl px-3.5 py-3 transition-all"
-          style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.5)" }}
+          style={{
+            background: "rgba(var(--ink),0.04)",
+            border: "1px solid rgba(var(--ink),0.08)",
+            color: "rgba(var(--ink),0.5)",
+          }}
         >
           <Copy className="size-3.5" />
         </button>
@@ -852,25 +1050,40 @@ function ProgramBuilder({ program, lang, saved, onChange, onSave, onDelete, onCo
           onClick={onShare}
           title={lang === "el" ? "Κάρτα προγράμματος" : "Programme card"}
           className="flex items-center justify-center rounded-xl px-3.5 py-3 transition-all"
-          style={{ background: "rgba(29,158,117,0.1)", border: "1px solid rgba(29,158,117,0.3)", color: "#5DCAA5" }}
+          style={{
+            background: "rgba(29,158,117,0.1)",
+            border: "1px solid rgba(29,158,117,0.3)",
+            color: "#5DCAA5",
+          }}
         >
           <Share2 className="size-3.5" />
         </button>
         <button
           onClick={onSave}
           className="flex flex-1 items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold transition-all"
-          style={{ background: saved ? "rgba(29,158,117,0.15)" : "#1D9E75", color: saved ? "#5DCAA5" : "#fff" }}
+          style={{
+            background: saved ? "rgba(29,158,117,0.15)" : "#1D9E75",
+            color: saved ? "#5DCAA5" : "#fff",
+          }}
         >
           {saved
-            ? (lang === "el" ? "Αποθηκεύτηκε ✓" : "Saved ✓")
-            : (lang === "el" ? "Αποθήκευση" : "Save")}
+            ? lang === "el"
+              ? "Αποθηκεύτηκε ✓"
+              : "Saved ✓"
+            : lang === "el"
+              ? "Αποθήκευση"
+              : "Save"}
         </button>
         <button
           onClick={() => {
             if (confirm(lang === "el" ? "Διαγραφή προγράμματος;" : "Delete programme?")) onDelete();
           }}
           className="flex items-center gap-1.5 rounded-xl px-4 py-3 text-xs font-semibold transition-all"
-          style={{ background: "rgba(239,80,80,0.06)", border: "1px solid rgba(239,80,80,0.15)", color: "rgba(239,80,80,0.7)" }}
+          style={{
+            background: "rgba(239,80,80,0.06)",
+            border: "1px solid rgba(239,80,80,0.15)",
+            color: "rgba(239,80,80,0.7)",
+          }}
         >
           <Trash2 className="size-3.5" />
         </button>
@@ -881,7 +1094,13 @@ function ProgramBuilder({ program, lang, saved, onChange, onSave, onDelete, onCo
 
 // ── Shared row header (up/down/delete) ─────────────────────────────────────
 
-function RowControls({ accentColor, isFirst, isLast, onMove, onDelete }: {
+function RowControls({
+  accentColor,
+  isFirst,
+  isLast,
+  onMove,
+  onDelete,
+}: {
   accentColor: string;
   isFirst: boolean;
   isLast: boolean;
@@ -890,21 +1109,30 @@ function RowControls({ accentColor, isFirst, isLast, onMove, onDelete }: {
 }) {
   return (
     <div className="flex flex-1 items-center justify-end gap-0.5">
-      <button onClick={() => onMove(-1)} disabled={isFirst} className="rounded p-1.5 text-white/20 hover:text-white/60 disabled:opacity-20">
+      <button
+        onClick={() => onMove(-1)}
+        disabled={isFirst}
+        className="rounded p-1.5 text-foreground/20 hover:text-foreground/60 disabled:opacity-20"
+      >
         <ChevronUp className="size-3.5" />
       </button>
-      <button onClick={() => onMove(1)} disabled={isLast} className="rounded p-1.5 text-white/20 hover:text-white/60 disabled:opacity-20">
+      <button
+        onClick={() => onMove(1)}
+        disabled={isLast}
+        className="rounded p-1.5 text-foreground/20 hover:text-foreground/60 disabled:opacity-20"
+      >
         <ChevronDown className="size-3.5" />
       </button>
-      <button onClick={onDelete} className="rounded p-1.5 text-white/20 hover:text-red-400/70">
+      <button onClick={onDelete} className="rounded p-1.5 text-foreground/20 hover:text-red-400/70">
         <Trash2 className="size-3.5" />
       </button>
     </div>
   );
 }
 
-const inputCls = "rounded-lg bg-white/5 px-2 py-2 text-sm text-white outline-none focus:ring-1 focus:ring-[#1D9E75]";
-const labelCls = "text-[0.55rem] font-bold tracking-wider text-white/30";
+const inputCls =
+  "rounded-lg bg-foreground/5 px-2 py-2 text-sm text-foreground outline-none focus:ring-1 focus:ring-[#1D9E75]";
+const labelCls = "text-[0.55rem] font-bold tracking-wider text-foreground/30";
 
 // Normalise a free-typed time into M:SS — the colon is inserted automatically,
 // so "230" → "2:30", "45" → "0:45", empty stays empty (no forced 00:00).
@@ -925,7 +1153,13 @@ function normalizeMMSS(s: string): string {
 }
 
 /** MM:SS text input that auto-formats the colon on blur; clearable to empty. */
-function TimeField({ value, onChange, className, style, placeholder }: {
+function TimeField({
+  value,
+  onChange,
+  className,
+  style,
+  placeholder,
+}: {
   value: string;
   onChange: (v: string) => void;
   className?: string;
@@ -933,13 +1167,19 @@ function TimeField({ value, onChange, className, style, placeholder }: {
   placeholder?: string;
 }) {
   const [display, setDisplay] = useState(value);
-  useEffect(() => { setDisplay(value); }, [value]);
+  useEffect(() => {
+    setDisplay(value);
+  }, [value]);
   return (
     <input
       inputMode="numeric"
       value={display}
       onChange={(e) => setDisplay(e.target.value.replace(/[^0-9:]/g, ""))}
-      onBlur={() => { const n = normalizeMMSS(display); setDisplay(n); onChange(n); }}
+      onBlur={() => {
+        const n = normalizeMMSS(display);
+        setDisplay(n);
+        onChange(n);
+      }}
       className={className}
       style={style}
       placeholder={placeholder}
@@ -948,12 +1188,23 @@ function TimeField({ value, onChange, className, style, placeholder }: {
 }
 
 // Numeric input that allows temporary empty state during editing, commits on blur
-function NumericInput({ value, onChange, min = 1, defaultVal, className }: {
-  value: number; onChange: (n: number) => void;
-  min?: number; defaultVal: number; className?: string;
+function NumericInput({
+  value,
+  onChange,
+  min = 1,
+  defaultVal,
+  className,
+}: {
+  value: number;
+  onChange: (n: number) => void;
+  min?: number;
+  defaultVal: number;
+  className?: string;
 }) {
   const [display, setDisplay] = useState(String(value));
-  useEffect(() => { setDisplay(String(value)); }, [value]);
+  useEffect(() => {
+    setDisplay(String(value));
+  }, [value]);
   return (
     <input
       type="text"
@@ -972,9 +1223,22 @@ function NumericInput({ value, onChange, min = 1, defaultVal, className }: {
 
 // ── STARow ─────────────────────────────────────────────────────────────────
 
-function STARow({ row, lang, isFirst, isLast, onChange, onDelete, onMove }: {
-  row: STARound; lang: string; isFirst: boolean; isLast: boolean;
-  onChange: (r: ProgramRow) => void; onDelete: () => void; onMove: (d: -1 | 1) => void;
+function STARow({
+  row,
+  lang,
+  isFirst,
+  isLast,
+  onChange,
+  onDelete,
+  onMove,
+}: {
+  row: STARound;
+  lang: string;
+  isFirst: boolean;
+  isLast: boolean;
+  onChange: (r: ProgramRow) => void;
+  onDelete: () => void;
+  onMove: (d: -1 | 1) => void;
 }) {
   const upd = (p: Partial<STARound>) => onChange({ ...row, ...p });
   const accent = "#9FE1CB";
@@ -988,32 +1252,61 @@ function STARow({ row, lang, isFirst, isLast, onChange, onDelete, onMove }: {
   return (
     <div
       className="overflow-hidden rounded-xl"
-      style={{ background: "#0d1320", border: "1px solid rgba(255,255,255,0.05)", borderLeft: `3px solid ${accent}` }}
+      style={{
+        background: "var(--card)",
+        border: "1px solid rgba(var(--ink),0.05)",
+        borderLeft: `3px solid ${accent}`,
+      }}
     >
       {/* header */}
       <div className="flex items-center gap-2 px-3 pt-2.5 pb-2">
-        <span className="rounded-lg px-3 py-1 text-[0.65rem] font-black tracking-wider" style={{ background: `${accent}18`, color: accent }}>
+        <span
+          className="rounded-lg px-3 py-1 text-[0.65rem] font-black tracking-wider"
+          style={{ background: `${accent}18`, color: accent }}
+        >
           STA
         </span>
         <select
           value={row.tableType}
           onChange={(e) => upd({ tableType: e.target.value as TableType })}
-          className="rounded-lg bg-white/5 px-2 py-1 text-[0.65rem] font-bold text-white/70 outline-none focus:ring-1 focus:ring-[#1D9E75]"
+          className="rounded-lg bg-foreground/5 px-2 py-1 text-[0.65rem] font-bold text-foreground/70 outline-none focus:ring-1 focus:ring-[#1D9E75]"
           style={{ colorScheme: "dark" }}
         >
-          {TABLE_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-          {!TABLE_TYPES.includes(row.tableType) && <option value={row.tableType}>{row.tableType}</option>}
+          {TABLE_TYPES.map((t) => (
+            <option key={t} value={t}>
+              {t}
+            </option>
+          ))}
+          {!TABLE_TYPES.includes(row.tableType) && (
+            <option value={row.tableType}>{row.tableType}</option>
+          )}
         </select>
         <button
           onClick={cycleBreathing}
           className="rounded-full px-2.5 py-1 text-[0.6rem] font-bold tracking-wider transition-all"
-          style={mode !== "normal"
-            ? { background: "rgba(239,159,39,0.2)", color: "#EF9F27", border: "1px solid rgba(239,159,39,0.4)" }
-            : { background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.3)", border: "1px solid transparent" }}
+          style={
+            mode !== "normal"
+              ? {
+                  background: "rgba(239,159,39,0.2)",
+                  color: "#EF9F27",
+                  border: "1px solid rgba(239,159,39,0.4)",
+                }
+              : {
+                  background: "rgba(var(--ink),0.04)",
+                  color: "rgba(var(--ink),0.3)",
+                  border: "1px solid transparent",
+                }
+          }
         >
           {mode === "normal" ? (lang === "el" ? "κανονική" : "normal") : mode}
         </button>
-        <RowControls accentColor={accent} isFirst={isFirst} isLast={isLast} onMove={onMove} onDelete={onDelete} />
+        <RowControls
+          accentColor={accent}
+          isFirst={isFirst}
+          isLast={isLast}
+          onMove={onMove}
+          onDelete={onDelete}
+        />
       </div>
 
       {/* fields */}
@@ -1053,7 +1346,7 @@ function STARow({ row, lang, isFirst, isLast, onChange, onDelete, onMove }: {
         <input
           value={row.notes}
           onChange={(e) => upd({ notes: e.target.value })}
-          className={`${inputCls} w-full text-xs text-white/40`}
+          className={`${inputCls} w-full text-xs text-foreground/40`}
           placeholder={lang === "el" ? "σημειώσεις…" : "notes…"}
         />
       </div>
@@ -1066,9 +1359,22 @@ function STARow({ row, lang, isFirst, isLast, onChange, onDelete, onMove }: {
 const BREATHING_MODES: BreathingMode[] = ["normal", "FRC", "RV"];
 const DYN_CYCLE: DynSetType[] = ["warmup", "mainset", "resistance", "sprint"];
 
-function DynRow({ row, lang, isFirst, isLast, onChange, onDelete, onMove }: {
-  row: DynSet; lang: string; isFirst: boolean; isLast: boolean;
-  onChange: (r: ProgramRow) => void; onDelete: () => void; onMove: (d: -1 | 1) => void;
+function DynRow({
+  row,
+  lang,
+  isFirst,
+  isLast,
+  onChange,
+  onDelete,
+  onMove,
+}: {
+  row: DynSet;
+  lang: string;
+  isFirst: boolean;
+  isLast: boolean;
+  onChange: (r: ProgramRow) => void;
+  onDelete: () => void;
+  onMove: (d: -1 | 1) => void;
 }) {
   const upd = (p: Partial<DynSet>) => onChange({ ...row, ...p });
   const accent = dynSetColor(row.setType);
@@ -1082,7 +1388,11 @@ function DynRow({ row, lang, isFirst, isLast, onChange, onDelete, onMove }: {
   return (
     <div
       className="overflow-hidden rounded-xl"
-      style={{ background: "#0d1320", border: "1px solid rgba(255,255,255,0.05)", borderLeft: `3px solid ${accent}` }}
+      style={{
+        background: "var(--card)",
+        border: "1px solid rgba(var(--ink),0.05)",
+        borderLeft: `3px solid ${accent}`,
+      }}
     >
       {/* header: type badge cycle + breathing pill + controls */}
       <div className="flex items-center gap-2 px-3 pt-2.5 pb-2">
@@ -1103,15 +1413,33 @@ function DynRow({ row, lang, isFirst, isLast, onChange, onDelete, onMove }: {
             className="rounded-full px-2.5 py-0.5 text-[0.6rem] font-bold tracking-wider transition-all"
             style={
               row.breathingMode !== "normal"
-                ? { background: "rgba(239,159,39,0.2)", color: "#EF9F27", border: "1px solid rgba(239,159,39,0.4)" }
-                : { background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.2)", border: "1px solid transparent" }
+                ? {
+                    background: "rgba(239,159,39,0.2)",
+                    color: "#EF9F27",
+                    border: "1px solid rgba(239,159,39,0.4)",
+                  }
+                : {
+                    background: "rgba(var(--ink),0.04)",
+                    color: "rgba(var(--ink),0.2)",
+                    border: "1px solid transparent",
+                  }
             }
           >
-            {row.breathingMode === "normal" ? (lang === "el" ? "κανονική" : "normal") : row.breathingMode}
+            {row.breathingMode === "normal"
+              ? lang === "el"
+                ? "κανονική"
+                : "normal"
+              : row.breathingMode}
           </button>
         )}
 
-        <RowControls accentColor={accent} isFirst={isFirst} isLast={isLast} onMove={onMove} onDelete={onDelete} />
+        <RowControls
+          accentColor={accent}
+          isFirst={isFirst}
+          isLast={isLast}
+          onMove={onMove}
+          onDelete={onDelete}
+        />
       </div>
 
       {/* fields: reps | distance | rest */}
@@ -1129,7 +1457,9 @@ function DynRow({ row, lang, isFirst, isLast, onChange, onDelete, onMove }: {
               defaultVal={50}
               className={`${inputCls} w-full text-center font-bold pr-6`}
             />
-            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[0.6rem] text-white/30">m</span>
+            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[0.6rem] text-foreground/30">
+              m
+            </span>
           </div>
         </div>
         <div className="flex flex-col gap-1">
@@ -1148,7 +1478,7 @@ function DynRow({ row, lang, isFirst, isLast, onChange, onDelete, onMove }: {
         <input
           value={row.notes}
           onChange={(e) => upd({ notes: e.target.value })}
-          className={`${inputCls} w-full text-xs text-white/40`}
+          className={`${inputCls} w-full text-xs text-foreground/40`}
           placeholder={lang === "el" ? "σημειώσεις…" : "notes…"}
         />
       </div>
@@ -1158,9 +1488,22 @@ function DynRow({ row, lang, isFirst, isLast, onChange, onDelete, onMove }: {
 
 // ── DepthRow ───────────────────────────────────────────────────────────────
 
-function DepthRow({ row, lang, isFirst, isLast, onChange, onDelete, onMove }: {
-  row: DepthDive; lang: string; isFirst: boolean; isLast: boolean;
-  onChange: (r: ProgramRow) => void; onDelete: () => void; onMove: (d: -1 | 1) => void;
+function DepthRow({
+  row,
+  lang,
+  isFirst,
+  isLast,
+  onChange,
+  onDelete,
+  onMove,
+}: {
+  row: DepthDive;
+  lang: string;
+  isFirst: boolean;
+  isLast: boolean;
+  onChange: (r: ProgramRow) => void;
+  onDelete: () => void;
+  onMove: (d: -1 | 1) => void;
 }) {
   const upd = (p: Partial<DepthDive>) => onChange({ ...row, ...p });
   const accent = "#EF9F27";
@@ -1168,14 +1511,27 @@ function DepthRow({ row, lang, isFirst, isLast, onChange, onDelete, onMove }: {
   return (
     <div
       className="overflow-hidden rounded-xl"
-      style={{ background: "#0d1320", border: "1px solid rgba(255,255,255,0.05)", borderLeft: `3px solid ${accent}` }}
+      style={{
+        background: "var(--card)",
+        border: "1px solid rgba(var(--ink),0.05)",
+        borderLeft: `3px solid ${accent}`,
+      }}
     >
       {/* header */}
       <div className="flex items-center gap-2 px-3 pt-2.5 pb-2">
-        <span className="rounded-lg px-3 py-1 text-[0.65rem] font-black tracking-wider" style={{ background: `${accent}18`, color: accent }}>
+        <span
+          className="rounded-lg px-3 py-1 text-[0.65rem] font-black tracking-wider"
+          style={{ background: `${accent}18`, color: accent }}
+        >
           DEPTH
         </span>
-        <RowControls accentColor={accent} isFirst={isFirst} isLast={isLast} onMove={onMove} onDelete={onDelete} />
+        <RowControls
+          accentColor={accent}
+          isFirst={isFirst}
+          isLast={isLast}
+          onMove={onMove}
+          onDelete={onDelete}
+        />
       </div>
 
       {/* fields */}
@@ -1192,7 +1548,9 @@ function DepthRow({ row, lang, isFirst, isLast, onChange, onDelete, onMove }: {
               className={`${inputCls} w-full text-center font-bold pr-6`}
               style={{ color: accent }}
             />
-            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[0.6rem] text-white/30">m</span>
+            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[0.6rem] text-foreground/30">
+              m
+            </span>
           </div>
         </div>
         <div className="flex flex-col gap-1">
@@ -1217,7 +1575,7 @@ function DepthRow({ row, lang, isFirst, isLast, onChange, onDelete, onMove }: {
 
       {/* surface interval hint */}
       <div className="px-3 pb-1 -mt-1">
-        <span className="text-[0.55rem] text-white/20">
+        <span className="text-[0.55rem] text-foreground/20">
           {lang === "el" ? "min 2× χρόνος κατάδυσης" : "min 2× dive time"}
         </span>
       </div>
@@ -1227,7 +1585,7 @@ function DepthRow({ row, lang, isFirst, isLast, onChange, onDelete, onMove }: {
         <input
           value={row.notes}
           onChange={(e) => upd({ notes: e.target.value })}
-          className={`${inputCls} w-full text-xs text-white/40`}
+          className={`${inputCls} w-full text-xs text-foreground/40`}
           placeholder={lang === "el" ? "σημειώσεις…" : "notes…"}
         />
       </div>
@@ -1237,8 +1595,14 @@ function DepthRow({ row, lang, isFirst, isLast, onChange, onDelete, onMove }: {
 
 // ── ProgramHistoryRow ──────────────────────────────────────────────────────
 
-function ProgramHistoryRow({ program, lang, onOpen }: {
-  program: TrainingProgram; lang: string; onOpen: () => void;
+function ProgramHistoryRow({
+  program,
+  lang,
+  onOpen,
+}: {
+  program: TrainingProgram;
+  lang: string;
+  onOpen: () => void;
 }) {
   const kind = program.discipline ? templateKind(program.discipline) : null;
   const stat = (() => {
@@ -1261,18 +1625,18 @@ function ProgramHistoryRow({ program, lang, onOpen }: {
     <button
       onClick={onOpen}
       className="flex w-full items-center justify-between rounded-xl px-4 py-3 text-left transition-all"
-      style={{ background: "#0d1320", border: "1px solid rgba(255,255,255,0.05)" }}
+      style={{ background: "var(--card)", border: "1px solid rgba(var(--ink),0.05)" }}
     >
       <div>
-        <p className="text-sm font-semibold text-white">{program.name}</p>
-        <p className="mt-0.5 text-[0.6rem] text-white/30">
+        <p className="text-sm font-semibold text-foreground">{program.name}</p>
+        <p className="mt-0.5 text-[0.6rem] text-foreground/30">
           {program.date}
           {program.discipline ? ` · ${program.discipline}` : ""}
           {` · ${program.sets.length} ${kind === "sta" ? "rounds" : kind === "depth" ? "dives" : "sets"}`}
           {stat ? ` · ${stat}` : ""}
         </p>
       </div>
-      <ChevronRight className="size-4 text-white/25" />
+      <ChevronRight className="size-4 text-foreground/25" />
     </button>
   );
 }

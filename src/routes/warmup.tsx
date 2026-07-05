@@ -352,7 +352,7 @@ function Warmup() {
 
     return (
       <div className="fixed inset-0 flex flex-col select-none" style={{ background: "#020a13" }}>
-        <UnderwaterScene />
+        {fx.scene && <UnderwaterScene />}
         <div
           className="pointer-events-none absolute inset-0 transition-all duration-700"
           style={{ background: `${color}10` }}
@@ -462,9 +462,11 @@ function Warmup() {
 
   return (
     <div className="relative min-h-screen px-4 pb-24 pt-6" style={{ background: "#020a13" }}>
-      <div className="fixed inset-0">
-        <UnderwaterScene dim />
-      </div>
+      {fx.scene && (
+        <div className="fixed inset-0">
+          <UnderwaterScene dim />
+        </div>
+      )}
       <div className="relative z-10">
         {/* header */}
         <div className="flex items-center gap-3">
@@ -588,6 +590,13 @@ function Warmup() {
             on={<Volume2 className="size-3.5" />}
             off={<VolumeX className="size-3.5" />}
             label={lang === "el" ? "Ήχος" : "Sound"}
+          />
+          <FxChip
+            active={fx.scene}
+            onClick={() => toggleFx("scene")}
+            on={<Waves className="size-3.5" />}
+            off={<Waves className="size-3.5" />}
+            label={lang === "el" ? "Βυθός" : "Scene"}
           />
           <FxChip
             active={fx.haptics && canHaptics}

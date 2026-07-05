@@ -43,6 +43,16 @@
 :root {
   --radius: 0.875rem;
 
+  /* "ink" — the neutral used for text/hairlines at various alphas.
+     rgba(var(--ink), 0.06) etc. White in dark mode, deep navy in light. */
+  --ink: 255, 255, 255;
+  --glass-bg: oklch(0.21 0.03 258 / 0.7);
+  --glass-border: oklch(0.4 0.04 260 / 0.3);
+  --body-bg: #070a10;
+  --body-bg-image:
+    radial-gradient(ellipse 80% 60% at 50% -10%, oklch(0.3 0.08 280 / 0.35), transparent 70%),
+    radial-gradient(ellipse 70% 50% at 80% 110%, oklch(0.4 0.1 190 / 0.18), transparent 70%);
+
   --background: oklch(0.16 0.025 255);
   --foreground: oklch(0.95 0.012 220);
 
@@ -111,6 +121,52 @@
   --ring: oklch(0.66 0.115 168);
 }
 
+/* Light theme — Strava-style: white surfaces, near-black text, teal accent.
+   Only content pages react to it; training screens stay hard-coded dark. */
+.light {
+  --ink: 10, 24, 40;
+  --glass-bg: oklch(1 0 0 / 0.85);
+  --glass-border: oklch(0.87 0.012 240 / 0.7);
+  --body-bg: #f4f7f9;
+  --body-bg-image:
+    radial-gradient(ellipse 80% 60% at 50% -10%, oklch(0.93 0.03 190 / 0.6), transparent 70%),
+    radial-gradient(ellipse 70% 50% at 80% 110%, oklch(0.94 0.04 168 / 0.5), transparent 70%);
+
+  --background: oklch(0.975 0.005 220);
+  --foreground: oklch(0.22 0.03 255);
+
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.22 0.03 255);
+
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.22 0.03 255);
+
+  --primary: oklch(0.52 0.11 168);
+  --primary-foreground: oklch(0.99 0.002 220);
+  --primary-glow: oklch(0.66 0.115 168);
+
+  --secondary: oklch(0.94 0.008 235);
+  --secondary-foreground: oklch(0.25 0.03 255);
+
+  --muted: oklch(0.945 0.008 235);
+  --muted-foreground: oklch(0.47 0.03 245);
+
+  --accent: oklch(0.52 0.11 168);
+  --accent-foreground: oklch(0.99 0.002 220);
+
+  --destructive: oklch(0.55 0.2 18);
+  --destructive-foreground: oklch(0.99 0.002 220);
+
+  --border: oklch(0.88 0.012 240);
+  --input: oklch(0.91 0.01 240);
+  --ring: oklch(0.52 0.11 168);
+
+  --shadow-glow: 0 0 40px -8px oklch(0.52 0.11 168 / 0.25);
+  --shadow-card: 0 10px 30px -18px oklch(0.35 0.04 250 / 0.3);
+
+  color-scheme: light;
+}
+
 @layer base {
   * {
     border-color: var(--color-border);
@@ -120,11 +176,13 @@
     color-scheme: dark;
   }
 
+  html.light {
+    color-scheme: light;
+  }
+
   body {
-    background-color: #070a10;
-    background-image:
-      radial-gradient(ellipse 80% 60% at 50% -10%, oklch(0.3 0.08 280 / 0.35), transparent 70%),
-      radial-gradient(ellipse 70% 50% at 80% 110%, oklch(0.4 0.1 190 / 0.18), transparent 70%);
+    background-color: var(--body-bg);
+    background-image: var(--body-bg-image);
     background-attachment: fixed;
     color: var(--color-foreground);
     font-family: var(--font-sans);
@@ -149,9 +207,9 @@
 }
 
 @utility glass-card {
-  background-color: oklch(0.21 0.03 258 / 0.7);
+  background-color: var(--glass-bg);
   backdrop-filter: blur(12px);
-  border: 1px solid oklch(0.4 0.04 260 / 0.3);
+  border: 1px solid var(--glass-border);
   box-shadow: var(--shadow-card);
 }
 

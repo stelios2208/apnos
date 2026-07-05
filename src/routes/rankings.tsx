@@ -8,14 +8,26 @@ import { useAuth } from "@/hooks/use-auth";
 import { useI18n } from "@/lib/i18n";
 import { fetchProfile } from "@/lib/profile";
 import {
-  type CompResult, type NewCompResult, type RankingEntry,
-  MissingTableError, disciplineGroup,
-  fetchMyResults, fetchRanking, createResult, updateResult, deleteResult,
+  type CompResult,
+  type NewCompResult,
+  type RankingEntry,
+  MissingTableError,
+  disciplineGroup,
+  fetchMyResults,
+  fetchRanking,
+  createResult,
+  updateResult,
+  deleteResult,
 } from "@/lib/competitions";
 import {
-  DISCIPLINES, DISCIPLINE_MAP, FEDERATIONS,
-  disciplineName, formatResult, isTimeDiscipline,
-  type DisciplineCode, type Federation,
+  DISCIPLINES,
+  DISCIPLINE_MAP,
+  FEDERATIONS,
+  disciplineName,
+  formatResult,
+  isTimeDiscipline,
+  type DisciplineCode,
+  type Federation,
 } from "@/lib/diving";
 
 export const Route = createFileRoute("/rankings")({
@@ -30,7 +42,7 @@ export const Route = createFileRoute("/rankings")({
 type Tab = "ranking" | "mine";
 type Group = "Pool" | "Depth";
 
-const POOL_DISC:  DisciplineCode[] = ["STA", "DYN", "DYNB", "DNF"];
+const POOL_DISC: DisciplineCode[] = ["STA", "DYN", "DYNB", "DNF"];
 const DEPTH_DISC: DisciplineCode[] = ["CWT", "CWTB", "CNF", "FIM"];
 
 // ── time/number parsing for the result field ────────────────────────────────
@@ -63,19 +75,32 @@ function RankingsPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
-        <div className="flex h-11 w-11 items-center justify-center rounded-full" style={{ background: "rgba(239,159,39,0.14)", color: "#EF9F27" }}>
+        <div
+          className="flex h-11 w-11 items-center justify-center rounded-full"
+          style={{ background: "rgba(239,159,39,0.14)", color: "#EF9F27" }}
+        >
           <Trophy className="size-5" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-white">{lang === "el" ? "Κατατάξεις" : "Rankings"}</h1>
-          <p className="text-xs text-white/35">{lang === "el" ? "Αγωνιστικές επιδόσεις · CMAS / AIDA" : "Competition results · CMAS / AIDA"}</p>
+          <h1 className="text-2xl font-bold text-foreground">
+            {lang === "el" ? "Κατατάξεις" : "Rankings"}
+          </h1>
+          <p className="text-xs text-foreground/35">
+            {lang === "el"
+              ? "Αγωνιστικές επιδόσεις · CMAS / AIDA"
+              : "Competition results · CMAS / AIDA"}
+          </p>
         </div>
       </div>
 
       {/* tabs */}
       <div className="flex gap-2">
-        <TabBtn active={tab === "ranking"} onClick={() => setTab("ranking")}>{lang === "el" ? "Κατάταξη" : "Leaderboard"}</TabBtn>
-        <TabBtn active={tab === "mine"} onClick={() => setTab("mine")}>{lang === "el" ? "Οι επιδόσεις μου" : "My results"}</TabBtn>
+        <TabBtn active={tab === "ranking"} onClick={() => setTab("ranking")}>
+          {lang === "el" ? "Κατάταξη" : "Leaderboard"}
+        </TabBtn>
+        <TabBtn active={tab === "mine"} onClick={() => setTab("mine")}>
+          {lang === "el" ? "Οι επιδόσεις μου" : "My results"}
+        </TabBtn>
       </div>
 
       {tab === "ranking" ? <RankingTab /> : <MyResultsTab />}
@@ -83,14 +108,28 @@ function RankingsPage() {
   );
 }
 
-function TabBtn({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+function TabBtn({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
   return (
     <button
       onClick={onClick}
       className="flex-1 rounded-xl py-2.5 text-sm font-bold transition-all"
-      style={active
-        ? { background: "#1D9E75", color: "#fff" }
-        : { background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.45)", border: "1px solid rgba(255,255,255,0.07)" }}
+      style={
+        active
+          ? { background: "#1D9E75", color: "#fff" }
+          : {
+              background: "rgba(var(--ink),0.04)",
+              color: "rgba(var(--ink),0.45)",
+              border: "1px solid rgba(var(--ink),0.07)",
+            }
+      }
     >
       {children}
     </button>
@@ -101,10 +140,15 @@ function TabBtn({ active, onClick, children }: { active: boolean; onClick: () =>
 
 function SetupNotice({ lang }: { lang: string }) {
   return (
-    <div className="rounded-2xl p-5 text-center" style={{ background: "rgba(239,159,39,0.06)", border: "1px dashed rgba(239,159,39,0.3)" }}>
+    <div
+      className="rounded-2xl p-5 text-center"
+      style={{ background: "rgba(239,159,39,0.06)", border: "1px dashed rgba(239,159,39,0.3)" }}
+    >
       <Award className="mx-auto size-7" style={{ color: "#EF9F27" }} />
-      <p className="mt-2 text-sm font-semibold text-white/70">{lang === "el" ? "Οι κατατάξεις δεν είναι ενεργές ακόμα" : "Rankings not enabled yet"}</p>
-      <p className="mt-1 text-xs text-white/40">
+      <p className="mt-2 text-sm font-semibold text-foreground/70">
+        {lang === "el" ? "Οι κατατάξεις δεν είναι ενεργές ακόμα" : "Rankings not enabled yet"}
+      </p>
+      <p className="mt-1 text-xs text-foreground/40">
         {lang === "el"
           ? "Χρειάζεται να εφαρμοστεί το migration competition_results στο Supabase."
           : "The competition_results migration needs to be applied in Supabase."}
@@ -140,8 +184,12 @@ function RankingTab() {
     <div className="space-y-3">
       {/* pool / depth */}
       <div className="flex gap-2">
-        <SegBtn active={group === "Pool"} onClick={() => switchGroup("Pool")}>{lang === "el" ? "Πισίνα" : "Pool"}</SegBtn>
-        <SegBtn active={group === "Depth"} onClick={() => switchGroup("Depth")}>{lang === "el" ? "Θάλασσα" : "Depth"}</SegBtn>
+        <SegBtn active={group === "Pool"} onClick={() => switchGroup("Pool")}>
+          {lang === "el" ? "Πισίνα" : "Pool"}
+        </SegBtn>
+        <SegBtn active={group === "Depth"} onClick={() => switchGroup("Depth")}>
+          {lang === "el" ? "Θάλασσα" : "Depth"}
+        </SegBtn>
       </div>
 
       {/* discipline chips */}
@@ -151,9 +199,19 @@ function RankingTab() {
             key={d}
             onClick={() => setDiscipline(d)}
             className="rounded-lg px-3 py-1.5 text-xs font-bold transition-all"
-            style={d === discipline
-              ? { background: "rgba(29,158,117,0.2)", color: "#5DCAA5", border: "1px solid rgba(29,158,117,0.4)" }
-              : { background: "rgba(255,255,255,0.03)", color: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.06)" }}
+            style={
+              d === discipline
+                ? {
+                    background: "rgba(29,158,117,0.2)",
+                    color: "#5DCAA5",
+                    border: "1px solid rgba(29,158,117,0.4)",
+                  }
+                : {
+                    background: "rgba(var(--ink),0.03)",
+                    color: "rgba(var(--ink),0.4)",
+                    border: "1px solid rgba(var(--ink),0.06)",
+                  }
+            }
           >
             {d}
           </button>
@@ -167,29 +225,56 @@ function RankingTab() {
             key={f}
             onClick={() => setFed(f)}
             className="flex-1 rounded-lg py-2 text-xs font-bold transition-all"
-            style={f === fed
-              ? { background: "rgba(255,255,255,0.08)", color: "#fff", border: "1px solid rgba(255,255,255,0.15)" }
-              : { background: "rgba(255,255,255,0.02)", color: "rgba(255,255,255,0.35)", border: "1px solid rgba(255,255,255,0.05)" }}
+            style={
+              f === fed
+                ? {
+                    background: "rgba(var(--ink),0.08)",
+                    color: "#fff",
+                    border: "1px solid rgba(var(--ink),0.15)",
+                  }
+                : {
+                    background: "rgba(var(--ink),0.02)",
+                    color: "rgba(var(--ink),0.35)",
+                    border: "1px solid rgba(var(--ink),0.05)",
+                  }
+            }
           >
             {f === "all" ? (lang === "el" ? "Όλες" : "All") : f}
           </button>
         ))}
       </div>
 
-      <p className="pt-1 text-center text-[0.65rem] font-semibold text-white/40">
+      <p className="pt-1 text-center text-[0.65rem] font-semibold text-foreground/40">
         {disciplineName(discipline, lang)}
       </p>
 
       {isLoading ? (
-        <div className="flex justify-center py-10"><Loader2 className="size-6 animate-spin text-white/20" /></div>
+        <div className="flex justify-center py-10">
+          <Loader2 className="size-6 animate-spin text-foreground/20" />
+        </div>
       ) : !data || data.length === 0 ? (
-        <div className="rounded-2xl py-10 text-center" style={{ background: "rgba(255,255,255,0.02)", border: "1px dashed rgba(255,255,255,0.07)" }}>
-          <p className="text-sm text-white/30">{lang === "el" ? "Καμία δημόσια επίδοση ακόμα" : "No public results yet"}</p>
+        <div
+          className="rounded-2xl py-10 text-center"
+          style={{
+            background: "rgba(var(--ink),0.02)",
+            border: "1px dashed rgba(var(--ink),0.07)",
+          }}
+        >
+          <p className="text-sm text-foreground/30">
+            {lang === "el" ? "Καμία δημόσια επίδοση ακόμα" : "No public results yet"}
+          </p>
         </div>
       ) : (
         <div className="space-y-2">
           {data.map((e, i) => (
-            <RankingRow key={e.user_id} entry={e} rank={i + 1} discipline={discipline} isMe={e.user_id === user?.id} lang={lang} />
+            <RankingRow
+              key={e.user_id}
+              entry={e}
+              rank={i + 1}
+              discipline={discipline}
+              isMe={e.user_id === user?.id}
+              lang={lang}
+            />
           ))}
         </div>
       )}
@@ -197,22 +282,50 @@ function RankingTab() {
   );
 }
 
-function SegBtn({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+function SegBtn({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
   return (
     <button
       onClick={onClick}
       className="flex-1 rounded-lg py-2 text-xs font-bold transition-all"
-      style={active
-        ? { background: "rgba(93,202,165,0.15)", color: "#5DCAA5", border: "1px solid rgba(93,202,165,0.35)" }
-        : { background: "rgba(255,255,255,0.02)", color: "rgba(255,255,255,0.35)", border: "1px solid rgba(255,255,255,0.05)" }}
+      style={
+        active
+          ? {
+              background: "rgba(93,202,165,0.15)",
+              color: "#5DCAA5",
+              border: "1px solid rgba(93,202,165,0.35)",
+            }
+          : {
+              background: "rgba(var(--ink),0.02)",
+              color: "rgba(var(--ink),0.35)",
+              border: "1px solid rgba(var(--ink),0.05)",
+            }
+      }
     >
       {children}
     </button>
   );
 }
 
-function RankingRow({ entry, rank, discipline, isMe, lang }: {
-  entry: RankingEntry; rank: number; discipline: DisciplineCode; isMe: boolean; lang: string;
+function RankingRow({
+  entry,
+  rank,
+  discipline,
+  isMe,
+  lang,
+}: {
+  entry: RankingEntry;
+  rank: number;
+  discipline: DisciplineCode;
+  isMe: boolean;
+  lang: string;
 }) {
   // No medal iconography: this leaderboard only reflects results logged in
   // the app, not an official ranking against every real-world competitor.
@@ -221,33 +334,52 @@ function RankingRow({ entry, rank, discipline, isMe, lang }: {
     <div
       className="flex items-center gap-3 rounded-xl px-3 py-3"
       style={{
-        background: isMe ? "rgba(29,158,117,0.08)" : "#0d1320",
-        border: `1px solid ${isMe ? "rgba(29,158,117,0.35)" : "rgba(255,255,255,0.05)"}`,
+        background: isMe ? "rgba(29,158,117,0.08)" : "var(--card)",
+        border: `1px solid ${isMe ? "rgba(29,158,117,0.35)" : "rgba(var(--ink),0.05)"}`,
       }}
     >
       <div
         className="flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-bold"
-        style={topAccent
-          ? { background: `${topAccent}18`, color: topAccent, border: `1px solid ${topAccent}45` }
-          : { color: "rgba(255,255,255,0.3)" }}
+        style={
+          topAccent
+            ? { background: `${topAccent}18`, color: topAccent, border: `1px solid ${topAccent}45` }
+            : { color: "rgba(var(--ink),0.3)" }
+        }
       >
         {rank}
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <span className="truncate text-sm font-semibold text-white">
+          <span className="truncate text-sm font-semibold text-foreground">
             {entry.athlete_name || (lang === "el" ? "Αθλητής" : "Athlete")}
           </span>
-          {isMe && <span className="shrink-0 rounded px-1.5 py-0.5 text-[0.5rem] font-bold" style={{ background: "rgba(29,158,117,0.2)", color: "#5DCAA5" }}>{lang === "el" ? "ΕΣΥ" : "YOU"}</span>}
-          {entry.is_national_record && <span className="shrink-0 rounded px-1.5 py-0.5 text-[0.5rem] font-bold" style={{ background: "rgba(239,159,39,0.18)", color: "#EF9F27" }}>NR</span>}
+          {isMe && (
+            <span
+              className="shrink-0 rounded px-1.5 py-0.5 text-[0.5rem] font-bold"
+              style={{ background: "rgba(29,158,117,0.2)", color: "#5DCAA5" }}
+            >
+              {lang === "el" ? "ΕΣΥ" : "YOU"}
+            </span>
+          )}
+          {entry.is_national_record && (
+            <span
+              className="shrink-0 rounded px-1.5 py-0.5 text-[0.5rem] font-bold"
+              style={{ background: "rgba(239,159,39,0.18)", color: "#EF9F27" }}
+            >
+              NR
+            </span>
+          )}
         </div>
         {(entry.competition_name || entry.location) && (
-          <p className="mt-0.5 truncate text-[0.65rem] text-white/35">
+          <p className="mt-0.5 truncate text-[0.65rem] text-foreground/35">
             {[entry.competition_name, entry.location].filter(Boolean).join(" · ")}
           </p>
         )}
       </div>
-      <span className="shrink-0 font-mono text-base font-bold tabular-nums" style={{ color: "#5DCAA5" }}>
+      <span
+        className="shrink-0 font-mono text-base font-bold tabular-nums"
+        style={{ color: "#5DCAA5" }}
+      >
         {formatResult(discipline, entry.best)}
       </span>
     </div>
@@ -263,7 +395,11 @@ function MyResultsTab() {
   const [editing, setEditing] = useState<CompResult | null>(null);
   const [showForm, setShowForm] = useState(false);
 
-  const { data: results = [], isLoading, error } = useQuery({
+  const {
+    data: results = [],
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ["my_results", user?.id],
     queryFn: () => fetchMyResults(user!.id),
     enabled: !!user,
@@ -275,8 +411,14 @@ function MyResultsTab() {
     onError: () => toast.error(lang === "el" ? "Σφάλμα διαγραφής" : "Delete failed"),
   });
 
-  const openNew = () => { setEditing(null); setShowForm(true); };
-  const openEdit = (r: CompResult) => { setEditing(r); setShowForm(true); };
+  const openNew = () => {
+    setEditing(null);
+    setShowForm(true);
+  };
+  const openEdit = (r: CompResult) => {
+    setEditing(r);
+    setShowForm(true);
+  };
 
   if (error instanceof MissingTableError) return <SetupNotice lang={lang} />;
 
@@ -292,18 +434,39 @@ function MyResultsTab() {
       </button>
 
       {isLoading ? (
-        <div className="flex justify-center py-10"><Loader2 className="size-6 animate-spin text-white/20" /></div>
+        <div className="flex justify-center py-10">
+          <Loader2 className="size-6 animate-spin text-foreground/20" />
+        </div>
       ) : results.length === 0 ? (
-        <div className="rounded-2xl py-10 text-center" style={{ background: "rgba(255,255,255,0.02)", border: "1px dashed rgba(255,255,255,0.07)" }}>
-          <p className="text-sm text-white/30">{lang === "el" ? "Δεν έχεις καταχωρίσει επιδόσεις" : "No results logged yet"}</p>
-          <p className="mt-1 text-xs text-white/20">{lang === "el" ? "Πρόσθεσε τα αγωνιστικά σου αποτελέσματα" : "Add your competition results"}</p>
+        <div
+          className="rounded-2xl py-10 text-center"
+          style={{
+            background: "rgba(var(--ink),0.02)",
+            border: "1px dashed rgba(var(--ink),0.07)",
+          }}
+        >
+          <p className="text-sm text-foreground/30">
+            {lang === "el" ? "Δεν έχεις καταχωρίσει επιδόσεις" : "No results logged yet"}
+          </p>
+          <p className="mt-1 text-xs text-foreground/20">
+            {lang === "el"
+              ? "Πρόσθεσε τα αγωνιστικά σου αποτελέσματα"
+              : "Add your competition results"}
+          </p>
         </div>
       ) : (
         <div className="space-y-2">
           {results.map((r) => (
-            <MyResultRow key={r.id} r={r} lang={lang} onEdit={() => openEdit(r)} onDelete={() => {
-              if (confirm(lang === "el" ? "Διαγραφή επίδοσης;" : "Delete result?")) delMutation.mutate(r.id);
-            }} />
+            <MyResultRow
+              key={r.id}
+              r={r}
+              lang={lang}
+              onEdit={() => openEdit(r)}
+              onDelete={() => {
+                if (confirm(lang === "el" ? "Διαγραφή επίδοσης;" : "Delete result?"))
+                  delMutation.mutate(r.id);
+              }}
+            />
           ))}
         </div>
       )}
@@ -313,49 +476,102 @@ function MyResultsTab() {
           existing={editing}
           lang={lang}
           onClose={() => setShowForm(false)}
-          onSaved={() => { setShowForm(false); qc.invalidateQueries({ queryKey: ["my_results", user?.id] }); qc.invalidateQueries({ queryKey: ["ranking"] }); }}
+          onSaved={() => {
+            setShowForm(false);
+            qc.invalidateQueries({ queryKey: ["my_results", user?.id] });
+            qc.invalidateQueries({ queryKey: ["ranking"] });
+          }}
         />
       )}
     </div>
   );
 }
 
-function MyResultRow({ r, lang, onEdit, onDelete }: { r: CompResult; lang: string; onEdit: () => void; onDelete: () => void }) {
+function MyResultRow({
+  r,
+  lang,
+  onEdit,
+  onDelete,
+}: {
+  r: CompResult;
+  lang: string;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
   const accent = disciplineGroup(r.discipline) === "Pool" ? "#1D9E75" : "#EF9F27";
   return (
-    <div className="flex items-center gap-3 rounded-xl px-3 py-3" style={{ background: "#0d1320", border: "1px solid rgba(255,255,255,0.05)" }}>
+    <div
+      className="flex items-center gap-3 rounded-xl px-3 py-3"
+      style={{ background: "var(--card)", border: "1px solid rgba(var(--ink),0.05)" }}
+    >
       <div className="flex flex-col items-center">
-        <span className="rounded px-1.5 py-0.5 text-[0.55rem] font-bold" style={{ background: `${accent}18`, color: accent }}>{r.discipline}</span>
+        <span
+          className="rounded px-1.5 py-0.5 text-[0.55rem] font-bold"
+          style={{ background: `${accent}18`, color: accent }}
+        >
+          {r.discipline}
+        </span>
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <span className="font-mono text-sm font-bold" style={{ color: "#5DCAA5" }}>{formatResult(r.discipline, r.result)}</span>
-          <span className="text-[0.6rem] font-semibold text-white/40">{r.federation}</span>
-          {r.is_national_record && <span className="rounded px-1 py-0.5 text-[0.5rem] font-bold" style={{ background: "rgba(239,159,39,0.18)", color: "#EF9F27" }}>NR</span>}
-          {r.is_public
-            ? <Globe className="size-3 text-white/25" />
-            : <Lock className="size-3 text-white/25" />}
+          <span className="font-mono text-sm font-bold" style={{ color: "#5DCAA5" }}>
+            {formatResult(r.discipline, r.result)}
+          </span>
+          <span className="text-[0.6rem] font-semibold text-foreground/40">{r.federation}</span>
+          {r.is_national_record && (
+            <span
+              className="rounded px-1 py-0.5 text-[0.5rem] font-bold"
+              style={{ background: "rgba(239,159,39,0.18)", color: "#EF9F27" }}
+            >
+              NR
+            </span>
+          )}
+          {r.is_public ? (
+            <Globe className="size-3 text-foreground/25" />
+          ) : (
+            <Lock className="size-3 text-foreground/25" />
+          )}
         </div>
         {(r.competition_name || r.location || r.competition_date) && (
-          <p className="mt-0.5 truncate text-[0.65rem] text-white/35">
+          <p className="mt-0.5 truncate text-[0.65rem] text-foreground/35">
             {[r.competition_name, r.location, r.competition_date].filter(Boolean).join(" · ")}
           </p>
         )}
       </div>
-      <button onClick={onEdit} className="rounded-lg p-2 text-white/25 hover:text-white/60"><Pencil className="size-3.5" /></button>
-      <button onClick={onDelete} className="rounded-lg p-2 text-white/20 hover:text-red-400/70"><Trash2 className="size-3.5" /></button>
+      <button
+        onClick={onEdit}
+        className="rounded-lg p-2 text-foreground/25 hover:text-foreground/60"
+      >
+        <Pencil className="size-3.5" />
+      </button>
+      <button
+        onClick={onDelete}
+        className="rounded-lg p-2 text-foreground/20 hover:text-red-400/70"
+      >
+        <Trash2 className="size-3.5" />
+      </button>
     </div>
   );
 }
 
 // ── result form modal ────────────────────────────────────────────────────────
 
-function ResultFormModal({ existing, lang, onClose, onSaved }: {
-  existing: CompResult | null; lang: string; onClose: () => void; onSaved: () => void;
+function ResultFormModal({
+  existing,
+  lang,
+  onClose,
+  onSaved,
+}: {
+  existing: CompResult | null;
+  lang: string;
+  onClose: () => void;
+  onSaved: () => void;
 }) {
   const { user } = useAuth();
   const [discipline, setDiscipline] = useState<DisciplineCode>(existing?.discipline ?? "STA");
-  const [resultStr, setResultStr] = useState(existing ? formatValue(existing.discipline, existing.result) : "");
+  const [resultStr, setResultStr] = useState(
+    existing ? formatValue(existing.discipline, existing.result) : "",
+  );
   const [federation, setFederation] = useState<Federation>(existing?.federation ?? "AIDA");
   const [compName, setCompName] = useState(existing?.competition_name ?? "");
   const [location, setLocation] = useState(existing?.location ?? "");
@@ -368,7 +584,7 @@ function ResultFormModal({ existing, lang, onClose, onSaved }: {
 
   const save = async () => {
     if (!user || saving) return;
-    const result = time ? parseMMSS(resultStr) : (parseInt(resultStr.replace(/\D/g, ""), 10) || 0);
+    const result = time ? parseMMSS(resultStr) : parseInt(resultStr.replace(/\D/g, ""), 10) || 0;
     if (result <= 0) {
       toast.error(lang === "el" ? "Βάλε έγκυρη επίδοση" : "Enter a valid result");
       return;
@@ -402,24 +618,54 @@ function ResultFormModal({ existing, lang, onClose, onSaved }: {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col justify-end" style={{ background: "rgba(0,0,0,0.6)" }} onClick={onClose}>
-      <div className="max-h-[92vh] overflow-y-auto rounded-t-3xl p-5" style={{ background: "#0a0f1a" }} onClick={(e) => e.stopPropagation()}>
+    <div
+      className="fixed inset-0 z-50 flex flex-col justify-end"
+      style={{ background: "rgba(0,0,0,0.6)" }}
+      onClick={onClose}
+    >
+      <div
+        className="max-h-[92vh] overflow-y-auto rounded-t-3xl p-5"
+        style={{ background: "var(--popover)" }}
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-base font-bold text-white">{existing ? (lang === "el" ? "Επεξεργασία" : "Edit result") : (lang === "el" ? "Νέα Επίδοση" : "New result")}</h2>
-          <button onClick={onClose} className="rounded-lg p-1.5 text-white/40"><X className="size-5" /></button>
+          <h2 className="text-base font-bold text-foreground">
+            {existing
+              ? lang === "el"
+                ? "Επεξεργασία"
+                : "Edit result"
+              : lang === "el"
+                ? "Νέα Επίδοση"
+                : "New result"}
+          </h2>
+          <button onClick={onClose} className="rounded-lg p-1.5 text-foreground/40">
+            <X className="size-5" />
+          </button>
         </div>
 
         {/* discipline */}
-        <label className="mb-1.5 block text-[0.6rem] font-bold tracking-wider text-white/35">{lang === "el" ? "ΠΕΙΘΑΡΧΙΑ" : "DISCIPLINE"}</label>
+        <label className="mb-1.5 block text-[0.6rem] font-bold tracking-wider text-foreground/35">
+          {lang === "el" ? "ΠΕΙΘΑΡΧΙΑ" : "DISCIPLINE"}
+        </label>
         <div className="mb-3 grid grid-cols-4 gap-1.5">
           {DISCIPLINES.map((d) => (
             <button
               key={d.code}
               onClick={() => setDiscipline(d.code)}
               className="rounded-lg py-2 text-[0.65rem] font-bold transition-all"
-              style={d.code === discipline
-                ? { background: "rgba(29,158,117,0.2)", color: "#5DCAA5", border: "1px solid rgba(29,158,117,0.4)" }
-                : { background: "rgba(255,255,255,0.03)", color: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.06)" }}
+              style={
+                d.code === discipline
+                  ? {
+                      background: "rgba(29,158,117,0.2)",
+                      color: "#5DCAA5",
+                      border: "1px solid rgba(29,158,117,0.4)",
+                    }
+                  : {
+                      background: "rgba(var(--ink),0.03)",
+                      color: "rgba(var(--ink),0.4)",
+                      border: "1px solid rgba(var(--ink),0.06)",
+                    }
+              }
             >
               {d.code}
             </button>
@@ -429,29 +675,54 @@ function ResultFormModal({ existing, lang, onClose, onSaved }: {
         {/* result + federation */}
         <div className="mb-3 grid grid-cols-2 gap-3">
           <div>
-            <label className="mb-1.5 block text-[0.6rem] font-bold tracking-wider text-white/35">
-              {time ? (lang === "el" ? "ΧΡΟΝΟΣ (Μ:ΔΔ)" : "TIME (M:SS)") : (lang === "el" ? "ΑΠΟΣΤΑΣΗ (m)" : "DISTANCE (m)")}
+            <label className="mb-1.5 block text-[0.6rem] font-bold tracking-wider text-foreground/35">
+              {time
+                ? lang === "el"
+                  ? "ΧΡΟΝΟΣ (Μ:ΔΔ)"
+                  : "TIME (M:SS)"
+                : lang === "el"
+                  ? "ΑΠΟΣΤΑΣΗ (m)"
+                  : "DISTANCE (m)"}
             </label>
             <input
               inputMode="numeric"
               value={resultStr}
-              onChange={(e) => setResultStr(e.target.value.replace(time ? /[^0-9:]/g : /[^0-9]/g, ""))}
-              onBlur={() => { if (time) { const s = parseMMSS(resultStr); setResultStr(s > 0 ? fmtMMSS(s) : ""); } }}
+              onChange={(e) =>
+                setResultStr(e.target.value.replace(time ? /[^0-9:]/g : /[^0-9]/g, ""))
+              }
+              onBlur={() => {
+                if (time) {
+                  const s = parseMMSS(resultStr);
+                  setResultStr(s > 0 ? fmtMMSS(s) : "");
+                }
+              }}
               placeholder={time ? "5:30" : "150"}
-              className="w-full rounded-xl bg-white/5 px-3 py-2.5 text-center text-lg font-bold text-white outline-none focus:ring-1 focus:ring-[#1D9E75]"
+              className="w-full rounded-xl bg-foreground/5 px-3 py-2.5 text-center text-lg font-bold text-foreground outline-none focus:ring-1 focus:ring-[#1D9E75]"
             />
           </div>
           <div>
-            <label className="mb-1.5 block text-[0.6rem] font-bold tracking-wider text-white/35">{lang === "el" ? "ΟΜΟΣΠΟΝΔΙΑ" : "FEDERATION"}</label>
+            <label className="mb-1.5 block text-[0.6rem] font-bold tracking-wider text-foreground/35">
+              {lang === "el" ? "ΟΜΟΣΠΟΝΔΙΑ" : "FEDERATION"}
+            </label>
             <div className="flex gap-1.5">
               {FEDERATIONS.map((f) => (
                 <button
                   key={f}
                   onClick={() => setFederation(f)}
                   className="flex-1 rounded-xl py-2.5 text-xs font-bold transition-all"
-                  style={f === federation
-                    ? { background: "rgba(255,255,255,0.1)", color: "#fff", border: "1px solid rgba(255,255,255,0.2)" }
-                    : { background: "rgba(255,255,255,0.03)", color: "rgba(255,255,255,0.35)", border: "1px solid rgba(255,255,255,0.06)" }}
+                  style={
+                    f === federation
+                      ? {
+                          background: "rgba(var(--ink),0.1)",
+                          color: "#fff",
+                          border: "1px solid rgba(var(--ink),0.2)",
+                        }
+                      : {
+                          background: "rgba(var(--ink),0.03)",
+                          color: "rgba(var(--ink),0.35)",
+                          border: "1px solid rgba(var(--ink),0.06)",
+                        }
+                  }
                 >
                   {f}
                 </button>
@@ -461,35 +732,83 @@ function ResultFormModal({ existing, lang, onClose, onSaved }: {
         </div>
 
         {/* competition + location */}
-        <label className="mb-1.5 block text-[0.6rem] font-bold tracking-wider text-white/35">{lang === "el" ? "ΑΓΩΝΑΣ" : "COMPETITION"}</label>
-        <input value={compName} onChange={(e) => setCompName(e.target.value)} placeholder={lang === "el" ? "π.χ. Πανελλήνιο Πρωτάθλημα" : "e.g. National Championship"} className="mb-3 w-full rounded-xl bg-white/5 px-3 py-2.5 text-sm text-white outline-none focus:ring-1 focus:ring-[#1D9E75]" />
+        <label className="mb-1.5 block text-[0.6rem] font-bold tracking-wider text-foreground/35">
+          {lang === "el" ? "ΑΓΩΝΑΣ" : "COMPETITION"}
+        </label>
+        <input
+          value={compName}
+          onChange={(e) => setCompName(e.target.value)}
+          placeholder={lang === "el" ? "π.χ. Πανελλήνιο Πρωτάθλημα" : "e.g. National Championship"}
+          className="mb-3 w-full rounded-xl bg-foreground/5 px-3 py-2.5 text-sm text-foreground outline-none focus:ring-1 focus:ring-[#1D9E75]"
+        />
 
         <div className="mb-3 grid grid-cols-2 gap-3">
           <div>
-            <label className="mb-1.5 block text-[0.6rem] font-bold tracking-wider text-white/35">{lang === "el" ? "ΤΟΠΟΘΕΣΙΑ" : "LOCATION"}</label>
-            <input value={location} onChange={(e) => setLocation(e.target.value)} placeholder={lang === "el" ? "Πόλη" : "City"} className="w-full rounded-xl bg-white/5 px-3 py-2.5 text-sm text-white outline-none focus:ring-1 focus:ring-[#1D9E75]" />
+            <label className="mb-1.5 block text-[0.6rem] font-bold tracking-wider text-foreground/35">
+              {lang === "el" ? "ΤΟΠΟΘΕΣΙΑ" : "LOCATION"}
+            </label>
+            <input
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              placeholder={lang === "el" ? "Πόλη" : "City"}
+              className="w-full rounded-xl bg-foreground/5 px-3 py-2.5 text-sm text-foreground outline-none focus:ring-1 focus:ring-[#1D9E75]"
+            />
           </div>
           <div>
-            <label className="mb-1.5 block text-[0.6rem] font-bold tracking-wider text-white/35">{lang === "el" ? "ΗΜΕΡΟΜΗΝΙΑ" : "DATE"}</label>
-            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full rounded-xl bg-white/5 px-3 py-2.5 text-sm text-white/70 outline-none focus:ring-1 focus:ring-[#1D9E75]" style={{ colorScheme: "dark" }} />
+            <label className="mb-1.5 block text-[0.6rem] font-bold tracking-wider text-foreground/35">
+              {lang === "el" ? "ΗΜΕΡΟΜΗΝΙΑ" : "DATE"}
+            </label>
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="w-full rounded-xl bg-foreground/5 px-3 py-2.5 text-sm text-foreground/70 outline-none focus:ring-1 focus:ring-[#1D9E75]"
+              style={{ colorScheme: "dark" }}
+            />
           </div>
         </div>
 
         {/* toggles */}
-        <button onClick={() => setIsNR(!isNR)} className="mb-2 flex w-full items-center justify-between rounded-xl px-3 py-3" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
-          <span className="flex items-center gap-2 text-sm text-white/70"><Award className="size-4" style={{ color: "#EF9F27" }} />{lang === "el" ? "Εθνικό ρεκόρ" : "National record"}</span>
+        <button
+          onClick={() => setIsNR(!isNR)}
+          className="mb-2 flex w-full items-center justify-between rounded-xl px-3 py-3"
+          style={{ background: "rgba(var(--ink),0.03)", border: "1px solid rgba(var(--ink),0.06)" }}
+        >
+          <span className="flex items-center gap-2 text-sm text-foreground/70">
+            <Award className="size-4" style={{ color: "#EF9F27" }} />
+            {lang === "el" ? "Εθνικό ρεκόρ" : "National record"}
+          </span>
           <Toggle on={isNR} />
         </button>
-        <button onClick={() => setIsPublic(!isPublic)} className="mb-4 flex w-full items-center justify-between rounded-xl px-3 py-3" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
-          <span className="flex items-center gap-2 text-sm text-white/70">
-            {isPublic ? <Globe className="size-4 text-[#5DCAA5]" /> : <Lock className="size-4 text-white/40" />}
+        <button
+          onClick={() => setIsPublic(!isPublic)}
+          className="mb-4 flex w-full items-center justify-between rounded-xl px-3 py-3"
+          style={{ background: "rgba(var(--ink),0.03)", border: "1px solid rgba(var(--ink),0.06)" }}
+        >
+          <span className="flex items-center gap-2 text-sm text-foreground/70">
+            {isPublic ? (
+              <Globe className="size-4 text-[#5DCAA5]" />
+            ) : (
+              <Lock className="size-4 text-foreground/40" />
+            )}
             {lang === "el" ? "Εμφάνιση στην κατάταξη" : "Show in rankings"}
           </span>
           <Toggle on={isPublic} />
         </button>
 
-        <button onClick={save} disabled={saving} className="w-full rounded-xl py-3.5 text-sm font-bold" style={{ background: saving ? "rgba(29,158,117,0.4)" : "#1D9E75", color: "#fff" }}>
-          {saving ? (lang === "el" ? "Αποθήκευση…" : "Saving…") : (lang === "el" ? "Αποθήκευση" : "Save")}
+        <button
+          onClick={save}
+          disabled={saving}
+          className="w-full rounded-xl py-3.5 text-sm font-bold"
+          style={{ background: saving ? "rgba(29,158,117,0.4)" : "#1D9E75", color: "#fff" }}
+        >
+          {saving
+            ? lang === "el"
+              ? "Αποθήκευση…"
+              : "Saving…"
+            : lang === "el"
+              ? "Αποθήκευση"
+              : "Save"}
         </button>
       </div>
     </div>
@@ -498,8 +817,14 @@ function ResultFormModal({ existing, lang, onClose, onSaved }: {
 
 function Toggle({ on }: { on: boolean }) {
   return (
-    <span className="relative inline-flex h-5 w-9 items-center rounded-full transition-all" style={{ background: on ? "#1D9E75" : "rgba(255,255,255,0.12)" }}>
-      <span className="absolute h-4 w-4 rounded-full bg-white transition-all" style={{ left: on ? "18px" : "2px" }} />
+    <span
+      className="relative inline-flex h-5 w-9 items-center rounded-full transition-all"
+      style={{ background: on ? "#1D9E75" : "rgba(var(--ink),0.12)" }}
+    >
+      <span
+        className="absolute h-4 w-4 rounded-full bg-white transition-all"
+        style={{ left: on ? "18px" : "2px" }}
+      />
     </span>
   );
 }
