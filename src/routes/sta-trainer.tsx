@@ -1,16 +1,36 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft, X, Check, Trophy, Target, Mic, MicOff, Music, VolumeX, Vibrate, SlidersHorizontal } from "lucide-react";
+import {
+  ArrowLeft,
+  X,
+  Check,
+  Trophy,
+  Target,
+  Mic,
+  MicOff,
+  Music,
+  VolumeX,
+  Vibrate,
+  SlidersHorizontal,
+} from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  type FxSettings, type CueKey, loadFxSettings, saveFxSettings,
-  vibrate, hapticsSupported,
-  HOLD_MILESTONES, SoundscapeEngine, CuePlayer,
+  type FxSettings,
+  type CueKey,
+  loadFxSettings,
+  saveFxSettings,
+  vibrate,
+  hapticsSupported,
+  HOLD_MILESTONES,
+  SoundscapeEngine,
+  CuePlayer,
 } from "@/lib/trainer-fx";
 import { listCueUrls } from "@/lib/voice-cues";
 import { VoiceCuesModal } from "@/components/VoiceCuesModal";
+import { UnderwaterScene } from "@/components/UnderwaterScene";
+import { LogoBreathPacer } from "@/components/LogoBreathPacer";
 
 export const Route = createFileRoute("/sta-trainer")({
   head: () => ({ meta: [{ title: "STA Trainer — Apnos" }] }),
@@ -32,25 +52,35 @@ interface Round {
 // ── constants ──────────────────────────────────────────────────────────────
 
 const PHASE_COLOR: Record<Phase, string> = {
-  idle:     "#5DCAA5",
-  breathe:  "#5DCAA5",
-  hold:     "#1D9E75",
+  idle: "#5DCAA5",
+  breathe: "#5DCAA5",
+  hold: "#1D9E75",
   recovery: "#9FE1CB",
 };
 
 const PHASE_BG: Record<Phase, string> = {
-  idle:     "rgba(93,202,165,0.06)",
-  breathe:  "rgba(93,202,165,0.08)",
-  hold:     "rgba(29,158,117,0.12)",
+  idle: "rgba(93,202,165,0.06)",
+  breathe: "rgba(93,202,165,0.08)",
+  hold: "rgba(29,158,117,0.12)",
   recovery: "rgba(159,225,203,0.07)",
 };
 
 const LONG_PRESS_MS = 800;
 
+// comet lap time on the logo pacer, per phase — breathe paces a calm 8s breath
+const PACER_DUR: Record<Phase, number> = {
+  idle: 16,
+  breathe: 8,
+  hold: 14,
+  recovery: 6,
+};
+
 // ── helpers ────────────────────────────────────────────────────────────────
 
 function fmt(secs: number) {
-  const m = Math.floor(secs / 60).toString().padStart(2, "0");
+  const m = Math.floor(secs / 60)
+    .toString()
+    .padStart(2, "0");
   const s = (secs % 60).toString().padStart(2, "0");
   return `${m}:${s}`;
 }
@@ -62,8 +92,8 @@ function todayISO() {
 function sessionStats(rounds: Round[]) {
   if (rounds.length === 0) return { best: 0, avg: 0, total: 0 };
   const holds = rounds.map((r) => r.holdSecs);
-  const best  = Math.max(...holds);
-  const avg   = Math.round(holds.reduce((a, b) => a + b, 0) / holds.length);
+  const best = Math.max(...holds);
+  const avg = Math.round(holds.reduce((a, b) => a + b, 0) / holds.length);
   const total = holds.reduce((a, b) => a + b, 0);
   return { best, avg, total };
 }
@@ -73,36 +103,36 @@ function sessionStats(rounds: Round[]) {
 function STATrainer() {
   const { lang } = useI18n();
   const { user } = useAuth();
-  const navigate  = useNavigate();
+  const navigate = useNavigate();
 
-  const [phase, setPhase]               = useState<Phase>("idle");
-  const [elapsed, setElapsed]           = useState(0);
+  const [phase, setPhase] = useState<Phase>("idle");
+  const [elapsed, setElapsed] = useState(0);
   const [contractions, setContractions] = useState(0);
   const [firstContraction, setFirstContraction] = useState(0); // secs into hold, 0 = none
-  const [rounds, setRounds]             = useState<Round[]>([]);
+  const [rounds, setRounds] = useState<Round[]>([]);
 
   const [showModal, setShowModal] = useState(false);
-  const [saving, setSaving]       = useState(false);
-  const [saved, setSaved]         = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
 
   // ── guided-session FX (voice / soundscape / haptics) ──────────────────────
-  const canHaptics  = hapticsSupported();
+  const canHaptics = hapticsSupported();
   const [fx, setFx] = useState<FxSettings>(() => loadFxSettings());
-  const fxRef       = useRef(fx);
-  fxRef.current     = fx;
-  const engineRef   = useRef<SoundscapeEngine | null>(null);
-  const cueRef      = useRef<CuePlayer | null>(null);
-  const nextMsRef   = useRef(0); // index of next hold milestone to announce
+  const fxRef = useRef(fx);
+  fxRef.current = fx;
+  const engineRef = useRef<SoundscapeEngine | null>(null);
+  const cueRef = useRef<CuePlayer | null>(null);
+  const nextMsRef = useRef(0); // index of next hold milestone to announce
 
   const [showVoice, setShowVoice] = useState(false);
-  const [hasCues, setHasCues]     = useState(false);
+  const [hasCues, setHasCues] = useState(false);
 
-  const phaseStart    = useRef<number>(Date.now());
-  const breatheStart  = useRef<number>(0);
-  const holdStart     = useRef<number>(0);
+  const phaseStart = useRef<number>(Date.now());
+  const breatheStart = useRef<number>(0);
+  const holdStart = useRef<number>(0);
   const recoveryStart = useRef<number>(0);
 
-  const pressTimer   = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const didLongPress = useRef(false);
 
   // ── FX helpers ────────────────────────────────────────────────────────────
@@ -119,7 +149,9 @@ function STATrainer() {
     setHasCues(map.size > 0);
   }, [user, lang]);
 
-  useEffect(() => { void loadCues(); }, [loadCues]);
+  useEffect(() => {
+    void loadCues();
+  }, [loadCues]);
 
   const guideVoice = useCallback((key: CueKey) => {
     if (!fxRef.current.voice) return;
@@ -130,12 +162,15 @@ function STATrainer() {
     if (fxRef.current.haptics) vibrate(pattern);
   }, []);
 
-  const enginePhase = useCallback((p: "breathe" | "hold" | "recovery") => {
-    if (!fxRef.current.sound) return;
-    const eng = ensureEngine();
-    if (!eng.isRunning) eng.start().then(() => eng.setPhase(p));
-    else eng.setPhase(p);
-  }, [ensureEngine]);
+  const enginePhase = useCallback(
+    (p: "breathe" | "hold" | "recovery") => {
+      if (!fxRef.current.sound) return;
+      const eng = ensureEngine();
+      if (!eng.isRunning) eng.start().then(() => eng.setPhase(p));
+      else eng.setPhase(p);
+    },
+    [ensureEngine],
+  );
 
   const toggleFx = useCallback((key: keyof FxSettings) => {
     setFx((prev) => {
@@ -148,7 +183,13 @@ function STATrainer() {
   }, []);
 
   // stop audio + cues on unmount
-  useEffect(() => () => { engineRef.current?.stop(); cueRef.current?.stop(); }, []);
+  useEffect(
+    () => () => {
+      engineRef.current?.stop();
+      cueRef.current?.stop();
+    },
+    [],
+  );
 
   // ── tick ────────────────────────────────────────────────────────────────
 
@@ -177,7 +218,7 @@ function STATrainer() {
 
   const startBreathe = useCallback(() => {
     breatheStart.current = Date.now();
-    phaseStart.current   = Date.now();
+    phaseStart.current = Date.now();
     setPhase("breathe");
     setElapsed(0);
     setContractions(0);
@@ -188,7 +229,7 @@ function STATrainer() {
   }, [guideHaptic, guideVoice, enginePhase]);
 
   const startHold = useCallback(() => {
-    holdStart.current  = Date.now();
+    holdStart.current = Date.now();
     phaseStart.current = Date.now();
     setPhase("hold");
     setElapsed(0);
@@ -200,7 +241,7 @@ function STATrainer() {
 
   const startRecovery = useCallback(() => {
     recoveryStart.current = Date.now();
-    phaseStart.current    = Date.now();
+    phaseStart.current = Date.now();
     setPhase("recovery");
     setElapsed(0);
     guideHaptic([120, 80, 120]);
@@ -237,11 +278,17 @@ function STATrainer() {
       setFirstContraction((f) => (f === 0 ? Math.max(1, at) : f));
       guideHaptic(25);
     } else if (phase === "recovery") {
-      const breatheSecs  = Math.round((holdStart.current     - breatheStart.current)  / 1000);
-      const holdSecs     = Math.round((recoveryStart.current - holdStart.current)     / 1000);
-      const recoverySecs = Math.round((Date.now()            - recoveryStart.current) / 1000);
+      const breatheSecs = Math.round((holdStart.current - breatheStart.current) / 1000);
+      const holdSecs = Math.round((recoveryStart.current - holdStart.current) / 1000);
+      const recoverySecs = Math.round((Date.now() - recoveryStart.current) / 1000);
       setRounds((prev) => [
-        { breatheSecs, holdSecs, recoverySecs, contractions, firstContractionSecs: firstContraction },
+        {
+          breatheSecs,
+          holdSecs,
+          recoverySecs,
+          contractions,
+          firstContractionSecs: firstContraction,
+        },
         ...prev,
       ]);
       startBreathe();
@@ -250,38 +297,56 @@ function STATrainer() {
 
   // ── end session (opens modal, captures in-progress recovery if any) ────
 
-  const handleEndSession = useCallback((e: React.MouseEvent | React.TouchEvent) => {
-    e.stopPropagation();
-    // if currently in recovery, flush the round
-    if (phase === "recovery") {
-      const breatheSecs  = Math.round((holdStart.current     - breatheStart.current)  / 1000);
-      const holdSecs     = Math.round((recoveryStart.current - holdStart.current)     / 1000);
-      const recoverySecs = Math.round((Date.now()            - recoveryStart.current) / 1000);
-      setRounds((prev) => [{ breatheSecs, holdSecs, recoverySecs, contractions, firstContractionSecs: firstContraction }, ...prev]);
-    }
-    engineRef.current?.stop();
-    cueRef.current?.stop();
-    setSaved(false);
-    setShowModal(true);
-  }, [phase, contractions, firstContraction]);
+  const handleEndSession = useCallback(
+    (e: React.MouseEvent | React.TouchEvent) => {
+      e.stopPropagation();
+      // if currently in recovery, flush the round
+      if (phase === "recovery") {
+        const breatheSecs = Math.round((holdStart.current - breatheStart.current) / 1000);
+        const holdSecs = Math.round((recoveryStart.current - holdStart.current) / 1000);
+        const recoverySecs = Math.round((Date.now() - recoveryStart.current) / 1000);
+        setRounds((prev) => [
+          {
+            breatheSecs,
+            holdSecs,
+            recoverySecs,
+            contractions,
+            firstContractionSecs: firstContraction,
+          },
+          ...prev,
+        ]);
+      }
+      engineRef.current?.stop();
+      cueRef.current?.stop();
+      setSaved(false);
+      setShowModal(true);
+    },
+    [phase, contractions, firstContraction],
+  );
 
   // ── exit trainer (back) — protect an in-progress session ──────────────────
-  const handleExit = useCallback((e: React.MouseEvent | React.TouchEvent) => {
-    e.stopPropagation();
-    const hasData = rounds.length > 0 || phase === "recovery";
-    if (hasData) {
-      // route to the summary so the athlete can save (or discard) first
-      handleEndSession(e);
-      return;
-    }
-    if (phase !== "idle") {
-      const msg = lang === "el" ? "Έξοδος; Η τρέχουσα κράτηση θα χαθεί." : "Exit? Your current hold will be lost.";
-      if (!confirm(msg)) return;
-    }
-    engineRef.current?.stop();
-    cueRef.current?.stop();
-    navigate({ to: "/dashboard" });
-  }, [rounds.length, phase, lang, navigate, handleEndSession]);
+  const handleExit = useCallback(
+    (e: React.MouseEvent | React.TouchEvent) => {
+      e.stopPropagation();
+      const hasData = rounds.length > 0 || phase === "recovery";
+      if (hasData) {
+        // route to the summary so the athlete can save (or discard) first
+        handleEndSession(e);
+        return;
+      }
+      if (phase !== "idle") {
+        const msg =
+          lang === "el"
+            ? "Έξοδος; Η τρέχουσα κράτηση θα χαθεί."
+            : "Exit? Your current hold will be lost.";
+        if (!confirm(msg)) return;
+      }
+      engineRef.current?.stop();
+      cueRef.current?.stop();
+      navigate({ to: "/dashboard" });
+    },
+    [rounds.length, phase, lang, navigate, handleEndSession],
+  );
 
   // ── save ───────────────────────────────────────────────────────────────
 
@@ -303,25 +368,25 @@ function STATrainer() {
           recovery: fmt(r.recoverySecs),
           contractions: r.contractions,
           firstContraction: r.firstContractionSecs ? fmt(r.firstContractionSecs) : null,
-        }))
+        })),
       )}`,
     ];
 
     const [diveRes, sessionRes] = await Promise.all([
       supabase.from("dives").insert({
-        user_id:      user.id,
-        discipline:   "STA",
+        user_id: user.id,
+        discipline: "STA",
         session_type: "training",
-        dive_date:    date,
-        result:       best,
-        notes:        notesLines.join("\n"),
+        dive_date: date,
+        result: best,
+        notes: notesLines.join("\n"),
       }),
       supabase.from("sta_sessions").insert({
-        user_id:      user.id,
+        user_id: user.id,
         date,
-        rounds:       chronological,
-        best_hold:    best,
-        avg_hold:     avg,
+        rounds: chronological,
+        best_hold: best,
+        avg_hold: avg,
         total_rounds: chronological.length,
       }),
     ]);
@@ -337,16 +402,17 @@ function STATrainer() {
   // ── labels ─────────────────────────────────────────────────────────────
 
   const phaseLabel: Record<Phase, string> = {
-    idle:     lang === "el" ? "Πάτα για έναρξη" : "TAP TO START",
-    breathe:  lang === "el" ? "Αναπνοή"          : "BREATHE",
-    hold:     lang === "el" ? "Κράτα"             : "HOLD",
-    recovery: lang === "el" ? "Ανάκαμψη"          : "RECOVERY",
+    idle: lang === "el" ? "Πάτα για έναρξη" : "TAP TO START",
+    breathe: lang === "el" ? "Αναπνοή" : "BREATHE",
+    hold: lang === "el" ? "Κράτα" : "HOLD",
+    recovery: lang === "el" ? "Ανάκαμψη" : "RECOVERY",
   };
 
   const subLabel: Record<Phase, string> = {
-    idle:     "",
-    breathe:  lang === "el" ? "Πάτα για HOLD" : "TAP to start HOLD",
-    hold:     lang === "el" ? "Πάτα = σύσπαση · Κράτα = ανάκαμψη" : "TAP = contraction · HOLD = recovery",
+    idle: "",
+    breathe: lang === "el" ? "Πάτα για HOLD" : "TAP to start HOLD",
+    hold:
+      lang === "el" ? "Πάτα = σύσπαση · Κράτα = ανάκαμψη" : "TAP = contraction · HOLD = recovery",
     recovery: lang === "el" ? "Πάτα για νέο γύρο" : "TAP to start next round",
   };
 
@@ -357,8 +423,9 @@ function STATrainer() {
   return (
     <div
       className="fixed inset-0 flex flex-col overflow-hidden select-none"
-      style={{ background: "#070a10" }}
+      style={{ background: "#020a13" }}
     >
+      <UnderwaterScene />
       {/* phase background wash */}
       <div
         className="pointer-events-none absolute inset-0 transition-all duration-700"
@@ -372,7 +439,11 @@ function STATrainer() {
         onClick={handleExit}
         aria-label={lang === "el" ? "Έξοδος" : "Exit"}
         className="absolute left-3 top-3 z-20 flex h-11 w-11 items-center justify-center rounded-full transition-all"
-        style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.5)" }}
+        style={{
+          background: "rgba(255,255,255,0.04)",
+          border: "1px solid rgba(255,255,255,0.08)",
+          color: "rgba(255,255,255,0.5)",
+        }}
       >
         <ArrowLeft className="size-4" />
       </button>
@@ -403,18 +474,33 @@ function STATrainer() {
           onClick={() => toggleFx("haptics")}
           on={<Vibrate className="size-4" />}
           off={<Vibrate className="size-4" />}
-          label={canHaptics ? (lang === "el" ? "Δόνηση" : "Haptics") : (lang === "el" ? "Η δόνηση δεν υποστηρίζεται σε iPhone" : "Haptics not supported on iPhone")}
+          label={
+            canHaptics
+              ? lang === "el"
+                ? "Δόνηση"
+                : "Haptics"
+              : lang === "el"
+                ? "Η δόνηση δεν υποστηρίζεται σε iPhone"
+                : "Haptics not supported on iPhone"
+          }
         />
         <button
           onClick={() => setShowVoice(true)}
           aria-label={lang === "el" ? "Η φωνή μου" : "My voice cues"}
           title={lang === "el" ? "Η φωνή μου" : "My voice cues"}
           className="relative flex h-11 w-11 items-center justify-center rounded-full transition-all"
-          style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.5)" }}
+          style={{
+            background: "rgba(255,255,255,0.04)",
+            border: "1px solid rgba(255,255,255,0.08)",
+            color: "rgba(255,255,255,0.5)",
+          }}
         >
           <SlidersHorizontal className="size-4" />
           {hasCues && (
-            <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full" style={{ background: "#1D9E75", boxShadow: "0 0 6px #1D9E7580" }} />
+            <span
+              className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full"
+              style={{ background: "#1D9E75", boxShadow: "0 0 6px #1D9E7580" }}
+            />
           )}
         </button>
       </div>
@@ -424,17 +510,35 @@ function STATrainer() {
         className="relative flex flex-1 flex-col items-center justify-center gap-6 cursor-pointer"
         onMouseDown={onPressStart}
         onMouseUp={onPressEnd}
-        onMouseLeave={() => { if (pressTimer.current) clearTimeout(pressTimer.current); }}
-        onTouchStart={(e) => { e.preventDefault(); onPressStart(); }}
-        onTouchEnd={(e) => { e.preventDefault(); onPressEnd(); }}
+        onMouseLeave={() => {
+          if (pressTimer.current) clearTimeout(pressTimer.current);
+        }}
+        onTouchStart={(e) => {
+          e.preventDefault();
+          onPressStart();
+        }}
+        onTouchEnd={(e) => {
+          e.preventDefault();
+          onPressEnd();
+        }}
       >
-        <span className="text-xs font-bold tracking-[0.3em] transition-colors duration-500" style={{ color }}>
+        <LogoBreathPacer
+          key={phase}
+          size={170}
+          color={phase === "idle" ? "rgba(93,202,165,0.45)" : color}
+          duration={PACER_DUR[phase]}
+        />
+
+        <span
+          className="text-xs font-bold tracking-[0.3em] transition-colors duration-500"
+          style={{ color }}
+        >
           {phaseLabel[phase]}
         </span>
 
         <span
           className="font-mono text-[5rem] font-light leading-none tabular-nums transition-colors duration-500"
-          style={{ color: phase === "idle" ? "#2a3a35" : color }}
+          style={{ color: phase === "idle" ? "#4a6a80" : color }}
         >
           {phase === "idle" ? "00:00" : fmt(elapsed)}
         </span>
@@ -448,16 +552,26 @@ function STATrainer() {
             ) : (
               <>
                 <div className="flex items-baseline gap-2">
-                  <span className="font-mono text-4xl font-bold tabular-nums leading-none" style={{ color: "#EF9F27" }}>
+                  <span
+                    className="font-mono text-4xl font-bold tabular-nums leading-none"
+                    style={{ color: "#EF9F27" }}
+                  >
                     {contractions}
                   </span>
-                  <span className="text-[0.55rem] font-bold tracking-widest" style={{ color: "#EF9F2790" }}>
+                  <span
+                    className="text-[0.55rem] font-bold tracking-widest"
+                    style={{ color: "#EF9F2790" }}
+                  >
                     {lang === "el" ? "ΣΥΣΠΑΣΕΙΣ" : "CONTRACTIONS"}
                   </span>
                 </div>
                 <div className="flex max-w-[220px] flex-wrap justify-center gap-1.5">
                   {Array.from({ length: Math.min(contractions, 20) }).map((_, i) => (
-                    <span key={i} className="h-2 w-2 rounded-full" style={{ background: "#EF9F27", boxShadow: "0 0 5px #EF9F2770" }} />
+                    <span
+                      key={i}
+                      className="h-2 w-2 rounded-full"
+                      style={{ background: "#EF9F27", boxShadow: "0 0 5px #EF9F2770" }}
+                    />
                   ))}
                 </div>
                 {firstContraction > 0 && (
@@ -471,7 +585,9 @@ function STATrainer() {
         )}
 
         {subLabel[phase] && (
-          <span className="text-[0.6rem] font-medium tracking-widest text-white/30">{subLabel[phase]}</span>
+          <span className="text-[0.6rem] font-medium tracking-widest text-white/30">
+            {subLabel[phase]}
+          </span>
         )}
 
         {phase === "hold" && <LongPressHint color={color} />}
@@ -489,7 +605,13 @@ function STATrainer() {
             </p>
             <div className="space-y-2">
               {rounds.map((r, i) => (
-                <RoundRow key={i} round={r} index={rounds.length - i} lang={lang} isBest={r.holdSecs === stats.best} />
+                <RoundRow
+                  key={i}
+                  round={r}
+                  index={rounds.length - i}
+                  lang={lang}
+                  isBest={r.holdSecs === stats.best}
+                />
               ))}
             </div>
           </div>
@@ -507,7 +629,11 @@ function STATrainer() {
             onTouchStart={(e) => e.stopPropagation()}
             onClick={handleEndSession}
             className="w-full rounded-xl py-3.5 text-sm font-bold tracking-wider transition-all"
-            style={{ border: "1.5px solid rgba(239,80,80,0.4)", color: "#ef5050", background: "rgba(239,80,80,0.06)" }}
+            style={{
+              border: "1.5px solid rgba(239,80,80,0.4)",
+              color: "#ef5050",
+              background: "rgba(239,80,80,0.06)",
+            }}
           >
             {lang === "el" ? "Τέλος Session" : "End Session"}
           </button>
@@ -516,24 +642,31 @@ function STATrainer() {
 
       {/* ── Session Summary Modal ─────────────────────────────────────────── */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex flex-col" style={{ background: "rgba(0,0,0,0.85)" }}>
-          <div
-            className="flex flex-1 flex-col overflow-y-auto"
-            style={{ background: "#0a0f1a" }}
-          >
+        <div
+          className="fixed inset-0 z-50 flex flex-col"
+          style={{ background: "rgba(0,0,0,0.85)" }}
+        >
+          <div className="flex flex-1 flex-col overflow-y-auto" style={{ background: "#0a0f1a" }}>
             {saved ? (
               /* success */
               <div className="flex flex-1 flex-col items-center justify-center gap-6 px-8 py-12">
                 <div
                   className="flex h-20 w-20 items-center justify-center rounded-full"
-                  style={{ background: "rgba(29,158,117,0.15)", border: "1.5px solid rgba(29,158,117,0.3)" }}
+                  style={{
+                    background: "rgba(29,158,117,0.15)",
+                    border: "1.5px solid rgba(29,158,117,0.3)",
+                  }}
                 >
                   <Check className="size-10" style={{ color: "#1D9E75" }} />
                 </div>
                 <div className="text-center">
-                  <p className="text-xl font-bold text-white">{lang === "el" ? "Αποθηκεύτηκε!" : "Saved!"}</p>
+                  <p className="text-xl font-bold text-white">
+                    {lang === "el" ? "Αποθηκεύτηκε!" : "Saved!"}
+                  </p>
                   <p className="mt-1 text-sm text-white/40">
-                    {lang === "el" ? `${rounds.length} γύροι · Best ${fmt(stats.best)}` : `${rounds.length} rounds · Best ${fmt(stats.best)}`}
+                    {lang === "el"
+                      ? `${rounds.length} γύροι · Best ${fmt(stats.best)}`
+                      : `${rounds.length} rounds · Best ${fmt(stats.best)}`}
                   </p>
                 </div>
                 <div className="flex w-full max-w-xs flex-col gap-3">
@@ -545,7 +678,13 @@ function STATrainer() {
                     {lang === "el" ? "Αποθήκευση & Έξοδος" : "Save & Exit"}
                   </button>
                   <button
-                    onClick={() => { setShowModal(false); setSaved(false); setRounds([]); setPhase("idle"); setElapsed(0); }}
+                    onClick={() => {
+                      setShowModal(false);
+                      setSaved(false);
+                      setRounds([]);
+                      setPhase("idle");
+                      setElapsed(0);
+                    }}
                     className="w-full rounded-xl py-4 text-sm font-semibold transition-colors"
                     style={{ background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.5)" }}
                   >
@@ -556,13 +695,20 @@ function STATrainer() {
             ) : (
               <>
                 {/* modal header */}
-                <div className="flex items-center justify-between border-b px-5 py-4" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
+                <div
+                  className="flex items-center justify-between border-b px-5 py-4"
+                  style={{ borderColor: "rgba(255,255,255,0.06)" }}
+                >
                   <div>
                     <h2 className="text-base font-bold text-white">
                       {lang === "el" ? "Session Ολοκληρώθηκε 🎯" : "Session Complete 🎯"}
                     </h2>
                     <p className="mt-0.5 text-xs text-white/30">
-                      {new Date().toLocaleDateString(lang === "el" ? "el-GR" : "en-GB", { day: "numeric", month: "long", year: "numeric" })}
+                      {new Date().toLocaleDateString(lang === "el" ? "el-GR" : "en-GB", {
+                        day: "numeric",
+                        month: "long",
+                        year: "numeric",
+                      })}
                     </p>
                   </div>
                   <button
@@ -603,9 +749,18 @@ function STATrainer() {
                   {/* table header */}
                   <div
                     className="grid gap-1 rounded-t-lg px-3 py-2"
-                    style={{ gridTemplateColumns: "2rem 1fr 1fr 1fr 2rem", background: "rgba(255,255,255,0.03)" }}
+                    style={{
+                      gridTemplateColumns: "2rem 1fr 1fr 1fr 2rem",
+                      background: "rgba(255,255,255,0.03)",
+                    }}
                   >
-                    {["#", lang === "el" ? "Αναπνοή" : "Breathe", lang === "el" ? "Hold" : "Hold", lang === "el" ? "Ανάκαμψη" : "Recovery", lang === "el" ? "Συσπ." : "Con."].map((h, i) => (
+                    {[
+                      "#",
+                      lang === "el" ? "Αναπνοή" : "Breathe",
+                      lang === "el" ? "Hold" : "Hold",
+                      lang === "el" ? "Ανάκαμψη" : "Recovery",
+                      lang === "el" ? "Συσπ." : "Con.",
+                    ].map((h, i) => (
                       <span
                         key={i}
                         className={`text-[0.55rem] font-bold tracking-wider text-white/25 ${i === 0 ? "text-center" : i === 4 ? "text-center" : "text-center"}`}
@@ -629,7 +784,12 @@ function STATrainer() {
                         }}
                       >
                         <span className="text-center text-xs font-bold text-white/20">{i + 1}</span>
-                        <span className="text-center font-mono text-xs" style={{ color: "#5DCAA5" }}>{fmt(r.breatheSecs)}</span>
+                        <span
+                          className="text-center font-mono text-xs"
+                          style={{ color: "#5DCAA5" }}
+                        >
+                          {fmt(r.breatheSecs)}
+                        </span>
                         <div className="flex flex-col items-center">
                           <span
                             className="font-mono text-xs font-bold"
@@ -637,10 +797,24 @@ function STATrainer() {
                           >
                             {fmt(r.holdSecs)}
                           </span>
-                          {isBest && <span className="text-[0.45rem] font-bold tracking-widest" style={{ color: "#EF9F2780" }}>BEST</span>}
+                          {isBest && (
+                            <span
+                              className="text-[0.45rem] font-bold tracking-widest"
+                              style={{ color: "#EF9F2780" }}
+                            >
+                              BEST
+                            </span>
+                          )}
                         </div>
-                        <span className="text-center font-mono text-xs" style={{ color: "#9FE1CB" }}>{fmt(r.recoverySecs)}</span>
-                        <span className="text-center text-xs text-white/30">{r.contractions > 0 ? r.contractions : "—"}</span>
+                        <span
+                          className="text-center font-mono text-xs"
+                          style={{ color: "#9FE1CB" }}
+                        >
+                          {fmt(r.recoverySecs)}
+                        </span>
+                        <span className="text-center text-xs text-white/30">
+                          {r.contractions > 0 ? r.contractions : "—"}
+                        </span>
                       </div>
                     );
                   })}
@@ -658,10 +832,14 @@ function STATrainer() {
                       {lang === "el" ? "ΣΥΝ" : "TOT"}
                     </span>
                     <span />
-                    <span className="text-center font-mono text-xs font-bold" style={{ color: "#1D9E75" }}>
+                    <span
+                      className="text-center font-mono text-xs font-bold"
+                      style={{ color: "#1D9E75" }}
+                    >
                       {fmt(stats.total)}
                     </span>
-                    <span /><span />
+                    <span />
+                    <span />
                   </div>
                 </div>
 
@@ -671,12 +849,27 @@ function STATrainer() {
                     onClick={handleSave}
                     disabled={saving}
                     className="w-full rounded-xl py-4 text-sm font-bold tracking-wider transition-all"
-                    style={{ background: saving ? "rgba(29,158,117,0.4)" : "#1D9E75", color: "#fff", opacity: saving ? 0.7 : 1 }}
+                    style={{
+                      background: saving ? "rgba(29,158,117,0.4)" : "#1D9E75",
+                      color: "#fff",
+                      opacity: saving ? 0.7 : 1,
+                    }}
                   >
-                    {saving ? (lang === "el" ? "Αποθήκευση…" : "Saving…") : (lang === "el" ? "Αποθήκευση" : "Save")}
+                    {saving
+                      ? lang === "el"
+                        ? "Αποθήκευση…"
+                        : "Saving…"
+                      : lang === "el"
+                        ? "Αποθήκευση"
+                        : "Save"}
                   </button>
                   <button
-                    onClick={() => { setShowModal(false); setRounds([]); setPhase("idle"); setElapsed(0); }}
+                    onClick={() => {
+                      setShowModal(false);
+                      setRounds([]);
+                      setPhase("idle");
+                      setElapsed(0);
+                    }}
                     className="w-full py-3 text-sm text-white/35 transition-colors hover:text-white/60"
                   >
                     {lang === "el" ? "Χωρίς αποθήκευση" : "Discard session"}
@@ -694,7 +887,9 @@ function STATrainer() {
           uid={user.id}
           lang={lang}
           onClose={() => setShowVoice(false)}
-          onChanged={() => { void loadCues(); }}
+          onChanged={() => {
+            void loadCues();
+          }}
         />
       )}
     </div>
@@ -703,7 +898,14 @@ function STATrainer() {
 
 // ── FxToggle ───────────────────────────────────────────────────────────────
 
-function FxToggle({ active, onClick, on, off, label, disabled = false }: {
+function FxToggle({
+  active,
+  onClick,
+  on,
+  off,
+  label,
+  disabled = false,
+}: {
   active: boolean;
   onClick: () => void;
   on: React.ReactNode;
@@ -739,22 +941,46 @@ function FxToggle({ active, onClick, on, off, label, disabled = false }: {
 
 // ── StatCard ───────────────────────────────────────────────────────────────
 
-function StatCard({ label, value, color = "#fff", icon }: { label: string; value: string; color?: string; icon?: React.ReactNode }) {
+function StatCard({
+  label,
+  value,
+  color = "#fff",
+  icon,
+}: {
+  label: string;
+  value: string;
+  color?: string;
+  icon?: React.ReactNode;
+}) {
   return (
     <div
       className="flex flex-col items-center gap-1.5 rounded-xl py-3"
       style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}
     >
       {icon && <div>{icon}</div>}
-      <span className="font-mono text-lg font-bold tabular-nums" style={{ color }}>{value}</span>
-      <span className="text-center text-[0.55rem] font-medium tracking-wider text-white/30">{label}</span>
+      <span className="font-mono text-lg font-bold tabular-nums" style={{ color }}>
+        {value}
+      </span>
+      <span className="text-center text-[0.55rem] font-medium tracking-wider text-white/30">
+        {label}
+      </span>
     </div>
   );
 }
 
 // ── RoundRow ───────────────────────────────────────────────────────────────
 
-function RoundRow({ round, index, lang, isBest }: { round: Round; index: number; lang: string; isBest: boolean }) {
+function RoundRow({
+  round,
+  index,
+  lang,
+  isBest,
+}: {
+  round: Round;
+  index: number;
+  lang: string;
+  isBest: boolean;
+}) {
   return (
     <div
       className="flex items-center gap-3 rounded-lg px-3 py-2"
@@ -762,13 +988,22 @@ function RoundRow({ round, index, lang, isBest }: { round: Round; index: number;
     >
       <span className="w-5 text-right text-xs font-bold text-white/20">{index}</span>
       <Cell label={lang === "el" ? "ΑΝΠ" : "BRE"} value={fmt(round.breatheSecs)} color="#5DCAA5" />
-      <Cell label={lang === "el" ? "ΚΡΤ" : "HLD"} value={fmt(round.holdSecs)}    color={isBest ? "#EF9F27" : "#1D9E75"} />
+      <Cell
+        label={lang === "el" ? "ΚΡΤ" : "HLD"}
+        value={fmt(round.holdSecs)}
+        color={isBest ? "#EF9F27" : "#1D9E75"}
+      />
       <Cell label={lang === "el" ? "ΑΝΚ" : "REC"} value={fmt(round.recoverySecs)} color="#9FE1CB" />
       {round.contractions > 0 && (
         <div className="ml-auto flex flex-col items-end gap-0.5">
           <div className="flex items-center gap-1.5">
-            <span className="font-mono text-xs font-bold" style={{ color: "#EF9F27" }}>{round.contractions}</span>
-            <span className="text-[0.5rem] font-bold tracking-widest" style={{ color: "#EF9F2780" }}>
+            <span className="font-mono text-xs font-bold" style={{ color: "#EF9F27" }}>
+              {round.contractions}
+            </span>
+            <span
+              className="text-[0.5rem] font-bold tracking-widest"
+              style={{ color: "#EF9F2780" }}
+            >
               {lang === "el" ? "ΣΥΣΠ" : "CON"}
             </span>
           </div>
@@ -786,8 +1021,12 @@ function RoundRow({ round, index, lang, isBest }: { round: Round; index: number;
 function Cell({ label, value, color }: { label: string; value: string; color: string }) {
   return (
     <div className="flex flex-col items-center gap-0.5">
-      <span className="text-[0.5rem] font-bold tracking-widest" style={{ color: `${color}80` }}>{label}</span>
-      <span className="font-mono text-xs font-medium tabular-nums" style={{ color }}>{value}</span>
+      <span className="text-[0.5rem] font-bold tracking-widest" style={{ color: `${color}80` }}>
+        {label}
+      </span>
+      <span className="font-mono text-xs font-medium tabular-nums" style={{ color }}>
+        {value}
+      </span>
     </div>
   );
 }
@@ -800,7 +1039,9 @@ function LongPressHint({ color }: { color: string }) {
       <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
         <circle cx="6" cy="6" r="5" stroke={color} strokeWidth="1.2" strokeDasharray="3 2" />
       </svg>
-      <span className="text-[0.55rem] tracking-widest" style={{ color }}>hold 0.8s → recovery</span>
+      <span className="text-[0.55rem] tracking-widest" style={{ color }}>
+        hold 0.8s → recovery
+      </span>
     </div>
   );
 }

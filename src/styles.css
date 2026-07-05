@@ -78,7 +78,12 @@
   --chart-4: oklch(0.6 0.12 230);
   --chart-5: oklch(0.7 0.1 200);
 
-  --gradient-ocean: linear-gradient(160deg, oklch(0.22 0.05 280) 0%, oklch(0.18 0.04 258) 45%, oklch(0.2 0.05 200) 100%);
+  --gradient-ocean: linear-gradient(
+    160deg,
+    oklch(0.22 0.05 280) 0%,
+    oklch(0.18 0.04 258) 45%,
+    oklch(0.2 0.05 200) 100%
+  );
   --gradient-primary: linear-gradient(135deg, oklch(0.66 0.115 168), oklch(0.66 0.115 168));
   --shadow-glow: 0 0 40px -8px oklch(0.66 0.115 168 / 0.45);
   --shadow-card: 0 12px 40px -16px oklch(0.05 0.02 255 / 0.7);
@@ -117,11 +122,8 @@
 
   body {
     background-color: #070a10;
-    background-image: radial-gradient(
-        ellipse 80% 60% at 50% -10%,
-        oklch(0.3 0.08 280 / 0.35),
-        transparent 70%
-      ),
+    background-image:
+      radial-gradient(ellipse 80% 60% at 50% -10%, oklch(0.3 0.08 280 / 0.35), transparent 70%),
       radial-gradient(ellipse 70% 50% at 80% 110%, oklch(0.4 0.1 190 / 0.18), transparent 70%);
     background-attachment: fixed;
     color: var(--color-foreground);
@@ -129,7 +131,10 @@
     -webkit-font-smoothing: antialiased;
   }
 
-  h1, h2, h3, h4 {
+  h1,
+  h2,
+  h3,
+  h4 {
     font-family: var(--font-display);
     letter-spacing: -0.01em;
   }
@@ -188,9 +193,202 @@
   }
 }
 
+/* ── Underwater scene (warm-up player & STA trainer) ─────────────────────── */
+
+.uw-depth {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    #0d4a63 0%,
+    #0a3852 22%,
+    #072a42 45%,
+    #041a2e 70%,
+    #02101d 88%,
+    #020a13 100%
+  );
+}
+
+/* sun disc glow bleeding through the surface */
+.uw-sun {
+  position: absolute;
+  left: -20%;
+  right: -20%;
+  top: -25%;
+  height: 70%;
+  background: radial-gradient(
+    ellipse 55% 60% at 50% 0%,
+    rgba(150, 225, 245, 0.5),
+    rgba(90, 190, 220, 0.22) 40%,
+    transparent 72%
+  );
+  filter: blur(6px);
+  animation: uw-sun-pulse 9s ease-in-out infinite alternate;
+  will-change: opacity, transform;
+}
+
+@keyframes uw-sun-pulse {
+  from {
+    opacity: 0.75;
+    transform: scale(1);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+}
+
+/* god rays — skinny blurred beams swaying from the surface */
+.uw-ray {
+  position: absolute;
+  top: -12%;
+  height: 120%;
+  transform-origin: 50% 0%;
+  background: linear-gradient(
+    to bottom,
+    rgba(170, 230, 250, 0.5) 0%,
+    rgba(140, 215, 240, 0.2) 40%,
+    transparent 78%
+  );
+  filter: blur(9px);
+  mix-blend-mode: screen;
+  animation:
+    uw-ray-sway var(--ray-dur, 15s) ease-in-out infinite alternate,
+    uw-ray-pulse calc(var(--ray-dur, 15s) * 0.8) ease-in-out infinite alternate;
+  will-change: transform, opacity;
+}
+
+@keyframes uw-ray-sway {
+  from {
+    transform: rotate(calc(var(--ray-rot, 0deg) - 2.5deg));
+  }
+  to {
+    transform: rotate(calc(var(--ray-rot, 0deg) + 2.5deg));
+  }
+}
+
+@keyframes uw-ray-pulse {
+  from {
+    opacity: calc(var(--ray-o, 0.5) * 0.45);
+  }
+  to {
+    opacity: var(--ray-o, 0.5);
+  }
+}
+
+/* caustic light shimmer near the surface */
+.uw-caustic {
+  position: absolute;
+  left: -10%;
+  right: -10%;
+  top: 0;
+  height: 45%;
+  background:
+    radial-gradient(ellipse 25% 55% at 20% 8%, rgba(150, 230, 250, 0.28), transparent 70%),
+    radial-gradient(ellipse 30% 45% at 65% 4%, rgba(120, 215, 245, 0.22), transparent 70%),
+    radial-gradient(ellipse 20% 40% at 90% 10%, rgba(150, 230, 250, 0.16), transparent 70%);
+  mix-blend-mode: screen;
+  filter: blur(14px);
+  animation: uw-caustic-drift 26s ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+@keyframes uw-caustic-drift {
+  from {
+    transform: translateX(-4%);
+  }
+  to {
+    transform: translateX(4%);
+  }
+}
+
+/* marine snow — tiny motes sinking slowly */
+.uw-mote {
+  position: absolute;
+  top: -3%;
+  border-radius: 9999px;
+  background: rgba(210, 240, 250, 0.5);
+  box-shadow: 0 0 6px rgba(180, 235, 250, 0.35);
+  animation: uw-mote-fall var(--mote-dur, 30s) linear infinite;
+  will-change: transform, opacity;
+}
+
+@keyframes uw-mote-fall {
+  0% {
+    transform: translate(0, 0);
+    opacity: 0;
+  }
+  8% {
+    opacity: 0.7;
+  }
+  55% {
+    transform: translate(var(--mote-drift, 12px), 55vh);
+  }
+  90% {
+    opacity: 0.4;
+  }
+  100% {
+    transform: translate(0, 106vh);
+    opacity: 0;
+  }
+}
+
+/* darken edges & bottom so timers/text stay readable over the scene */
+.uw-vignette {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 120% 90% at 50% 40%, transparent 55%, rgba(2, 8, 15, 0.6) 100%),
+    linear-gradient(to bottom, transparent 62%, rgba(2, 8, 15, 0.55) 100%);
+}
+
+/* ── Logo breath pacer (comet sweeping around the breath mark) ───────────── */
+
+.pacer-sweep {
+  animation: pacer-sweep var(--sweep-dur, 8s) linear infinite;
+}
+
+@keyframes pacer-sweep {
+  from {
+    stroke-dashoffset: 0;
+  }
+  to {
+    stroke-dashoffset: -100;
+  }
+}
+
+.pacer-core {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: pacer-core var(--sweep-dur, 8s) ease-in-out infinite;
+}
+
+@keyframes pacer-core {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(0.92);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .bubble {
     animation: none;
+    display: none;
+  }
+  .uw-sun,
+  .uw-ray,
+  .uw-caustic,
+  .uw-mote,
+  .pacer-sweep,
+  .pacer-core {
+    animation: none;
+  }
+  .uw-mote {
     display: none;
   }
 }
