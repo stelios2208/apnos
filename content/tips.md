@@ -10,6 +10,7 @@
 ---
 
 ### [buddy] · safety
+
 - **Τίτλος (EL):** Ποτέ μόνος — πάντα με buddy
 - **Title (EN):** Never alone — always with a buddy
 
@@ -22,6 +23,7 @@ Never do apnea alone — not in the pool, not in open water, not dry-static near
 ---
 
 ### [supervision] · safety
+
 - **Τίτλος (EL):** Άμεση επιτήρηση & επιφάνεια 30''
 - **Title (EN):** Direct supervision & 30s at the surface
 
@@ -34,6 +36,7 @@ Your buddy actively supervises the most dangerous phase: the ascent and the firs
 ---
 
 ### [surface-protocol] · safety
+
 - **Τίτλος (EL):** Πρωτόκολλο επιφάνειας
 - **Title (EN):** Surface protocol
 
@@ -46,6 +49,7 @@ On surfacing: hold the float, remove noseclip/mask, do hook breaths, give the OK
 ---
 
 ### [no-hyperventilation] · safety
+
 - **Τίτλος (EL):** Όχι υπεραερισμός
 - **Title (EN):** No hyperventilation
 
@@ -58,6 +62,7 @@ Hyperventilation (fast deep breaths) does NOT add oxygen — it only lowers CO2 
 ---
 
 ### [samba-bo] · safety
+
 - **Τίτλος (EL):** Αναγνώρισε samba & blackout
 - **Title (EN):** Recognise samba & blackout
 
@@ -70,6 +75,7 @@ LMC ("samba") is loss of motor control; blackout is loss of consciousness. Both 
 ---
 
 ### [frenzel] · eq
+
 - **Τίτλος (EL):** Frenzel, όχι Valsalva
 - **Title (EN):** Frenzel, not Valsalva
 
@@ -82,6 +88,7 @@ Valsalva (pushing from the lungs/diaphragm) becomes impossible at depth and wast
 ---
 
 ### [eq-early] · eq
+
 - **Τίτλος (EL):** Εξίσωσε νωρίς & συχνά
 - **Title (EN):** Equalize early & often
 
@@ -94,6 +101,7 @@ Don't wait to feel pressure. Equalize before the dive at the surface, then conti
 ---
 
 ### [mouthfill] · eq · premium
+
 - **Τίτλος (EL):** Mouthfill (προχωρημένο)
 - **Title (EN):** Mouthfill (advanced)
 
@@ -106,6 +114,7 @@ For deeper dives, you fill the mouth with air before approaching residual volume
 ---
 
 ### [visualization] · mental
+
 - **Τίτλος (EL):** Οπτικοποίηση της βουτιάς
 - **Title (EN):** Visualize the dive
 
@@ -118,6 +127,7 @@ Before you dive, mentally rehearse the whole thing: the final breath, the descen
 ---
 
 ### [long-exhale] · mental
+
 - **Τίτλος (EL):** Μεγαλύτερη εκπνοή = ηρεμία
 - **Title (EN):** Longer exhale = calm
 
@@ -130,6 +140,7 @@ Exhaling activates the parasympathetic nervous system. Make your exhale about tw
 ---
 
 ### [contractions-ok] · mental
+
 - **Τίτλος (EL):** Οι συσπάσεις είναι φυσιολογικές
 - **Title (EN):** Contractions are normal
 
@@ -142,6 +153,7 @@ Diaphragm contractions signal rising CO2 — they do NOT mean you're out of oxyg
 ---
 
 ### [breathe-up] · relax
+
 - **Τίτλος (EL):** Ήρεμο breathe-up
 - **Title (EN):** Calm breathe-up
 
@@ -154,6 +166,7 @@ Breathe slowly and diaphragmatically for 1–2 minutes before the attempt: relax
 ---
 
 ### [body-scan] · relax
+
 - **Τίτλος (EL):** Σάρωση σώματος
 - **Title (EN):** Body scan
 
@@ -166,6 +179,7 @@ During the breathe-up, mentally pass through each body part — shoulders, jaw, 
 ---
 
 ### [glide-dyn] · technique
+
 - **Τίτλος (EL):** Streamline & glide στη Δυναμική
 - **Title (EN):** Streamline & glide in Dynamic
 
@@ -178,6 +192,7 @@ In dynamic, speed wastes oxygen. Aim for a clean streamline (arms extended, head
 ---
 
 ### [duck-dive] · technique
+
 - **Τίτλος (EL):** Καθαρό duck dive
 - **Title (EN):** Clean duck dive
 
@@ -190,4 +205,5 @@ At depth, a clean duck dive gets you vertical with minimal energy. Bend at the w
 ---
 
 ## Θέλεις να προσθέσεις νέα κάρτα;
+
 Αντίγραψε ένα μπλοκ, βάλε δικό σου `[id]` (μικρά, με παύλες), διάλεξε category, και γράψε τα κείμενα.

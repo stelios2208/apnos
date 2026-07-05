@@ -5,7 +5,7 @@
 export interface ShareCardData {
   athleteName: string;
   disciplineLabel: string;
-  resultLabel: string;   // "5:30" or "150 m"
+  resultLabel: string; // "5:30" or "150 m"
   dateLabel: string;
   isPB: boolean;
   lang: string;
@@ -27,12 +27,24 @@ const FONT = "Inter, 'Helvetica Neue', Arial, sans-serif";
 
 function bubbles(): string {
   const spec = [
-    [140, 1180, 10], [230, 1240, 6], [330, 1120, 14], [180, 980, 5],
-    [860, 1200, 12], [780, 1090, 7], [940, 1250, 9], [700, 1260, 5],
-    [520, 1180, 8], [610, 1130, 6], [420, 1240, 7], [90, 1080, 6],
+    [140, 1180, 10],
+    [230, 1240, 6],
+    [330, 1120, 14],
+    [180, 980, 5],
+    [860, 1200, 12],
+    [780, 1090, 7],
+    [940, 1250, 9],
+    [700, 1260, 5],
+    [520, 1180, 8],
+    [610, 1130, 6],
+    [420, 1240, 7],
+    [90, 1080, 6],
   ];
   return spec
-    .map(([cx, cy, r], i) => `<circle cx="${cx}" cy="${cy}" r="${r}" fill="#9FE1CB" opacity="${(0.1 + (i % 4) * 0.06).toFixed(2)}"/>`)
+    .map(
+      ([cx, cy, r], i) =>
+        `<circle cx="${cx}" cy="${cy}" r="${r}" fill="#9FE1CB" opacity="${(0.1 + (i % 4) * 0.06).toFixed(2)}"/>`,
+    )
     .join("");
 }
 
@@ -114,8 +126,8 @@ export interface ProgramCardData {
   disciplineCode: string;
   disciplineLabel: string;
   accent: string;
-  lines: string[];       // one readable line per set/round
-  footerName: string;    // coach or athlete name
+  lines: string[]; // one readable line per set/round
+  footerName: string; // coach or athlete name
   lang: string;
 }
 
@@ -124,16 +136,22 @@ export function buildProgramSvg(d: ProgramCardData): string {
   const shown = d.lines.slice(0, MAX);
   const extra = d.lines.length - shown.length;
   const trunc = (s: string) => (s.length > 42 ? s.slice(0, 41) + "…" : s);
-  const y0 = 640, step = 62;
+  const y0 = 640,
+    step = 62;
 
-  const lineEls = shown.map((ln, i) => {
-    const y = y0 + i * step;
-    return `<circle cx="150" cy="${y - 11}" r="5" fill="${d.accent}"/>`
-      + `<text x="180" y="${y}" font-family="${FONT}" font-size="34" font-weight="500" fill="#e8f2ee">${esc(trunc(ln))}</text>`;
-  }).join("");
-  const extraEl = extra > 0
-    ? `<text x="540" y="${y0 + shown.length * step + 12}" text-anchor="middle" font-family="${FONT}" font-size="28" font-weight="600" fill="#5DCAA5">+${extra} ${d.lang === "el" ? "ακόμα" : "more"}</text>`
-    : "";
+  const lineEls = shown
+    .map((ln, i) => {
+      const y = y0 + i * step;
+      return (
+        `<circle cx="150" cy="${y - 11}" r="5" fill="${d.accent}"/>` +
+        `<text x="180" y="${y}" font-family="${FONT}" font-size="34" font-weight="500" fill="#e8f2ee">${esc(trunc(ln))}</text>`
+      );
+    })
+    .join("");
+  const extraEl =
+    extra > 0
+      ? `<text x="540" y="${y0 + shown.length * step + 12}" text-anchor="middle" font-family="${FONT}" font-size="28" font-weight="600" fill="#5DCAA5">+${extra} ${d.lang === "el" ? "ακόμα" : "more"}</text>`
+      : "";
   const title = d.title.length > 26 ? d.title.slice(0, 25) + "…" : d.title;
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
@@ -198,7 +216,10 @@ export async function svgToPngBlob(svg: string): Promise<Blob> {
       canvas.width = W;
       canvas.height = H;
       const ctx = canvas.getContext("2d");
-      if (!ctx) { reject(new Error("no canvas context")); return; }
+      if (!ctx) {
+        reject(new Error("no canvas context"));
+        return;
+      }
       ctx.drawImage(img, 0, 0, W, H);
       canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("toBlob failed"))), "image/png");
     };

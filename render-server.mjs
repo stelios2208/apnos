@@ -31,17 +31,17 @@ const clientDir = existsSync(join(__dirname, ".output", "public"))
 const port = parseInt(process.env.PORT || "10000", 10);
 
 const MIME = {
-  ".js":    "application/javascript; charset=utf-8",
-  ".mjs":   "application/javascript; charset=utf-8",
-  ".css":   "text/css; charset=utf-8",
-  ".html":  "text/html; charset=utf-8",
-  ".json":  "application/json; charset=utf-8",
-  ".svg":   "image/svg+xml",
-  ".png":   "image/png",
-  ".jpg":   "image/jpeg",
-  ".ico":   "image/x-icon",
-  ".txt":   "text/plain; charset=utf-8",
-  ".woff":  "font/woff",
+  ".js": "application/javascript; charset=utf-8",
+  ".mjs": "application/javascript; charset=utf-8",
+  ".css": "text/css; charset=utf-8",
+  ".html": "text/html; charset=utf-8",
+  ".json": "application/json; charset=utf-8",
+  ".svg": "image/svg+xml",
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".ico": "image/x-icon",
+  ".txt": "text/plain; charset=utf-8",
+  ".woff": "font/woff",
   ".woff2": "font/woff2",
 };
 
@@ -59,9 +59,15 @@ function serveStatic(req, res) {
   const isHashed = pathname.startsWith("/assets/");
 
   res.setHeader("Content-Type", mime);
-  res.setHeader("Cache-Control", isHashed ? "public, max-age=31536000, immutable" : "public, max-age=3600");
+  res.setHeader(
+    "Cache-Control",
+    isHashed ? "public, max-age=31536000, immutable" : "public, max-age=3600",
+  );
   res.writeHead(200);
-  if (req.method === "HEAD") { res.end(); return true; }
+  if (req.method === "HEAD") {
+    res.end();
+    return true;
+  }
   createReadStream(filePath).pipe(res);
   return true;
 }
@@ -103,7 +109,9 @@ const server = createServer(async (req, res) => {
       : handler.fetch(webReq, {}, {}));
 
     const resHeaders = {};
-    webRes.headers.forEach((val, key) => { resHeaders[key] = val; });
+    webRes.headers.forEach((val, key) => {
+      resHeaders[key] = val;
+    });
     res.writeHead(webRes.status, resHeaders);
 
     const buf = await webRes.arrayBuffer();

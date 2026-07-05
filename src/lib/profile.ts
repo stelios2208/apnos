@@ -7,7 +7,7 @@ export type Gender = "" | "male" | "female" | "other";
 
 export interface AthleteProfile {
   displayName: string;
-  birthdate: string;      // ISO "YYYY-MM-DD" or ""
+  birthdate: string; // ISO "YYYY-MM-DD" or ""
   gender: Gender;
   heightCm: number | null;
   weightKg: number | null;
@@ -46,15 +46,20 @@ function coerce(meta: Record<string, unknown> | undefined): AthleteProfile {
   const base = emptyProfile();
   const p = (meta?.profile ?? {}) as Partial<AthleteProfile>;
   return {
-    displayName: typeof p.displayName === "string" ? p.displayName : (typeof meta?.name === "string" ? meta.name as string : ""),
-    birthdate:   typeof p.birthdate === "string" ? p.birthdate : base.birthdate,
-    gender:      (p.gender as Gender) ?? base.gender,
-    heightCm:    typeof p.heightCm === "number" ? p.heightCm : base.heightCm,
-    weightKg:    typeof p.weightKg === "number" ? p.weightKg : base.weightKg,
-    country:     typeof p.country === "string" ? p.country : base.country,
-    city:        typeof p.city === "string" ? p.city : base.city,
-    bio:         typeof p.bio === "string" ? p.bio : base.bio,
-    isPublic:    typeof p.isPublic === "boolean" ? p.isPublic : base.isPublic,
+    displayName:
+      typeof p.displayName === "string"
+        ? p.displayName
+        : typeof meta?.name === "string"
+          ? (meta.name as string)
+          : "",
+    birthdate: typeof p.birthdate === "string" ? p.birthdate : base.birthdate,
+    gender: (p.gender as Gender) ?? base.gender,
+    heightCm: typeof p.heightCm === "number" ? p.heightCm : base.heightCm,
+    weightKg: typeof p.weightKg === "number" ? p.weightKg : base.weightKg,
+    country: typeof p.country === "string" ? p.country : base.country,
+    city: typeof p.city === "string" ? p.city : base.city,
+    bio: typeof p.bio === "string" ? p.bio : base.bio,
+    isPublic: typeof p.isPublic === "boolean" ? p.isPublic : base.isPublic,
   };
 }
 

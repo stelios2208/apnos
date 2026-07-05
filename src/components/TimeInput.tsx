@@ -33,7 +33,9 @@ export function TimeInput({ value, onChange }: TimeInputProps) {
           aria-label={t("common.minutes")}
           className="text-center text-lg tabular-nums"
         />
-        <p className="mt-1 text-center text-[0.65rem] text-muted-foreground">{t("common.minutes")}</p>
+        <p className="mt-1 text-center text-[0.65rem] text-muted-foreground">
+          {t("common.minutes")}
+        </p>
       </div>
       <span className="pb-5 text-xl font-bold text-muted-foreground">:</span>
       <div className="flex-1">
@@ -48,7 +50,9 @@ export function TimeInput({ value, onChange }: TimeInputProps) {
           aria-label={t("common.seconds")}
           className="text-center text-lg tabular-nums"
         />
-        <p className="mt-1 text-center text-[0.65rem] text-muted-foreground">{t("common.seconds")}</p>
+        <p className="mt-1 text-center text-[0.65rem] text-muted-foreground">
+          {t("common.seconds")}
+        </p>
       </div>
     </div>
   );

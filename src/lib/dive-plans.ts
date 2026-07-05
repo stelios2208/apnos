@@ -8,17 +8,17 @@ import type { DisciplineCode } from "./diving";
 
 export interface DivePlan {
   id: string;
-  date: string;          // YYYY-MM-DD
+  date: string; // YYYY-MM-DD
   discipline: DisciplineCode;
-  topTime: string;       // "HH:MM" official top (empty = not timed)
-  target: string;        // display string: "5:30", "150", "-40"
+  topTime: string; // "HH:MM" official top (empty = not timed)
+  target: string; // display string: "5:30", "150", "-40"
   warmupId: string | null;
-  warmupName: string;    // denormalised for display
-  warmupMins: number;    // minutes before top that the warm-up starts
-  programName?: string;  // optional loaded coach programme (reference)
-  sleepGoal: string;     // e.g. "8" (hours) — desired
+  warmupName: string; // denormalised for display
+  warmupMins: number; // minutes before top that the warm-up starts
+  programName?: string; // optional loaded coach programme (reference)
+  sleepGoal: string; // e.g. "8" (hours) — desired
   notes: string;
-  wetStatic: boolean;    // STA only: wet (face-down) vs dry
+  wetStatic: boolean; // STA only: wet (face-down) vs dry
   createdAt: number;
 }
 
@@ -38,7 +38,11 @@ export function loadPlans(): DivePlan[] {
 }
 
 export function savePlans(list: DivePlan[]): void {
-  try { localStorage.setItem(STORE_KEY, JSON.stringify(list)); } catch { /* ignore */ }
+  try {
+    localStorage.setItem(STORE_KEY, JSON.stringify(list));
+  } catch {
+    /* ignore */
+  }
 }
 
 export function upsertPlan(p: DivePlan): DivePlan[] {

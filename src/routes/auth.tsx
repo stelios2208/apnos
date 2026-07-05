@@ -58,38 +58,45 @@ function AuthPage() {
       <Bubbles />
 
       {/* subtle top glow */}
-      <div className="pointer-events-none absolute inset-0" style={{
-        background: "radial-gradient(ellipse 70% 40% at 50% -5%, rgba(29,158,117,0.15), transparent 60%)",
-      }} />
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(ellipse 70% 40% at 50% -5%, rgba(29,158,117,0.15), transparent 60%)",
+        }}
+      />
 
       <div className="relative mx-auto flex min-h-screen w-full max-w-sm flex-col px-5 py-8">
-
         {/* HEADER */}
         <header className="mb-12">
           <Logo />
         </header>
 
         <main className="flex flex-1 flex-col justify-center gap-6">
-
           {/* TITLE */}
           <div className="mb-2">
             <h1 className="text-xl font-semibold text-white">
               {mode === "login"
-                ? (lang === "el" ? "Καλώς ήρθες πίσω" : "Welcome back")
-                : (lang === "el" ? "Δημιούργησε λογαριασμό" : "Create account")
-              }
+                ? lang === "el"
+                  ? "Καλώς ήρθες πίσω"
+                  : "Welcome back"
+                : lang === "el"
+                  ? "Δημιούργησε λογαριασμό"
+                  : "Create account"}
             </h1>
             <p className="text-xs text-white/40 mt-1">
               {mode === "login"
-                ? (lang === "el" ? "Βούτα ξανά." : "Dive back in.")
-                : (lang === "el" ? "Ξεκίνα να καταγράφεις τις βουτιές σου." : "Start tracking your dives.")
-              }
+                ? lang === "el"
+                  ? "Βούτα ξανά."
+                  : "Dive back in."
+                : lang === "el"
+                  ? "Ξεκίνα να καταγράφεις τις βουτιές σου."
+                  : "Start tracking your dives."}
             </p>
           </div>
 
           {/* FORM */}
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-
             {/* Email */}
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-medium text-white/60 uppercase tracking-wider">
@@ -107,8 +114,8 @@ function AuthPage() {
                   background: "#0d1320",
                   border: "1px solid rgba(255,255,255,0.08)",
                 }}
-                onFocus={(e) => e.target.style.borderColor = "rgba(93,202,165,0.6)"}
-                onBlur={(e) => e.target.style.borderColor = "rgba(255,255,255,0.08)"}
+                onFocus={(e) => (e.target.style.borderColor = "rgba(93,202,165,0.6)")}
+                onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.08)")}
               />
             </div>
 
@@ -130,8 +137,8 @@ function AuthPage() {
                   background: "#0d1320",
                   border: "1px solid rgba(255,255,255,0.08)",
                 }}
-                onFocus={(e) => e.target.style.borderColor = "rgba(93,202,165,0.6)"}
-                onBlur={(e) => e.target.style.borderColor = "rgba(255,255,255,0.08)"}
+                onFocus={(e) => (e.target.style.borderColor = "rgba(93,202,165,0.6)")}
+                onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.08)")}
               />
             </div>
 
@@ -145,21 +152,28 @@ function AuthPage() {
               }}
             >
               {submitting
-                ? (lang === "el" ? "Παρακαλώ περιμένετε..." : "Please wait...")
+                ? lang === "el"
+                  ? "Παρακαλώ περιμένετε..."
+                  : "Please wait..."
                 : mode === "login"
-                  ? (lang === "el" ? "Σύνδεση" : "Sign in")
-                  : (lang === "el" ? "Δημιουργία λογαριασμού" : "Create account")
-              }
+                  ? lang === "el"
+                    ? "Σύνδεση"
+                    : "Sign in"
+                  : lang === "el"
+                    ? "Δημιουργία λογαριασμού"
+                    : "Create account"}
             </button>
-
           </form>
 
           {/* SWITCH MODE */}
           <p className="text-center text-xs text-white/30">
             {mode === "login"
-              ? (lang === "el" ? "Νέος στο Apnos;" : "New to Apnos?")
-              : (lang === "el" ? "Έχεις ήδη λογαριασμό;" : "Already have an account?")
-            }{" "}
+              ? lang === "el"
+                ? "Νέος στο Apnos;"
+                : "New to Apnos?"
+              : lang === "el"
+                ? "Έχεις ήδη λογαριασμό;"
+                : "Already have an account?"}{" "}
             <button
               type="button"
               className="font-semibold transition-colors hover:text-[#5DCAA5]"
@@ -167,12 +181,14 @@ function AuthPage() {
               onClick={() => setMode(mode === "login" ? "register" : "login")}
             >
               {mode === "login"
-                ? (lang === "el" ? "Δημιούργησε έναν" : "Create one")
-                : (lang === "el" ? "Σύνδεση" : "Sign in")
-              }
+                ? lang === "el"
+                  ? "Δημιούργησε έναν"
+                  : "Create one"
+                : lang === "el"
+                  ? "Σύνδεση"
+                  : "Sign in"}
             </button>
           </p>
-
         </main>
 
         {/* FOOTER */}
@@ -181,7 +197,6 @@ function AuthPage() {
             breathe · dive · repeat
           </p>
         </footer>
-
       </div>
     </div>
   );

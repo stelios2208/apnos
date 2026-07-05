@@ -39,7 +39,10 @@ export class MissingTableError extends Error {}
 
 function isMissingTable(err: { code?: string; message?: string } | null): boolean {
   if (!err) return false;
-  return err.code === "42P01" || /relation .*competition_results.* does not exist/i.test(err.message ?? "");
+  return (
+    err.code === "42P01" ||
+    /relation .*competition_results.* does not exist/i.test(err.message ?? "")
+  );
 }
 
 // ── group helper (Pool vs Depth = πισίνα vs θάλασσα) ─────────────────────────

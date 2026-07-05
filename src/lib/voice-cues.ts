@@ -34,7 +34,9 @@ export async function deleteCue(uid: string, lang: string, key: CueKey): Promise
 // A cache-busting param keyed on updated_at forces fresh audio after re-record.
 export async function listCueUrls(uid: string, lang: string): Promise<Map<CueKey, string>> {
   const map = new Map<CueKey, string>();
-  const { data, error } = await supabase.storage.from(BUCKET).list(`${uid}/${normLang(lang)}`, { limit: 100 });
+  const { data, error } = await supabase.storage
+    .from(BUCKET)
+    .list(`${uid}/${normLang(lang)}`, { limit: 100 });
   if (error || !data) return map;
   for (const f of data) {
     const key = f.name as CueKey;
