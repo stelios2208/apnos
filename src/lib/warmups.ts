@@ -92,9 +92,9 @@ export const WARMUP_PRESETS: WarmupPreset[] = [
     name_el: "Αναπνοή 4-7-8",
     name_en: "4-7-8 Breath",
     desc_el:
-      "Εισπνοή 4″ / Κράτα 7″ / Εκπνοή 8″ — η μακριά εκπνοή διεγείρει το πνευμονογαστρικό νεύρο· ιδανική για ύπνο ή αποφόρτιση.",
+      "Εισπνοή 4″ / Κράτα 7″ / Εκπνοή 8″ — οι ασκήσεις αναπνοής 4-7-8 διεγείρουν το παρασυμπαθητικό νευρικό σύστημα· ιδανική για ύπνο ή αποφόρτιση.",
     desc_en:
-      "Inhale 4s / Hold 7s / Exhale 8s — the long exhale stimulates the vagus nerve; ideal for sleep or downshifting.",
+      "Inhale 4s / Hold 7s / Exhale 8s — 4-7-8 breathing stimulates the parasympathetic nervous system; ideal for sleep or downshifting.",
     level: "beginner",
     purpose_el: "Βαθιά χαλάρωση",
     purpose_en: "Deep relaxation",
