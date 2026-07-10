@@ -135,28 +135,28 @@ export const WARMUP_PRESETS: WarmupPreset[] = [
     name_el: "CO₂ Ανοχή",
     name_en: "CO₂ Tolerance",
     desc_el:
-      "Σταθερές κρατήσεις 1:00 με μειούμενη ξεκούραση — μαθαίνει το σώμα να ανέχεται το ανεβασμένο CO₂, την πρώτη αιτία του «θέλω να αναπνεύσω».",
+      "Για αρχάριους. Σταθερές κρατήσεις 0:45 με μειούμενη ξεκούραση — μαθαίνει το σώμα να ανέχεται το ανεβασμένο CO₂, την πρώτη αιτία του «θέλω να αναπνεύσω».",
     desc_en:
-      "Fixed 1:00 holds with shrinking rest — teaches the body to tolerate rising CO₂, the main source of the urge to breathe.",
-    level: "intermediate",
+      "Beginner-friendly. Fixed 0:45 holds with shrinking rest — teaches the body to tolerate rising CO₂, the main source of the urge to breathe.",
+    level: "beginner",
     purpose_el: "Ανοχή στο CO₂",
     purpose_en: "CO₂ tolerance",
     accent: "#EF9F27",
-    steps: [b(120), h(60), r(105), h(60), r(90), h(60), r(75), h(60), r(60), h(60)],
+    steps: [b(120), h(45), r(105), h(45), r(90), h(45), r(75), h(45), r(60), h(45)],
   },
   {
     id: "o2",
     name_el: "O₂ Πρόοδος",
     name_en: "O₂ Progressive",
     desc_el:
-      "Σταθερή ξεκούραση 2:00 με ανεβαίνουσες κρατήσεις — προσαρμογή του σώματος στη λειτουργία με λιγότερο οξυγόνο.",
+      "Για αρχάριους. Σταθερή ξεκούραση 2:00 με κρατήσεις 0:45→1:30 — προσαρμογή του σώματος στη λειτουργία με λιγότερο οξυγόνο.",
     desc_en:
-      "Fixed 2:00 rest with increasing holds — adapts the body to functioning on less oxygen.",
-    level: "advanced",
+      "Beginner-friendly. Fixed 2:00 rest with 0:45→1:30 holds — adapts the body to functioning on less oxygen.",
+    level: "beginner",
     purpose_el: "Αντοχή σε χαμηλό O₂",
     purpose_en: "Low-O₂ endurance",
     accent: "#5DCAA5",
-    steps: [b(120), h(60), r(120), h(90), r(120), h(120), r(120), h(150)],
+    steps: [b(120), h(45), r(120), h(60), r(120), h(75), r(120), h(90)],
   },
 ];
 
@@ -226,6 +226,14 @@ export function presetTotalSecs(p: WarmupPreset): number {
 
 export function holdCount(p: WarmupPreset): number {
   return p.steps.filter((s) => s.kind === "hold").length;
+}
+
+/** Longest single hold in the preset, 0 if it has none — used to log a
+ * completed run as an STA dive result (a max hold is a safer "result" than
+ * summing every hold, since these are pre-set targets, not a max attempt). */
+export function maxHoldSecs(p: WarmupPreset): number {
+  const holds = p.steps.filter((s) => s.kind === "hold").map((s) => s.secs);
+  return holds.length > 0 ? Math.max(...holds) : 0;
 }
 
 // ── Rounds view ──────────────────────────────────────────────────────────────

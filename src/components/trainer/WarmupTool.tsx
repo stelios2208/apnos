@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import type { LucideIcon } from "lucide-react";
 import {
   ArrowLeft,
@@ -33,6 +35,7 @@ import {
   WARMUP_ACCENTS,
   presetTotalSecs,
   holdCount,
+  maxHoldSecs,
   fmtClock,
   loadCustomWarmups,
   upsertCustomWarmup,
@@ -42,6 +45,7 @@ import {
   stepsFromRounds,
   newRound,
 } from "@/lib/warmups";
+import { logStaHold } from "@/lib/dives";
 import { useSessionFx } from "@/hooks/use-session-fx";
 import { UnderwaterScene } from "@/components/UnderwaterScene";
 import { LogoBreathPacer } from "@/components/LogoBreathPacer";
@@ -98,13 +102,27 @@ function sweepDuration(step: WarmupStep): number {
 
 export function WarmupTool({ onBack }: { onBack: () => void }) {
   const sfx = useSessionFx();
-  const { lang, buzz, cue, setEnginePhase, stopEngine, stopAudio, holdTick, resetHoldAlerts } = sfx;
+  const {
+    lang,
+    user,
+    buzz,
+    cue,
+    setEnginePhase,
+    stopEngine,
+    stopAudio,
+    holdTick,
+    resetHoldAlerts,
+  } = sfx;
+  const queryClient = useQueryClient();
 
   const [preset, setPreset] = useState<WarmupPreset | null>(null);
   const [stepIndex, setStepIndex] = useState(0);
   const [remaining, setRemaining] = useState(0);
   const [paused, setPaused] = useState(false);
   const [done, setDone] = useState(false);
+  const [completedPreset, setCompletedPreset] = useState<WarmupPreset | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
 
   const [customs, setCustoms] = useState<WarmupPreset[]>(() => loadCustomWarmups());
   const [builder, setBuilder] = useState<WarmupPreset | null>(null);
@@ -144,15 +162,36 @@ export function WarmupTool({ onBack }: { onBack: () => void }) {
     setRemaining(p.steps[0]!.secs);
     setPaused(false);
     setDone(false);
+    setSaved(false);
     applyStepFx(p.steps[0]!);
   };
 
   const finish = useCallback(() => {
     stopAudio();
     buzz([200, 100, 200, 100, 200]);
+    setCompletedPreset(presetRef.current);
     setDone(true);
     setPreset(null);
   }, [stopAudio, buzz]);
+
+  const handleLogDive = useCallback(async () => {
+    if (!user || !completedPreset || saving) return;
+    setSaving(true);
+    const best = maxHoldSecs(completedPreset);
+    const name = lang === "el" ? completedPreset.name_el : completedPreset.name_en;
+    const notes = `Warm-up — ${name}\nBest hold: ${fmtClock(best)}`;
+    try {
+      await logStaHold(user.id, best, notes);
+      queryClient.invalidateQueries({ queryKey: ["dives", user.id] });
+      setSaved(true);
+      toast.success(lang === "el" ? "Καταγράφηκε ως βουτιά STA" : "Logged as an STA dive");
+    } catch (e) {
+      console.error(e);
+      toast.error(lang === "el" ? "Σφάλμα καταγραφής" : "Log failed");
+    } finally {
+      setSaving(false);
+    }
+  }, [user, completedPreset, saving, lang, queryClient]);
 
   const advance = useCallback(() => {
     const p = presetRef.current;
@@ -220,6 +259,12 @@ export function WarmupTool({ onBack }: { onBack: () => void }) {
     }, 1000);
     return () => clearInterval(id);
   }, [preset, paused, done, advance, holdTick]);
+
+  // Opens the builder pre-filled with a copy of a built-in preset — saving
+  // creates the user's own editable variant, the original stays untouched.
+  const handleEditPreset = (p: WarmupPreset) => {
+    setBuilder({ ...p, id: crypto.randomUUID(), custom: true });
+  };
 
   // ── custom warm-up builder ──────────────────────────────────────────────────
   const saveBuilder = (p: WarmupPreset) => {
@@ -419,15 +464,42 @@ export function WarmupTool({ onBack }: { onBack: () => void }) {
 
         {done && (
           <div
-            className="mt-5 flex items-center gap-3 rounded-2xl px-4 py-4"
+            className="mt-5 flex flex-col gap-3 rounded-2xl px-4 py-4"
             style={{ background: "rgba(29,158,117,0.1)", border: "1px solid rgba(29,158,117,0.3)" }}
           >
-            <Check className="size-5 shrink-0" style={{ color: "#1D9E75" }} />
-            <span className="text-sm font-semibold text-white/80">
-              {lang === "el"
-                ? "Το ζέσταμα ολοκληρώθηκε — καλή προπόνηση!"
-                : "Warm-up complete — enjoy your session!"}
-            </span>
+            <div className="flex items-center gap-3">
+              <Check className="size-5 shrink-0" style={{ color: "#1D9E75" }} />
+              <span className="text-sm font-semibold text-white/80">
+                {lang === "el"
+                  ? "Το ζέσταμα ολοκληρώθηκε — καλή προπόνηση!"
+                  : "Warm-up complete — enjoy your session!"}
+              </span>
+            </div>
+            {user && completedPreset && holdCount(completedPreset) > 0 && (
+              <button
+                onClick={handleLogDive}
+                disabled={saving || saved}
+                className="flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold transition-all"
+                style={{
+                  background: saved ? "rgba(29,158,117,0.2)" : "rgba(255,255,255,0.06)",
+                  color: saved ? "#5DCAA5" : "rgba(255,255,255,0.75)",
+                  border: `1px solid ${saved ? "rgba(29,158,117,0.4)" : "rgba(255,255,255,0.1)"}`,
+                }}
+              >
+                {saved ? <Check className="size-4" /> : null}
+                {saved
+                  ? lang === "el"
+                    ? "Καταγράφηκε ✓"
+                    : "Logged ✓"
+                  : saving
+                    ? lang === "el"
+                      ? "Καταγραφή…"
+                      : "Logging…"
+                    : lang === "el"
+                      ? `Καταγραφή ως βουτιά STA (${fmtClock(maxHoldSecs(completedPreset))})`
+                      : `Log as STA dive (${fmtClock(maxHoldSecs(completedPreset))})`}
+              </button>
+            )}
           </div>
         )}
 
@@ -447,6 +519,7 @@ export function WarmupTool({ onBack }: { onBack: () => void }) {
           presets={beginnerPresets}
           lang={lang}
           onStart={startPreset}
+          onEdit={handleEditPreset}
         />
 
         {/* hold warm-ups */}
@@ -455,6 +528,7 @@ export function WarmupTool({ onBack }: { onBack: () => void }) {
           presets={otherPresets}
           lang={lang}
           onStart={startPreset}
+          onEdit={handleEditPreset}
         />
 
         {/* custom warm-ups */}
@@ -543,11 +617,13 @@ function PresetSection({
   presets,
   lang,
   onStart,
+  onEdit,
 }: {
   title: string;
   presets: WarmupPreset[];
   lang: string;
   onStart: (p: WarmupPreset) => void;
+  onEdit: (p: WarmupPreset) => void;
 }) {
   if (presets.length === 0) return null;
   return (
@@ -562,52 +638,63 @@ function PresetSection({
               ? (p.purpose_el ?? LEVEL_LABEL[p.level].el)
               : (p.purpose_en ?? LEVEL_LABEL[p.level].en);
           return (
-            <button
+            <div
               key={p.id}
-              onClick={() => onStart(p)}
-              className="flex w-full items-center gap-4 rounded-2xl px-4 py-4 text-left transition-all active:scale-[0.99]"
+              className="flex items-center gap-3 rounded-2xl px-4 py-4"
               style={{
                 background: "#0d1320",
                 border: "1px solid rgba(255,255,255,0.06)",
                 borderLeft: `3px solid ${p.accent}`,
               }}
             >
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-sm font-bold text-white">
-                    {lang === "el" ? p.name_el : p.name_en}
-                  </span>
-                  <span
-                    className="rounded px-1.5 py-0.5 text-[0.5rem] font-bold uppercase tracking-wider"
-                    style={{ background: `${p.accent}20`, color: p.accent }}
-                  >
-                    {chip}
-                  </span>
-                </div>
-                <p className="mt-1 text-[0.72rem] leading-relaxed text-white/40">
-                  {lang === "el" ? p.desc_el : p.desc_en}
-                </p>
-                <div className="mt-2 flex items-center gap-3 text-[0.65rem] text-white/30">
-                  <span>⏱ {fmtClock(presetTotalSecs(p))}</span>
-                  {p.cycleLen ? (
-                    <span>
-                      · {Math.floor(p.steps.length / p.cycleLen)}{" "}
-                      {lang === "el" ? "γύροι" : "rounds"}
-                    </span>
-                  ) : holdCount(p) > 0 ? (
-                    <span>
-                      · {holdCount(p)} {lang === "el" ? "κρατήσεις" : "holds"}
-                    </span>
-                  ) : null}
-                </div>
-              </div>
-              <div
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full"
-                style={{ background: `${p.accent}18`, color: p.accent }}
+              <button
+                onClick={() => onStart(p)}
+                className="flex min-w-0 flex-1 items-center gap-4 text-left transition-all active:scale-[0.99]"
               >
-                <Play className="size-5" />
-              </div>
-            </button>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm font-bold text-white">
+                      {lang === "el" ? p.name_el : p.name_en}
+                    </span>
+                    <span
+                      className="rounded px-1.5 py-0.5 text-[0.5rem] font-bold uppercase tracking-wider"
+                      style={{ background: `${p.accent}20`, color: p.accent }}
+                    >
+                      {chip}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-[0.72rem] leading-relaxed text-white/40">
+                    {lang === "el" ? p.desc_el : p.desc_en}
+                  </p>
+                  <div className="mt-2 flex items-center gap-3 text-[0.65rem] text-white/30">
+                    <span>⏱ {fmtClock(presetTotalSecs(p))}</span>
+                    {p.cycleLen ? (
+                      <span>
+                        · {Math.floor(p.steps.length / p.cycleLen)}{" "}
+                        {lang === "el" ? "γύροι" : "rounds"}
+                      </span>
+                    ) : holdCount(p) > 0 ? (
+                      <span>
+                        · {holdCount(p)} {lang === "el" ? "κρατήσεις" : "holds"}
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
+                <div
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full"
+                  style={{ background: `${p.accent}18`, color: p.accent }}
+                >
+                  <Play className="size-5" />
+                </div>
+              </button>
+              <button
+                onClick={() => onEdit(p)}
+                aria-label={lang === "el" ? "Επεξεργασία αντιγράφου" : "Edit a copy"}
+                className="shrink-0 rounded-lg p-2 text-white/25 hover:text-white/60"
+              >
+                <Pencil className="size-4" />
+              </button>
+            </div>
           );
         })}
       </div>
