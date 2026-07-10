@@ -433,7 +433,7 @@ function LiveTimer({ running, getElapsed }: { running: boolean; getElapsed: () =
     return () => clearInterval(id);
   }, [running, getElapsed]);
   return (
-    <span className="font-mono text-[3.6rem] font-light leading-none tabular-nums text-white sm:text-[4.5rem]">
+    <span className="font-mono text-[2.75rem] font-light leading-none tabular-nums text-white sm:text-[3.4rem]">
       {fmt(ms)}
     </span>
   );

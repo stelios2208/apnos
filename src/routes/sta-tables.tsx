@@ -795,7 +795,7 @@ function TableRunner({
                 {phase === "breathe" ? (el ? "ΑΝΑΠΝΟΗ" : "BREATHE") : el ? "ΚΡΑΤΑ" : "HOLD"}
               </span>
               <span
-                className="font-mono text-[3.2rem] font-light leading-none tabular-nums"
+                className="font-mono text-[2.6rem] font-light leading-none tabular-nums"
                 style={{ color }}
               >
                 {fmtClock(Math.max(0, remaining))}

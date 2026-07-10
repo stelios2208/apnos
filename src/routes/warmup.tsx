@@ -396,7 +396,7 @@ function Warmup() {
               {stepLabel(step.kind, lang).toUpperCase()}
             </span>
             <span
-              className="font-mono text-[3.6rem] font-light leading-none tabular-nums"
+              className="font-mono text-[2.75rem] font-light leading-none tabular-nums"
               style={{ color }}
             >
               {fmtClock(Math.max(0, remaining))}

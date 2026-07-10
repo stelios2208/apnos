@@ -545,7 +545,7 @@ function STATrainer() {
         </span>
 
         <span
-          className="font-mono text-[5rem] font-light leading-none tabular-nums transition-colors duration-500"
+          className="font-mono text-[2.75rem] font-light leading-none tabular-nums transition-colors duration-500"
           style={{ color: phase === "idle" ? "#4a6a80" : color }}
         >
           {phase === "idle" ? "00:00" : fmt(elapsed)}
