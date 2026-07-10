@@ -34,6 +34,38 @@ export function saveFxSettings(s: FxSettings): void {
   }
 }
 
+// ── Simple synth beep ────────────────────────────────────────────────────────
+// Cross-platform audio ping for phase changes (vibration alone is silent on iOS).
+
+export function beep(freq = 660): void {
+  try {
+    const AC =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    const ctx = new AC();
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.connect(g);
+    g.connect(ctx.destination);
+    o.type = "sine";
+    o.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.25, ctx.currentTime + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.35);
+    o.start();
+    o.stop(ctx.currentTime + 0.4);
+    setTimeout(() => {
+      try {
+        ctx.close();
+      } catch {
+        /* ignore */
+      }
+    }, 500);
+  } catch {
+    /* audio not available */
+  }
+}
+
 // ── Haptics ──────────────────────────────────────────────────────────────────
 
 export function hapticsSupported(): boolean {

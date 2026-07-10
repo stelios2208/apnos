@@ -9,6 +9,7 @@ import {
   CalendarDays,
   Brain,
   ChevronRight,
+  Table,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
@@ -51,6 +52,15 @@ const ITEMS: HubItem[] = [
     title_en: "Static Trainer",
     sub_el: "Καθοδηγούμενη στατική με ήχο",
     sub_en: "Guided static with soundscape",
+  },
+  {
+    to: "/sta-tables",
+    icon: Table,
+    accent: "#1D9E75",
+    title_el: "Πίνακες STA",
+    title_en: "STA Tables",
+    sub_el: "CO₂ / O₂ tables από το PB σου",
+    sub_en: "CO₂ / O₂ tables from your PB",
   },
   {
     to: "/stopwatch",
