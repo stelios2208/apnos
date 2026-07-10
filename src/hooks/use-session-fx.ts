@@ -98,12 +98,16 @@ export function useSessionFx() {
 
   // ── settings ──────────────────────────────────────────────────────────────
   const toggleFx = useCallback((key: keyof FxSettings) => {
+    // Fire the haptics test buzz synchronously here (inside the tap handler,
+    // before setState) rather than from the state updater — the browser's
+    // user-activation gate only lets navigator.vibrate through when it's on
+    // the direct gesture call stack.
+    if (key === "haptics" && !fxRef.current.haptics) testHapticPulse();
     setFx((prev) => {
       const next = { ...prev, [key]: !prev[key] };
       saveFxSettings(next);
       if (key === "sound" && !next.sound) engineRef.current?.stop();
       if (key === "voice" && !next.voice) cueRef.current?.stop();
-      if (key === "haptics" && next.haptics) testHapticPulse();
       return next;
     });
   }, []);

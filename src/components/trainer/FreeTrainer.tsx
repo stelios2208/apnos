@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSessionFx } from "@/hooks/use-session-fx";
+import { useWakeLock } from "@/hooks/use-wake-lock";
 import { VoiceCuesModal } from "@/components/VoiceCuesModal";
 import { UnderwaterScene } from "@/components/UnderwaterScene";
 import { LogoBreathPacer } from "@/components/LogoBreathPacer";
@@ -100,6 +101,7 @@ export function FreeTrainer({ onExit }: { onExit: () => void }) {
   const navigate = useNavigate();
 
   const [phase, setPhase] = useState<Phase>("idle");
+  useWakeLock(phase !== "idle"); // keep the screen awake through the hold
   const [elapsed, setElapsed] = useState(0);
   const [contractions, setContractions] = useState(0);
   const [firstContraction, setFirstContraction] = useState(0); // secs into hold, 0 = none

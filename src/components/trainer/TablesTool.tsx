@@ -34,6 +34,7 @@ import {
 } from "@/lib/sta-tables";
 import { fmtClock } from "@/lib/warmups";
 import { useSessionFx, type SessionFx } from "@/hooks/use-session-fx";
+import { useWakeLock } from "@/hooks/use-wake-lock";
 import { TableCard } from "@/components/TableCard";
 import { UnderwaterScene } from "@/components/UnderwaterScene";
 import { LogoBreathPacer } from "@/components/LogoBreathPacer";
@@ -714,6 +715,7 @@ function TableRunner({
   } = sfx;
   const el = lang === "el";
   const queryClient = useQueryClient();
+  useWakeLock(true); // mounted only while a table is running → keep screen awake
 
   const [ri, setRi] = useState(0);
   const [phase, setPhase] = useState<RunPhase>("breathe");

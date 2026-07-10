@@ -47,6 +47,7 @@ import {
 } from "@/lib/warmups";
 import { logStaHold } from "@/lib/dives";
 import { useSessionFx } from "@/hooks/use-session-fx";
+import { useWakeLock } from "@/hooks/use-wake-lock";
 import { UnderwaterScene } from "@/components/UnderwaterScene";
 import { LogoBreathPacer } from "@/components/LogoBreathPacer";
 import { TableCard } from "@/components/TableCard";
@@ -116,6 +117,7 @@ export function WarmupTool({ onBack }: { onBack: () => void }) {
   const queryClient = useQueryClient();
 
   const [preset, setPreset] = useState<WarmupPreset | null>(null);
+  useWakeLock(!!preset); // keep the screen awake (and cues/haptics firing) mid-run
   const [stepIndex, setStepIndex] = useState(0);
   const [remaining, setRemaining] = useState(0);
   const [paused, setPaused] = useState(false);
@@ -453,11 +455,11 @@ export function WarmupTool({ onBack }: { onBack: () => void }) {
             <ArrowLeft className="size-4" />
           </button>
           <div>
-            <h1 className="text-2xl font-bold text-white">
-              {lang === "el" ? "Ζέσταμα" : "Warm-up"}
-            </h1>
+            <h1 className="text-2xl font-bold text-white">Breathwork</h1>
             <p className="text-xs text-white/35">
-              {lang === "el" ? "Καθοδηγούμενα ζεστάματα στατικής" : "Guided static warm-ups"}
+              {lang === "el"
+                ? "Τεχνικές, ζεστάματα & δικά σου προγράμματα"
+                : "Techniques, warm-ups & your own programs"}
             </p>
           </div>
         </div>

@@ -48,6 +48,15 @@ import {
   presetTotalSecs,
   fmtClock,
 } from "@/lib/warmups";
+import { useWakeLock } from "@/hooks/use-wake-lock";
+import { PlannerWarmup } from "@/components/PlannerWarmup";
+
+// Resolve a plan's stored warm-up id back to the full preset (custom first,
+// then built-ins). Custom warm-ups live in localStorage; built-ins are code.
+function resolveWarmup(id: string | null): WarmupPreset | null {
+  if (!id) return null;
+  return [...loadCustomWarmups(), ...WARMUP_PRESETS].find((w) => w.id === id) ?? null;
+}
 
 export const Route = createFileRoute("/planner")({
   head: () => ({ meta: [{ title: "Σχεδίασε τη βουτιά σου — Apnos" }] }),
@@ -154,6 +163,25 @@ function DivePlanPage() {
   const [editing, setEditing] = useState<DivePlan | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [running, setRunning] = useState<DivePlan | null>(null);
+  // Warm-up runner lives at page level (not inside the countdown sheet) so it
+  // keeps running even if the athlete closes the countdown, and reopening never
+  // restarts it. `warmupMin` toggles the floating-chip vs. full-screen view.
+  const [warmupPreset, setWarmupPreset] = useState<WarmupPreset | null>(null);
+  const [warmupMin, setWarmupMin] = useState(false);
+
+  const startWarmup = () => {
+    if (warmupPreset) {
+      setWarmupMin(false); // already running → just bring it back up
+      return;
+    }
+    const w = resolveWarmup(running?.warmupId ?? null);
+    if (!w) {
+      toast(lang === "el" ? "Δεν έχει φορτωθεί ζέσταμα" : "No warm-up loaded");
+      return;
+    }
+    setWarmupPreset(w);
+    setWarmupMin(false);
+  };
 
   const { data: athletes = [] } = useQuery({
     queryKey: ["coach_athletes", user?.id],
@@ -256,7 +284,28 @@ function DivePlanPage() {
           onSaved={onSaved}
         />
       )}
-      {running && <CountdownPanel plan={running} lang={lang} onClose={() => setRunning(null)} />}
+      {running && (
+        <CountdownPanel
+          plan={running}
+          lang={lang}
+          onClose={() => setRunning(null)}
+          onStartWarmup={startWarmup}
+          warmupActive={!!warmupPreset}
+        />
+      )}
+      {warmupPreset && (
+        <PlannerWarmup
+          preset={warmupPreset}
+          minimized={warmupMin}
+          onMinimize={() => setWarmupMin(true)}
+          onExpand={() => setWarmupMin(false)}
+          onStop={() => {
+            setWarmupPreset(null);
+            setWarmupMin(false);
+          }}
+          lang={lang}
+        />
+      )}
     </div>
   );
 }
@@ -784,15 +833,22 @@ function CountdownPanel({
   plan,
   lang,
   onClose,
+  onStartWarmup,
+  warmupActive,
 }: {
   plan: DivePlan;
   lang: string;
   onClose: () => void;
+  onStartWarmup: () => void;
+  warmupActive: boolean;
 }) {
   const [running, setRunning] = useState(false);
   const [sound, setSound] = useState(true);
   const [now, setNow] = useState(() => new Date());
   const fired = useRef<Set<string>>(new Set());
+  const onStartWarmupRef = useRef(onStartWarmup);
+  onStartWarmupRef.current = onStartWarmup;
+  useWakeLock(running); // keep the screen on while counting down to TOP
 
   const milestones = useMemo<Milestone[]>(() => {
     const tt = dateTimeAt(plan.date, plan.topTime);
@@ -825,13 +881,25 @@ function CountdownPanel({
         ) {
           fired.current.add(m.key);
           if (sound) beep();
-          toast(`🔔 ${m.label}`, { duration: 8000 });
+          // the warm-up milestone gets a one-tap "Start" action so the athlete
+          // can launch the breathing sequence without hunting for a button
+          if (m.key === "warmup" && plan.warmupId) {
+            toast(`🔔 ${m.label}`, {
+              duration: 12000,
+              action: {
+                label: lang === "el" ? "Έναρξη" : "Start",
+                onClick: () => onStartWarmupRef.current(),
+              },
+            });
+          } else {
+            toast(`🔔 ${m.label}`, { duration: 8000 });
+          }
         }
       }
       if (milestones.every((m) => fired.current.has(m.key))) setRunning(false);
     }, 1000);
     return () => clearInterval(id);
-  }, [running, milestones, sound]);
+  }, [running, milestones, sound, plan.warmupId, lang]);
 
   const start = () => {
     fired.current = new Set();
@@ -945,6 +1013,29 @@ function CountdownPanel({
             {sound ? <Volume2 className="size-5" /> : <VolumeX className="size-5" />}
           </button>
         </div>
+
+        {/* run the loaded warm-up inline — stays live over this countdown */}
+        {plan.warmupId && (
+          <button
+            onClick={onStartWarmup}
+            className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold"
+            style={{
+              background: "rgba(239,159,39,0.14)",
+              border: "1px solid rgba(239,159,39,0.4)",
+              color: "#EF9F27",
+            }}
+          >
+            <Flame className="size-4" />
+            {warmupActive
+              ? lang === "el"
+                ? "Συνέχισε το ζέσταμα"
+                : "Resume warm-up"
+              : lang === "el"
+                ? `Ξεκίνα ζέσταμα · ${plan.warmupName}`
+                : `Start warm-up · ${plan.warmupName}`}
+          </button>
+        )}
+
         {running && (
           <p className="mt-2 flex items-center justify-center gap-1.5 text-[0.65rem] text-[#5DCAA5]">
             <Bell className="size-3" />{" "}
