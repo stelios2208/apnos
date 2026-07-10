@@ -24,17 +24,19 @@ export interface StaTable {
 
 export const TABLE_ROUNDS = 6;
 
-// CO2: hold is fixed (% of PB), breathe shrinks 2:00 → 0:30 across the rounds.
+// CO2: hold is fixed (% of PB), breathe shrinks 2:00 → 0:45 across the rounds.
+// Percentages are deliberately conservative — training tables should feel
+// repeatable, not like max attempts.
 export const CO2_BREATHE_START = 120;
-export const CO2_BREATHE_END = 30;
-const CO2_HOLD_PCT: Record<PresetLevel, number> = { easy: 0.5, medium: 0.6, hard: 0.7 };
+export const CO2_BREATHE_END = 45;
+const CO2_HOLD_PCT: Record<PresetLevel, number> = { easy: 0.35, medium: 0.45, hard: 0.55 };
 
 // O2: breathe is fixed at 2:00, hold climbs start% → end% of PB.
 export const O2_BREATHE = 120;
 const O2_HOLD_PCT: Record<PresetLevel, [start: number, end: number]> = {
-  easy: [0.4, 0.55],
-  medium: [0.45, 0.65],
-  hard: [0.5, 0.75],
+  easy: [0.25, 0.45],
+  medium: [0.35, 0.55],
+  hard: [0.45, 0.65],
 };
 
 // Every generated duration snaps to 5s — matches the +/- 5s editing step, so
