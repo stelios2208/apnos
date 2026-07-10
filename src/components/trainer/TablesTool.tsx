@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
   Play,
@@ -12,9 +12,10 @@ import {
   Save,
   AlertTriangle,
   Pencil,
+  Check,
 } from "lucide-react";
 import { toast } from "sonner";
-import { fetchDives, personalBests } from "@/lib/dives";
+import { fetchDives, personalBests, logStaHold } from "@/lib/dives";
 import {
   type StaTableType,
   type BreathingMode,
@@ -29,6 +30,7 @@ import {
   fetchStaTables,
   saveStaTable,
   deleteStaTable,
+  RV_SCAFFOLD_HOLD,
 } from "@/lib/sta-tables";
 import { fmtClock } from "@/lib/warmups";
 import { useSessionFx, type SessionFx } from "@/hooks/use-session-fx";
@@ -86,8 +88,8 @@ export function TablesTool({ onBack }: { onBack: () => void }) {
 
   // keep the preview in sync with the selected preset
   useEffect(() => {
-    if (!custom && !rvMode && pb) setRounds(presetRounds(type, level, pb));
-  }, [type, level, pb, custom, rvMode]);
+    if (!custom && !rvMode && pb) setRounds(presetRounds(type, level, pb, mode));
+  }, [type, level, pb, mode, custom, rvMode]);
 
   const autoName = rvMode
     ? `${type.toUpperCase()} RV`
@@ -98,8 +100,10 @@ export function TablesTool({ onBack }: { onBack: () => void }) {
     if (m === "rv") {
       // RV is custom-only: never offer calculated presets at residual volume
       setCustom(true);
-      if (rounds.length === 0)
-        setRounds(Array.from({ length: 6 }, () => ({ breatheSecs: 120, holdSecs: 60 })));
+      if (rounds.length === 0) {
+        const hold = RV_SCAFFOLD_HOLD[type];
+        setRounds(Array.from({ length: 6 }, () => ({ breatheSecs: 120, holdSecs: hold })));
+      }
     }
   };
 
@@ -345,8 +349,10 @@ export function TablesTool({ onBack }: { onBack: () => void }) {
             const next = rvMode ? true : !custom;
             setCustom(next);
             // no PB yet → start editing from a sensible default table
-            if (next && rounds.length === 0)
-              setRounds(Array.from({ length: 6 }, () => ({ breatheSecs: 120, holdSecs: 60 })));
+            if (next && rounds.length === 0) {
+              const hold = rvMode ? RV_SCAFFOLD_HOLD[type] : 60;
+              setRounds(Array.from({ length: 6 }, () => ({ breatheSecs: 120, holdSecs: hold })));
+            }
           }}
           className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl py-3 text-xs font-bold transition-all"
           style={
@@ -696,6 +702,7 @@ function TableRunner({
 }) {
   const {
     lang,
+    user,
     buzz,
     chime,
     cue,
@@ -706,12 +713,15 @@ function TableRunner({
     resetHoldAlerts,
   } = sfx;
   const el = lang === "el";
+  const queryClient = useQueryClient();
 
   const [ri, setRi] = useState(0);
   const [phase, setPhase] = useState<RunPhase>("breathe");
   const [remaining, setRemaining] = useState(rounds[0]?.breatheSecs ?? 0);
   const [paused, setPaused] = useState(false);
   const [done, setDone] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
 
   const riRef = useRef(0);
   const phaseRef = useRef<RunPhase>("breathe");
@@ -791,6 +801,24 @@ function TableRunner({
     });
   };
 
+  const handleLogDive = useCallback(async () => {
+    if (!user || saving) return;
+    setSaving(true);
+    const best = Math.max(...rounds.map((r) => r.holdSecs));
+    const notes = `STA Table — ${rounds.length} rounds\nBest hold: ${fmtClock(best)}`;
+    try {
+      await logStaHold(user.id, best, notes);
+      queryClient.invalidateQueries({ queryKey: ["dives", user.id] });
+      setSaved(true);
+      toast.success(el ? "Καταγράφηκε ως βουτιά STA" : "Logged as an STA dive");
+    } catch (e) {
+      console.error(e);
+      toast.error(el ? "Σφάλμα καταγραφής" : "Log failed");
+    } finally {
+      setSaving(false);
+    }
+  }, [user, saving, rounds, queryClient, el]);
+
   const round = rounds[ri]!;
   const color = phase === "hold" ? ORANGE : TEAL_SOFT;
   const roundTotal = round.breatheSecs + round.holdSecs;
@@ -832,13 +860,44 @@ function TableRunner({
           <p className="text-lg font-bold text-white">
             {el ? "Ο πίνακας ολοκληρώθηκε 🎯" : "Table complete 🎯"}
           </p>
-          <button
-            onClick={onExit}
-            className="rounded-xl px-8 py-3.5 text-sm font-bold"
-            style={{ background: TEAL, color: "#fff" }}
-          >
-            {el ? "Τέλος" : "Done"}
-          </button>
+          <p className="text-sm text-white/40">
+            {el ? "Καλύτερο hold" : "Best hold"}{" "}
+            {fmtClock(Math.max(...rounds.map((r) => r.holdSecs)))}
+          </p>
+          <div className="flex w-full max-w-xs flex-col gap-3">
+            {user && (
+              <button
+                onClick={handleLogDive}
+                disabled={saving || saved}
+                className="flex items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-bold transition-all"
+                style={{
+                  background: saved ? "rgba(29,158,117,0.15)" : "rgba(255,255,255,0.06)",
+                  color: saved ? TEAL_SOFT : "rgba(255,255,255,0.75)",
+                  border: `1px solid ${saved ? "rgba(29,158,117,0.4)" : "rgba(255,255,255,0.1)"}`,
+                }}
+              >
+                {saved ? <Check className="size-4" /> : null}
+                {saved
+                  ? el
+                    ? "Καταγράφηκε ✓"
+                    : "Logged ✓"
+                  : saving
+                    ? el
+                      ? "Καταγραφή…"
+                      : "Logging…"
+                    : el
+                      ? "Καταγραφή ως βουτιά STA"
+                      : "Log as STA dive"}
+              </button>
+            )}
+            <button
+              onClick={onExit}
+              className="rounded-xl px-8 py-3.5 text-sm font-bold"
+              style={{ background: TEAL, color: "#fff" }}
+            >
+              {el ? "Τέλος" : "Done"}
+            </button>
+          </div>
         </div>
       ) : (
         <>

@@ -10,6 +10,7 @@ import {
   vibrate,
   hapticsSupported,
   beep,
+  testHapticPulse,
   HOLD_MILESTONES,
   SoundscapeEngine,
   CuePlayer,
@@ -102,6 +103,7 @@ export function useSessionFx() {
       saveFxSettings(next);
       if (key === "sound" && !next.sound) engineRef.current?.stop();
       if (key === "voice" && !next.voice) cueRef.current?.stop();
+      if (key === "haptics" && next.haptics) testHapticPulse();
       return next;
     });
   }, []);
