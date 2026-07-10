@@ -27,6 +27,7 @@ import {
   HOLD_MILESTONES,
   SoundscapeEngine,
   CuePlayer,
+  testHapticPulse,
 } from "@/lib/trainer-fx";
 import { listCueUrls } from "@/lib/voice-cues";
 import { VoiceCuesModal } from "@/components/VoiceCuesModal";
@@ -179,6 +180,7 @@ function STATrainer() {
       saveFxSettings(next);
       if (key === "sound" && !next.sound) engineRef.current?.stop();
       if (key === "voice" && !next.voice) cueRef.current?.stop();
+      if (key === "haptics" && next.haptics) testHapticPulse();
       return next;
     });
   }, []);

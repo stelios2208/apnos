@@ -27,15 +27,24 @@ export const TABLE_ROUNDS = 6;
 // CO2: hold is fixed (% of PB), breathe shrinks 2:00 → 0:30 across the rounds.
 export const CO2_BREATHE_START = 120;
 export const CO2_BREATHE_END = 30;
-const CO2_HOLD_PCT: Record<PresetLevel, number> = { easy: 0.5, medium: 0.6, hard: 0.7 };
+const CO2_HOLD_PCT: Record<PresetLevel, number> = { easy: 0.2, medium: 0.24, hard: 0.28 };
 
 // O2: breathe is fixed at 2:00, hold climbs start% → end% of PB.
 export const O2_BREATHE = 120;
 const O2_HOLD_PCT: Record<PresetLevel, [start: number, end: number]> = {
-  easy: [0.4, 0.55],
-  medium: [0.45, 0.65],
-  hard: [0.5, 0.75],
+  easy: [0.2, 0.275],
+  medium: [0.24, 0.35],
+  hard: [0.28, 0.42],
 };
+
+// Breath-hold capacity drops sharply below a full-lung (normal) hold. FRC
+// (exhale hold) presets scale every calculated hold down from the normal
+// preset; RV is custom-only so it never reaches this scaling.
+const MODE_HOLD_FACTOR: Record<BreathingMode, number> = { normal: 1, frc: 0.75, rv: 1 };
+
+// RV has no calculated preset (custom-only) — these are just the starting
+// scaffold values shown when entering the custom editor after picking RV.
+export const RV_SCAFFOLD_HOLD: Record<StaTableType, number> = { co2: 40, o2: 20 };
 
 // Every generated duration snaps to 5s — matches the +/- 5s editing step, so
 // switching a preset to custom never shows odd values like 1:47.
@@ -47,20 +56,34 @@ function ladder(from: number, to: number): number[] {
   return Array.from({ length: TABLE_ROUNDS }, (_, i) => snap5(from + step * i));
 }
 
-export function co2Preset(level: PresetLevel, pbSecs: number): TableRound[] {
-  const hold = snap5(pbSecs * CO2_HOLD_PCT[level]);
+export function co2Preset(
+  level: PresetLevel,
+  pbSecs: number,
+  mode: BreathingMode = "normal",
+): TableRound[] {
+  const hold = snap5(pbSecs * CO2_HOLD_PCT[level] * MODE_HOLD_FACTOR[mode]);
   const breathes = ladder(CO2_BREATHE_START, CO2_BREATHE_END);
   return breathes.map((breatheSecs) => ({ breatheSecs, holdSecs: hold }));
 }
 
-export function o2Preset(level: PresetLevel, pbSecs: number): TableRound[] {
+export function o2Preset(
+  level: PresetLevel,
+  pbSecs: number,
+  mode: BreathingMode = "normal",
+): TableRound[] {
   const [start, end] = O2_HOLD_PCT[level];
-  const holds = ladder(pbSecs * start, pbSecs * end);
+  const factor = MODE_HOLD_FACTOR[mode];
+  const holds = ladder(pbSecs * start * factor, pbSecs * end * factor);
   return holds.map((holdSecs) => ({ breatheSecs: O2_BREATHE, holdSecs }));
 }
 
-export function presetRounds(type: StaTableType, level: PresetLevel, pbSecs: number): TableRound[] {
-  return type === "co2" ? co2Preset(level, pbSecs) : o2Preset(level, pbSecs);
+export function presetRounds(
+  type: StaTableType,
+  level: PresetLevel,
+  pbSecs: number,
+  mode: BreathingMode = "normal",
+): TableRound[] {
+  return type === "co2" ? co2Preset(level, pbSecs, mode) : o2Preset(level, pbSecs, mode);
 }
 
 export function tableTotalSecs(rounds: TableRound[]): number {

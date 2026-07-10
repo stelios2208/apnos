@@ -83,6 +83,16 @@ export function vibrate(pattern: number | number[]): void {
   }
 }
 
+// Fired the moment a Haptics toggle switches on — a direct-gesture vibrate so
+// the athlete gets real feedback on whether their device actually buzzes.
+// (navigator.vibrate is commonly a silent no-op on some Android/Samsung
+// builds depending on OS-level touch-vibration settings — this can't be
+// fixed from the web app, but a test pulse at least surfaces it honestly
+// instead of a toggle that looks "on" with no way to check.)
+export function testHapticPulse(): void {
+  vibrate([40, 60, 40]);
+}
+
 // ── Custom voice cues ────────────────────────────────────────────────────────
 // Plays pre-recorded audio clips (the owner's own recordings / voiceover) so the
 // guidance sounds human, not robotic. Drop files at:
@@ -166,14 +176,16 @@ export class CuePlayer {
       }
     }
     this.current = el;
+    // Resetting currentTime on an element that hasn't loaded metadata yet
+    // (readyState 0) can throw in some engines — that must not abort play().
     try {
       el.currentTime = 0;
-      void el.play().catch(() => {
-        /* blocked / unsupported → silent */
-      });
     } catch {
-      /* ignore */
+      /* not loaded yet — play() below still works from position 0 */
     }
+    void el.play().catch((err) => {
+      console.error("voice cue playback failed", key, err);
+    });
   }
 
   stop(): void {
@@ -189,17 +201,35 @@ export class CuePlayer {
 }
 
 // ── Soundscape engine ────────────────────────────────────────────────────────
-// A warm synthesized pad (calming fifth) with a slow gain LFO that "breathes".
-// The LFO speed + base level shift per phase to pace the athlete.
+// A gentle nature ambience — filtered-noise water/wind bed, soft pentatonic
+// "kalimba" plucks, and light bird-like chirps during the breathe phase.
+// Everything is synthesized (Web Audio only, zero asset files); phase changes
+// shift the pluck rate/density and bed volume to pace the athlete.
 
 type EnginePhase = "breathe" | "hold" | "recovery";
+
+// C pentatonic-ish, low register so it sits gently under the noise bed.
+const PLUCK_NOTES = [261.6, 293.7, 349.2, 392.0, 440.0, 523.3];
+
+const PHASE_TUNING: Record<
+  EnginePhase,
+  { bed: number; pluckMs: [number, number]; chirps: boolean }
+> = {
+  breathe: { bed: 0.1, pluckMs: [2200, 4200], chirps: true },
+  hold: { bed: 0.06, pluckMs: [4500, 8500], chirps: false },
+  recovery: { bed: 0.11, pluckMs: [1800, 3200], chirps: false },
+};
 
 export class SoundscapeEngine {
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
-  private lfo: OscillatorNode | null = null;
-  private oscs: OscillatorNode[] = [];
+  private bedGain: GainNode | null = null;
+  private noiseSrc: AudioBufferSourceNode | null = null;
   private running = false;
+  private stopped = true;
+  private phase: EnginePhase = "breathe";
+  private pluckTimer: ReturnType<typeof setTimeout> | null = null;
+  private chirpTimer: ReturnType<typeof setTimeout> | null = null;
 
   get isRunning(): boolean {
     return this.running;
@@ -236,78 +266,124 @@ export class SoundscapeEngine {
     master.gain.value = 0;
     master.connect(ctx.destination);
 
-    // keep it soft but let it breathe through phone speakers
-    const filter = ctx.createBiquadFilter();
-    filter.type = "lowpass";
-    filter.frequency.value = 1600;
-    filter.Q.value = 0.6;
-    filter.connect(master);
-
-    // pad — a warm calming chord in a register phone speakers can reproduce
-    const partials: { freq: number; gain: number }[] = [
-      { freq: 196, gain: 0.34 }, // G3
-      { freq: 294, gain: 0.3 }, // D4 (fifth)
-      { freq: 392, gain: 0.22 }, // G4 (octave)
-      { freq: 588, gain: 0.1 }, // D5 shimmer
-    ];
-    partials.forEach((p, i) => {
-      const o = ctx.createOscillator();
-      o.type = "sine";
-      o.frequency.value = p.freq;
-      o.detune.value = (i - 1) * 4; // gentle chorus
-      const g = ctx.createGain();
-      g.gain.value = p.gain;
-      o.connect(g);
-      g.connect(filter);
-      o.start(now);
-      this.oscs.push(o);
-    });
-
-    // breathing swell — LFO modulates the master gain around its base level
-    const lfoGain = ctx.createGain();
-    lfoGain.gain.value = 0.07;
-    const lfo = ctx.createOscillator();
-    lfo.type = "sine";
-    lfo.frequency.value = 0.1; // ~10s breathe cycle
-    lfo.connect(lfoGain);
-    lfoGain.connect(master.gain);
-    lfo.start(now);
+    // soft water/wind bed — filtered noise looped continuously
+    const noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+    const data = noiseBuf.getChannelData(0);
+    for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+    const noiseSrc = ctx.createBufferSource();
+    noiseSrc.buffer = noiseBuf;
+    noiseSrc.loop = true;
+    const bandpass = ctx.createBiquadFilter();
+    bandpass.type = "bandpass";
+    bandpass.frequency.value = 1100;
+    bandpass.Q.value = 0.7;
+    const bedGain = ctx.createGain();
+    bedGain.gain.value = 0;
+    noiseSrc.connect(bandpass);
+    bandpass.connect(bedGain);
+    bedGain.connect(master);
+    noiseSrc.start(now);
 
     master.gain.setValueAtTime(0, now);
-    master.gain.linearRampToValueAtTime(0.2, now + 2);
+    master.gain.linearRampToValueAtTime(1, now + 2);
+    bedGain.gain.linearRampToValueAtTime(PHASE_TUNING[this.phase].bed, now + 2);
 
     this.ctx = ctx;
     this.master = master;
-    this.lfo = lfo;
+    this.bedGain = bedGain;
+    this.noiseSrc = noiseSrc;
     this.running = true;
+    this.stopped = false;
+
+    this.schedulePlucks();
+    this.scheduleChirps();
+  }
+
+  private randBetween([lo, hi]: [number, number]): number {
+    return lo + Math.random() * (hi - lo);
+  }
+
+  // Soft "kalimba" pluck: fast attack, exponential decay, gentle low harmonic.
+  private schedulePlucks(): void {
+    if (this.stopped || !this.ctx || !this.master) return;
+    const ctx = this.ctx;
+    const now = ctx.currentTime;
+    const freq = PLUCK_NOTES[Math.floor(Math.random() * PLUCK_NOTES.length)]!;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0, now);
+    g.gain.linearRampToValueAtTime(0.14, now + 0.015);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + 1.4);
+    g.connect(this.master);
+
+    const o = ctx.createOscillator();
+    o.type = "sine";
+    o.frequency.value = freq;
+    o.connect(g);
+    o.start(now);
+    o.stop(now + 1.5);
+
+    const o2 = ctx.createOscillator();
+    o2.type = "sine";
+    o2.frequency.value = freq * 2; // soft harmonic overtone
+    const g2 = ctx.createGain();
+    g2.gain.setValueAtTime(0, now);
+    g2.gain.linearRampToValueAtTime(0.035, now + 0.015);
+    g2.gain.exponentialRampToValueAtTime(0.0001, now + 0.8);
+    o2.connect(g2);
+    g2.connect(this.master);
+    o2.start(now);
+    o2.stop(now + 0.9);
+
+    const delay = this.randBetween(PHASE_TUNING[this.phase].pluckMs);
+    this.pluckTimer = setTimeout(() => this.schedulePlucks(), delay);
+  }
+
+  // Quick pitch-swept chirp — only scheduled while phase === "breathe".
+  private scheduleChirps(): void {
+    if (this.stopped || !this.ctx || !this.master) return;
+    if (!PHASE_TUNING[this.phase].chirps) {
+      this.chirpTimer = setTimeout(() => this.scheduleChirps(), 1500);
+      return;
+    }
+    const ctx = this.ctx;
+    const now = ctx.currentTime;
+    const start = 2600 + Math.random() * 900;
+    const end = start + 700 + Math.random() * 500;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0, now);
+    g.gain.linearRampToValueAtTime(0.05, now + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + 0.14);
+    g.connect(this.master);
+
+    const o = ctx.createOscillator();
+    o.type = "sine";
+    o.frequency.setValueAtTime(start, now);
+    o.frequency.exponentialRampToValueAtTime(end, now + 0.12);
+    o.connect(g);
+    o.start(now);
+    o.stop(now + 0.16);
+
+    const delay = 3000 + Math.random() * 6000;
+    this.chirpTimer = setTimeout(() => this.scheduleChirps(), delay);
   }
 
   setPhase(phase: EnginePhase): void {
-    if (!this.ctx || !this.lfo || !this.master) return;
+    this.phase = phase;
+    if (!this.ctx || !this.bedGain) return;
     const now = this.ctx.currentTime;
-    const rampLfo = (hz: number, secs: number) => {
-      this.lfo!.frequency.cancelScheduledValues(now);
-      this.lfo!.frequency.setValueAtTime(this.lfo!.frequency.value, now);
-      this.lfo!.frequency.linearRampToValueAtTime(hz, now + secs);
-    };
-    const rampBase = (v: number, secs: number) => {
-      this.master!.gain.cancelScheduledValues(now);
-      this.master!.gain.setValueAtTime(this.master!.gain.value, now);
-      this.master!.gain.linearRampToValueAtTime(v, now + secs);
-    };
-    if (phase === "breathe") {
-      rampLfo(0.1, 1); // paced ~10s inhale/exhale
-      rampBase(0.22, 1.5);
-    } else if (phase === "hold") {
-      rampLfo(0.04, 2); // very slow, still
-      rampBase(0.14, 3);
-    } else if (phase === "recovery") {
-      rampLfo(0.18, 1); // quicker recovery breaths
-      rampBase(0.2, 1);
-    }
+    const tuning = PHASE_TUNING[phase];
+    this.bedGain.gain.cancelScheduledValues(now);
+    this.bedGain.gain.setValueAtTime(this.bedGain.gain.value, now);
+    this.bedGain.gain.linearRampToValueAtTime(tuning.bed, now + 2);
   }
 
   stop(): void {
+    this.stopped = true;
+    if (this.pluckTimer) clearTimeout(this.pluckTimer);
+    if (this.chirpTimer) clearTimeout(this.chirpTimer);
+    this.pluckTimer = null;
+    this.chirpTimer = null;
+
     if (!this.ctx || !this.master) {
       this.running = false;
       return;
@@ -323,6 +399,11 @@ export class SoundscapeEngine {
     }
     setTimeout(() => {
       try {
+        this.noiseSrc?.stop();
+      } catch {
+        /* ignore */
+      }
+      try {
         ctx.close();
       } catch {
         /* ignore */
@@ -330,8 +411,8 @@ export class SoundscapeEngine {
     }, 1400);
     this.ctx = null;
     this.master = null;
-    this.lfo = null;
-    this.oscs = [];
+    this.bedGain = null;
+    this.noiseSrc = null;
     this.running = false;
   }
 }

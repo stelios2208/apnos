@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
   Play,
@@ -13,11 +13,19 @@ import {
   Save,
   AlertTriangle,
   Pencil,
+  Mic,
+  MicOff,
+  Music,
+  VolumeX,
+  Vibrate,
+  Waves,
+  SlidersHorizontal,
+  Check,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/hooks/use-auth";
-import { fetchDives, personalBests } from "@/lib/dives";
+import { fetchDives, personalBests, logStaHold } from "@/lib/dives";
 import {
   type StaTableType,
   type BreathingMode,
@@ -32,9 +40,22 @@ import {
   fetchStaTables,
   saveStaTable,
   deleteStaTable,
+  RV_SCAFFOLD_HOLD,
 } from "@/lib/sta-tables";
 import { fmtClock } from "@/lib/warmups";
-import { loadFxSettings, vibrate, beep } from "@/lib/trainer-fx";
+import {
+  type FxSettings,
+  loadFxSettings,
+  saveFxSettings,
+  vibrate,
+  beep,
+  hapticsSupported,
+  testHapticPulse,
+  HOLD_MILESTONES,
+  CuePlayer,
+} from "@/lib/trainer-fx";
+import { listCueUrls } from "@/lib/voice-cues";
+import { VoiceCuesModal } from "@/components/VoiceCuesModal";
 import { TableCard } from "@/components/TableCard";
 import { UnderwaterScene } from "@/components/UnderwaterScene";
 import { LogoBreathPacer } from "@/components/LogoBreathPacer";
@@ -93,8 +114,8 @@ function StaTables() {
 
   // keep the preview in sync with the selected preset
   useEffect(() => {
-    if (!custom && !rvMode && pb) setRounds(presetRounds(type, level, pb));
-  }, [type, level, pb, custom, rvMode]);
+    if (!custom && !rvMode && pb) setRounds(presetRounds(type, level, pb, mode));
+  }, [type, level, pb, mode, custom, rvMode]);
 
   const autoName = rvMode
     ? `${type.toUpperCase()} RV`
@@ -105,8 +126,10 @@ function StaTables() {
     if (m === "rv") {
       // RV is custom-only: never offer calculated presets at residual volume
       setCustom(true);
-      if (rounds.length === 0)
-        setRounds(Array.from({ length: 6 }, () => ({ breatheSecs: 120, holdSecs: 60 })));
+      if (rounds.length === 0) {
+        const hold = RV_SCAFFOLD_HOLD[type];
+        setRounds(Array.from({ length: 6 }, () => ({ breatheSecs: 120, holdSecs: hold })));
+      }
     }
   };
 
@@ -332,8 +355,10 @@ function StaTables() {
             const next = rvMode ? true : !custom;
             setCustom(next);
             // no PB yet → start editing from a sensible default table
-            if (next && rounds.length === 0)
-              setRounds(Array.from({ length: 6 }, () => ({ breatheSecs: 120, holdSecs: 60 })));
+            if (next && rounds.length === 0) {
+              const hold = rvMode ? RV_SCAFFOLD_HOLD[type] : 60;
+              setRounds(Array.from({ length: 6 }, () => ({ breatheSecs: 120, holdSecs: hold })));
+            }
           }}
           className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl py-3 text-xs font-bold transition-all"
           style={
@@ -679,22 +704,56 @@ function TableRunner({
   onExit: () => void;
 }) {
   const el = lang === "el";
-  const [fx] = useState(() => loadFxSettings());
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const canHaptics = hapticsSupported();
+  const [fx, setFx] = useState<FxSettings>(() => loadFxSettings());
 
   const [ri, setRi] = useState(0);
   const [phase, setPhase] = useState<RunPhase>("breathe");
   const [remaining, setRemaining] = useState(rounds[0]?.breatheSecs ?? 0);
   const [paused, setPaused] = useState(false);
   const [done, setDone] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [showVoice, setShowVoice] = useState(false);
+  const [hasCues, setHasCues] = useState(false);
 
   const riRef = useRef(0);
   const phaseRef = useRef<RunPhase>("breathe");
   const remainingRef = useRef(rounds[0]?.breatheSecs ?? 0);
+  const cueRef = useRef<CuePlayer | null>(null);
+  const nextMsRef = useRef(0);
+
+  const loadCues = useCallback(async () => {
+    if (!user) return;
+    if (!cueRef.current) cueRef.current = new CuePlayer();
+    const map = await listCueUrls(user.id, lang);
+    cueRef.current.setSources(map);
+    setHasCues(map.size > 0);
+  }, [user, lang]);
+
+  useEffect(() => {
+    void loadCues();
+  }, [loadCues]);
+
+  useEffect(() => () => cueRef.current?.stop(), []);
+
+  const toggleFx = (key: keyof FxSettings) => {
+    setFx((prev) => {
+      const next = { ...prev, [key]: !prev[key] };
+      saveFxSettings(next);
+      if (key === "voice" && !next.voice) cueRef.current?.stop();
+      if (key === "haptics" && next.haptics) testHapticPulse();
+      return next;
+    });
+  };
 
   const fxCue = useCallback(
     (p: RunPhase | "done") => {
       if (fx.haptics) vibrate(p === "hold" ? [40, 60, 40] : p === "done" ? [200, 100, 200] : 60);
       if (fx.sound) beep(p === "hold" ? 880 : p === "done" ? 520 : 660);
+      if (fx.voice && p !== "done") cueRef.current?.play(p);
     },
     [fx],
   );
@@ -703,6 +762,7 @@ function TableRunner({
     if (phaseRef.current === "breathe") {
       phaseRef.current = "hold";
       remainingRef.current = rounds[riRef.current]!.holdSecs;
+      nextMsRef.current = 0;
       setPhase("hold");
       setRemaining(remainingRef.current);
       fxCue("hold");
@@ -722,6 +782,39 @@ function TableRunner({
     setRemaining(remainingRef.current);
     fxCue("breathe");
   }, [rounds, fxCue]);
+
+  // voice milestone cues during a hold (e.g. "m30", "m60", ...)
+  useEffect(() => {
+    if (phase !== "hold" || !fx.voice) return;
+    const idx = nextMsRef.current;
+    if (idx >= HOLD_MILESTONES.length) return;
+    const ms = HOLD_MILESTONES[idx]!;
+    const round = rounds[ri];
+    if (!round) return;
+    const elapsed = round.holdSecs - remaining;
+    if (elapsed >= ms.at) {
+      nextMsRef.current = idx + 1;
+      cueRef.current?.play(ms.key);
+    }
+  }, [remaining, phase, fx.voice, ri, rounds]);
+
+  const handleLogDive = useCallback(async () => {
+    if (!user || saving) return;
+    setSaving(true);
+    const best = Math.max(...rounds.map((r) => r.holdSecs));
+    const notes = `STA Table — ${rounds.length} rounds\nBest hold: ${fmtClock(best)}`;
+    try {
+      await logStaHold(user.id, best, notes);
+      queryClient.invalidateQueries({ queryKey: ["dives", user.id] });
+      setSaved(true);
+      toast.success(el ? "Καταγράφηκε ως βουτιά STA" : "Logged as an STA dive");
+    } catch (e) {
+      console.error(e);
+      toast.error(el ? "Σφάλμα καταγραφής" : "Log failed");
+    } finally {
+      setSaving(false);
+    }
+  }, [user, saving, rounds, queryClient, el]);
 
   useEffect(() => {
     if (paused || done) return;
@@ -762,7 +855,51 @@ function TableRunner({
         <span className="text-xs font-bold tracking-[0.2em] text-white/40">
           {el ? "ΓΥΡΟΣ" : "ROUND"} {ri + 1} / {rounds.length}
         </span>
-        <div className="w-10" />
+        <div className="flex gap-1.5">
+          <RunnerFxToggle
+            active={fx.voice}
+            onClick={() => toggleFx("voice")}
+            on={<Mic className="size-3.5" />}
+            off={<MicOff className="size-3.5" />}
+          />
+          <RunnerFxToggle
+            active={fx.sound}
+            onClick={() => toggleFx("sound")}
+            on={<Music className="size-3.5" />}
+            off={<VolumeX className="size-3.5" />}
+          />
+          <RunnerFxToggle
+            active={canHaptics && fx.haptics}
+            disabled={!canHaptics}
+            onClick={() => toggleFx("haptics")}
+            on={<Vibrate className="size-3.5" />}
+            off={<Vibrate className="size-3.5" />}
+          />
+          <RunnerFxToggle
+            active={fx.scene}
+            onClick={() => toggleFx("scene")}
+            on={<Waves className="size-3.5" />}
+            off={<Waves className="size-3.5" />}
+          />
+          <button
+            onClick={() => setShowVoice(true)}
+            aria-label={el ? "Η φωνή μου" : "My voice cues"}
+            className="relative flex h-9 w-9 items-center justify-center rounded-full transition-all"
+            style={{
+              background: "rgba(255,255,255,0.04)",
+              border: "1px solid rgba(255,255,255,0.08)",
+              color: "rgba(255,255,255,0.5)",
+            }}
+          >
+            <SlidersHorizontal className="size-3.5" />
+            {hasCues && (
+              <span
+                className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full"
+                style={{ background: TEAL, boxShadow: `0 0 6px ${TEAL}80` }}
+              />
+            )}
+          </button>
+        </div>
       </div>
 
       {done ? (
@@ -771,13 +908,44 @@ function TableRunner({
           <p className="text-lg font-bold text-white">
             {el ? "Ο πίνακας ολοκληρώθηκε 🎯" : "Table complete 🎯"}
           </p>
-          <button
-            onClick={onExit}
-            className="rounded-xl px-8 py-3.5 text-sm font-bold"
-            style={{ background: TEAL, color: "#fff" }}
-          >
-            {el ? "Τέλος" : "Done"}
-          </button>
+          <p className="text-sm text-white/40">
+            {el ? "Καλύτερο hold" : "Best hold"}{" "}
+            {fmtClock(Math.max(...rounds.map((r) => r.holdSecs)))}
+          </p>
+          <div className="flex w-full max-w-xs flex-col gap-3">
+            {user && (
+              <button
+                onClick={handleLogDive}
+                disabled={saving || saved}
+                className="flex items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-bold transition-all"
+                style={{
+                  background: saved ? "rgba(29,158,117,0.15)" : "rgba(255,255,255,0.06)",
+                  color: saved ? TEAL_SOFT : "rgba(255,255,255,0.75)",
+                  border: `1px solid ${saved ? "rgba(29,158,117,0.4)" : "rgba(255,255,255,0.1)"}`,
+                }}
+              >
+                {saved ? <Check className="size-4" /> : null}
+                {saved
+                  ? el
+                    ? "Καταγράφηκε ✓"
+                    : "Logged ✓"
+                  : saving
+                    ? el
+                      ? "Καταγραφή…"
+                      : "Logging…"
+                    : el
+                      ? "Καταγραφή ως βουτιά STA"
+                      : "Log as STA dive"}
+              </button>
+            )}
+            <button
+              onClick={onExit}
+              className="rounded-xl px-8 py-3.5 text-sm font-bold"
+              style={{ background: TEAL, color: "#fff" }}
+            >
+              {el ? "Τέλος" : "Done"}
+            </button>
+          </div>
         </div>
       ) : (
         <>
@@ -841,6 +1009,49 @@ function TableRunner({
           </div>
         </>
       )}
+
+      {showVoice && user && (
+        <VoiceCuesModal
+          uid={user.id}
+          lang={lang}
+          onClose={() => setShowVoice(false)}
+          onChanged={() => {
+            void loadCues();
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+// ── RunnerFxToggle ───────────────────────────────────────────────────────────
+
+function RunnerFxToggle({
+  active,
+  onClick,
+  on,
+  off,
+  disabled = false,
+}: {
+  active: boolean;
+  onClick: () => void;
+  on: React.ReactNode;
+  off: React.ReactNode;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      onClick={disabled ? undefined : onClick}
+      disabled={disabled}
+      className="relative flex h-9 w-9 items-center justify-center rounded-full transition-all"
+      style={{
+        background: active ? "rgba(29,158,117,0.18)" : "rgba(255,255,255,0.04)",
+        border: `1px solid ${active ? "rgba(29,158,117,0.45)" : "rgba(255,255,255,0.08)"}`,
+        color: active ? TEAL_SOFT : "rgba(255,255,255,0.28)",
+        opacity: disabled ? 0.35 : 1,
+      }}
+    >
+      {active ? on : off}
+    </button>
   );
 }

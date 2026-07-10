@@ -44,6 +44,32 @@ export async function fetchDives(userId: string): Promise<Dive[]> {
   return (data ?? []) as Dive[];
 }
 
+/** Log a completed Warm-up/STA Table hold as an STA training dive. */
+export async function logStaHold(userId: string, resultSecs: number, notes: string): Promise<Dive> {
+  const today = new Date().toISOString().slice(0, 10);
+  return createDive(userId, {
+    discipline: "STA",
+    result: resultSecs,
+    dive_date: today,
+    dive_time: null,
+    session_type: "training",
+    federation: null,
+    sleep_hours: null,
+    food_notes: null,
+    mental_state: null,
+    notes,
+    neck_weight: null,
+    belt_weight: null,
+    wetsuit_mm: null,
+    buoyancy: null,
+    fins_type: null,
+    fins_brand: null,
+    fins_model: null,
+    foot_pocket: null,
+    water_temp: null,
+  });
+}
+
 /** Best (max) result per discipline. */
 export function personalBests(dives: Dive[]): Record<string, Dive> {
   const best: Record<string, Dive> = {};

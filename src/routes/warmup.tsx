@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import type { LucideIcon } from "lucide-react";
 import {
   ArrowLeft,
@@ -12,6 +13,8 @@ import {
   Volume2,
   VolumeX,
   Vibrate,
+  Mic,
+  MicOff,
   Plus,
   Pencil,
   Trash2,
@@ -29,7 +32,10 @@ import {
   ListOrdered,
   SlidersHorizontal,
 } from "lucide-react";
+import { toast } from "sonner";
 import { useI18n } from "@/lib/i18n";
+import { useAuth } from "@/hooks/use-auth";
+import { logStaHold } from "@/lib/dives";
 import {
   type WarmupPreset,
   type WarmupStep,
@@ -39,6 +45,7 @@ import {
   WARMUP_ACCENTS,
   presetTotalSecs,
   holdCount,
+  maxHoldSecs,
   fmtClock,
   loadAlarms,
   saveAlarms,
@@ -55,14 +62,20 @@ import {
   loadFxSettings,
   saveFxSettings,
   vibrate,
+  beep,
   hapticsSupported,
   SoundscapeEngine,
+  testHapticPulse,
+  HOLD_MILESTONES,
+  CuePlayer,
 } from "@/lib/trainer-fx";
+import { listCueUrls } from "@/lib/voice-cues";
+import { VoiceCuesModal } from "@/components/VoiceCuesModal";
 import { UnderwaterScene } from "@/components/UnderwaterScene";
 import { LogoBreathPacer } from "@/components/LogoBreathPacer";
 
 export const Route = createFileRoute("/warmup")({
-  head: () => ({ meta: [{ title: "Warm-up — Apnos" }] }),
+  head: () => ({ meta: [{ title: "STA Flow — Apnos" }] }),
   component: Warmup,
 });
 
@@ -101,37 +114,6 @@ const LEVEL_LABEL: Record<WarmupPreset["level"], { el: string; en: string }> = {
 // realistic marks for warm-up-length holds (seconds)
 const ALARM_QUICK = [30, 60, 90, 120];
 
-// ── audio alert (works cross-platform — vibration alone doesn't on iOS) ─────
-
-function alertBeep() {
-  try {
-    const AC =
-      window.AudioContext ||
-      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-    const ctx = new AC();
-    const o = ctx.createOscillator();
-    const g = ctx.createGain();
-    o.connect(g);
-    g.connect(ctx.destination);
-    o.type = "sine";
-    o.frequency.value = 660;
-    g.gain.setValueAtTime(0.0001, ctx.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.25, ctx.currentTime + 0.02);
-    g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.35);
-    o.start();
-    o.stop(ctx.currentTime + 0.4);
-    setTimeout(() => {
-      try {
-        ctx.close();
-      } catch {
-        /* ignore */
-      }
-    }, 500);
-  } catch {
-    /* audio not available */
-  }
-}
-
 // ── breath pacer sweep speed per step kind ───────────────────────────────────
 // Inhale/exhale: the comet completes exactly one lap over the whole step (like
 // an ∞ breath pacer). Tidal breathing keeps a calm 8s lap; holds crawl slower.
@@ -145,15 +127,27 @@ function sweepDuration(step: WarmupStep): number {
 
 // ── component ────────────────────────────────────────────────────────────────
 
+// Maps the 5 warm-up step kinds down to the 3 voice-cue phase groups.
+function cuePhaseFor(kind: WarmupStepKind): "breathe" | "hold" | "recovery" {
+  if (kind === "hold") return "hold";
+  if (kind === "exhale" || kind === "rest") return "recovery";
+  return "breathe";
+}
+
 function Warmup() {
   const { lang } = useI18n();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
 
   const [preset, setPreset] = useState<WarmupPreset | null>(null);
   const [stepIndex, setStepIndex] = useState(0);
   const [remaining, setRemaining] = useState(0);
   const [paused, setPaused] = useState(false);
   const [done, setDone] = useState(false);
+  const [completedPreset, setCompletedPreset] = useState<WarmupPreset | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
 
   const [customs, setCustoms] = useState<WarmupPreset[]>(() => loadCustomWarmups());
   const [builder, setBuilder] = useState<WarmupPreset | null>(null);
@@ -169,8 +163,24 @@ function Warmup() {
   const remainingRef = useRef(0);
   const presetRef = useRef<WarmupPreset | null>(null);
   const firedAlarms = useRef<Set<number>>(new Set());
+  const cueRef = useRef<CuePlayer | null>(null);
+  const nextMsRef = useRef(0);
 
   const canHaptics = hapticsSupported();
+  const [hasCues, setHasCues] = useState(false);
+  const [showVoice, setShowVoice] = useState(false);
+
+  const loadCues = useCallback(async () => {
+    if (!user) return;
+    if (!cueRef.current) cueRef.current = new CuePlayer();
+    const map = await listCueUrls(user.id, lang);
+    cueRef.current.setSources(map);
+    setHasCues(map.size > 0);
+  }, [user, lang]);
+
+  useEffect(() => {
+    void loadCues();
+  }, [loadCues]);
 
   // ── FX helpers ──────────────────────────────────────────────────────────
   const buzz = useCallback((p: number | number[]) => {
@@ -180,15 +190,12 @@ function Warmup() {
   const applyStepFx = useCallback(
     (step: WarmupStep) => {
       buzz(step.kind === "hold" ? [40, 60, 40] : step.kind === "rest" ? [120, 80, 120] : 60);
+      const phase = cuePhaseFor(step.kind);
+      nextMsRef.current = 0;
+      if (fxRef.current.voice) cueRef.current?.play(phase);
       if (!fxRef.current.sound) return;
       const eng = engineRef.current;
       if (!eng) return;
-      const phase =
-        step.kind === "hold"
-          ? "hold"
-          : step.kind === "exhale" || step.kind === "rest"
-            ? "recovery"
-            : "breathe";
       if (!eng.isRunning) eng.start().then(() => eng.setPhase(phase));
       else eng.setPhase(phase);
     },
@@ -206,6 +213,7 @@ function Warmup() {
     setRemaining(p.steps[0]!.secs);
     setPaused(false);
     setDone(false);
+    setSaved(false);
     if (fxRef.current.sound) {
       if (!engineRef.current) engineRef.current = new SoundscapeEngine();
     }
@@ -215,6 +223,8 @@ function Warmup() {
   const finish = useCallback(() => {
     engineRef.current?.stop();
     buzz([200, 100, 200, 100, 200]);
+    if (fxRef.current.voice) cueRef.current?.play("recovery");
+    setCompletedPreset(presetRef.current);
     setDone(true);
     setPreset(null);
   }, [buzz]);
@@ -242,6 +252,7 @@ function Warmup() {
 
   const stop = useCallback(() => {
     engineRef.current?.stop();
+    cueRef.current?.stop();
     presetRef.current = null;
     setPreset(null);
     setDone(false);
@@ -255,15 +266,7 @@ function Warmup() {
         if (nextPaused) eng.stop();
         else if (fxRef.current.sound) {
           const step = presetRef.current?.steps[stepIndexRef.current];
-          if (step) {
-            const phase =
-              step.kind === "hold"
-                ? "hold"
-                : step.kind === "exhale" || step.kind === "rest"
-                  ? "recovery"
-                  : "breathe";
-            eng.start().then(() => eng.setPhase(phase));
-          }
+          if (step) eng.start().then(() => eng.setPhase(cuePhaseFor(step.kind)));
         }
       }
       return nextPaused;
@@ -284,8 +287,17 @@ function Warmup() {
         for (const m of alarms) {
           if (m < step.secs && elapsed >= m && !firedAlarms.current.has(m)) {
             firedAlarms.current.add(m);
-            if (fxRef.current.sound) alertBeep();
+            if (fxRef.current.sound) beep();
             buzz([300, 120, 300]);
+          }
+        }
+        // voice milestone cues (e.g. "m30", "m60", ...) during long holds
+        const idx = nextMsRef.current;
+        if (fxRef.current.voice && idx < HOLD_MILESTONES.length) {
+          const ms = HOLD_MILESTONES[idx]!;
+          if (ms.at < step.secs && elapsed >= ms.at) {
+            nextMsRef.current = idx + 1;
+            cueRef.current?.play(ms.key);
           }
         }
       }
@@ -300,6 +312,7 @@ function Warmup() {
   useEffect(
     () => () => {
       engineRef.current?.stop();
+      cueRef.current?.stop();
     },
     [],
   );
@@ -326,13 +339,42 @@ function Warmup() {
       const next = { ...prev, [key]: !prev[key] };
       saveFxSettings(next);
       if (key === "sound" && !next.sound) engineRef.current?.stop();
+      if (key === "voice" && !next.voice) cueRef.current?.stop();
+      if (key === "haptics" && next.haptics) testHapticPulse();
       return next;
     });
   };
 
+  // ── log completed warm-up as an STA dive (opt-in) ────────────────────────
+  const handleLogDive = useCallback(async () => {
+    if (!user || !completedPreset || saving) return;
+    setSaving(true);
+    const best = maxHoldSecs(completedPreset);
+    const name = lang === "el" ? completedPreset.name_el : completedPreset.name_en;
+    const notes = `Warm-up — ${name}\nBest hold: ${fmtClock(best)}`;
+    try {
+      await logStaHold(user.id, best, notes);
+      queryClient.invalidateQueries({ queryKey: ["dives", user.id] });
+      setSaved(true);
+      toast.success(lang === "el" ? "Καταγράφηκε ως βουτιά STA" : "Logged as an STA dive");
+    } catch (e) {
+      console.error(e);
+      toast.error(lang === "el" ? "Σφάλμα καταγραφής" : "Log failed");
+    } finally {
+      setSaving(false);
+    }
+  }, [user, completedPreset, saving, lang, queryClient]);
+
+  // Opens the builder pre-filled with a copy of a built-in (or another custom)
+  // preset — saving creates the user's own editable variant, the original
+  // stays untouched (built-in presets are code, not per-user data).
+  const handleEditPreset = (p: WarmupPreset) => {
+    setBuilder({ ...p, id: crypto.randomUUID(), custom: true });
+  };
+
   // ── custom warm-up builder ──────────────────────────────────────────────────
   const saveBuilder = (p: WarmupPreset) => {
-    const name = (p.name_el || p.name_en || (lang === "el" ? "Ζέσταμα" : "Warm-up")).trim();
+    const name = (p.name_el || p.name_en || (lang === "el" ? "Ροή STA" : "STA Flow")).trim();
     const clean: WarmupPreset = { ...p, name_el: name, name_en: name, custom: true };
     setCustoms(upsertCustomWarmup(clean));
     setBuilder(null);
@@ -479,7 +521,7 @@ function Warmup() {
           </button>
           <div>
             <h1 className="text-2xl font-bold text-white">
-              {lang === "el" ? "Ζέσταμα" : "Warm-up"}
+              {lang === "el" ? "Ροή STA" : "STA Flow"}
             </h1>
             <p className="text-xs text-white/35">
               {lang === "el" ? "Καθοδηγούμενα ζεστάματα στατικής" : "Guided static warm-ups"}
@@ -489,15 +531,42 @@ function Warmup() {
 
         {done && (
           <div
-            className="mt-5 flex items-center gap-3 rounded-2xl px-4 py-4"
+            className="mt-5 flex flex-col gap-3 rounded-2xl px-4 py-4"
             style={{ background: "rgba(29,158,117,0.1)", border: "1px solid rgba(29,158,117,0.3)" }}
           >
-            <Check className="size-5 shrink-0" style={{ color: "#1D9E75" }} />
-            <span className="text-sm font-semibold text-white/80">
-              {lang === "el"
-                ? "Το ζέσταμα ολοκληρώθηκε — καλή προπόνηση!"
-                : "Warm-up complete — enjoy your session!"}
-            </span>
+            <div className="flex items-center gap-3">
+              <Check className="size-5 shrink-0" style={{ color: "#1D9E75" }} />
+              <span className="text-sm font-semibold text-white/80">
+                {lang === "el"
+                  ? "Το ζέσταμα ολοκληρώθηκε — καλή προπόνηση!"
+                  : "Warm-up complete — enjoy your session!"}
+              </span>
+            </div>
+            {user && completedPreset && holdCount(completedPreset) > 0 && (
+              <button
+                onClick={handleLogDive}
+                disabled={saving || saved}
+                className="flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold transition-all"
+                style={{
+                  background: saved ? "rgba(29,158,117,0.2)" : "rgba(255,255,255,0.06)",
+                  color: saved ? "#5DCAA5" : "rgba(255,255,255,0.75)",
+                  border: `1px solid ${saved ? "rgba(29,158,117,0.4)" : "rgba(255,255,255,0.1)"}`,
+                }}
+              >
+                {saved ? <Check className="size-4" /> : null}
+                {saved
+                  ? lang === "el"
+                    ? "Καταγράφηκε ✓"
+                    : "Logged ✓"
+                  : saving
+                    ? lang === "el"
+                      ? "Καταγραφή…"
+                      : "Logging…"
+                    : lang === "el"
+                      ? `Καταγραφή ως βουτιά STA (${fmtClock(maxHoldSecs(completedPreset))})`
+                      : `Log as STA dive (${fmtClock(maxHoldSecs(completedPreset))})`}
+              </button>
+            )}
           </div>
         )}
 
@@ -585,6 +654,13 @@ function Warmup() {
         {/* FX toggles */}
         <div className="mt-4 flex gap-2">
           <FxChip
+            active={fx.voice}
+            onClick={() => toggleFx("voice")}
+            on={<Mic className="size-3.5" />}
+            off={<MicOff className="size-3.5" />}
+            label={lang === "el" ? "Φωνή" : "Voice"}
+          />
+          <FxChip
             active={fx.sound}
             onClick={() => toggleFx("sound")}
             on={<Volume2 className="size-3.5" />}
@@ -607,6 +683,22 @@ function Warmup() {
             disabled={!canHaptics}
           />
         </div>
+        {user && (
+          <button
+            onClick={() => setShowVoice(true)}
+            className="relative mt-2 flex items-center gap-1.5 self-start rounded-lg px-3 py-2 text-xs font-semibold"
+            style={{ background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.5)" }}
+          >
+            <SlidersHorizontal className="size-3.5" />
+            {lang === "el" ? "Η φωνή μου" : "My voice cues"}
+            {hasCues && (
+              <span
+                className="absolute -right-1 -top-1 h-2 w-2 rounded-full"
+                style={{ background: "#1D9E75", boxShadow: "0 0 6px #1D9E7580" }}
+              />
+            )}
+          </button>
+        )}
 
         {/* beginner presets */}
         <PresetSection
@@ -614,14 +706,16 @@ function Warmup() {
           presets={beginnerPresets}
           lang={lang}
           onStart={startPreset}
+          onEdit={handleEditPreset}
         />
 
         {/* intermediate/advanced presets */}
         <PresetSection
-          title={lang === "el" ? "CO₂ / O₂ ΠΙΝΑΚΕΣ" : "CO₂ / O₂ TABLES"}
+          title={lang === "el" ? "ΠΡΟΧΩΡΗΜΕΝΑ" : "ADVANCED"}
           presets={otherPresets}
           lang={lang}
           onStart={startPreset}
+          onEdit={handleEditPreset}
         />
 
         {/* custom warm-ups */}
@@ -699,6 +793,17 @@ function Warmup() {
           />
         )}
       </div>
+
+      {showVoice && user && (
+        <VoiceCuesModal
+          uid={user.id}
+          lang={lang}
+          onClose={() => setShowVoice(false)}
+          onChanged={() => {
+            void loadCues();
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -710,11 +815,13 @@ function PresetSection({
   presets,
   lang,
   onStart,
+  onEdit,
 }: {
   title: string;
   presets: WarmupPreset[];
   lang: string;
   onStart: (p: WarmupPreset) => void;
+  onEdit: (p: WarmupPreset) => void;
 }) {
   if (presets.length === 0) return null;
   return (
@@ -722,47 +829,58 @@ function PresetSection({
       <p className="mb-3 text-[0.6rem] font-bold tracking-[0.25em] text-white/30">{title}</p>
       <div className="space-y-3">
         {presets.map((p) => (
-          <button
+          <div
             key={p.id}
-            onClick={() => onStart(p)}
-            className="flex w-full items-center gap-4 rounded-2xl px-4 py-4 text-left transition-all active:scale-[0.99]"
+            className="flex items-center gap-3 rounded-2xl px-4 py-4"
             style={{
               background: "#0d1320",
               border: "1px solid rgba(255,255,255,0.06)",
               borderLeft: `3px solid ${p.accent}`,
             }}
           >
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-bold text-white">
-                  {lang === "el" ? p.name_el : p.name_en}
-                </span>
-                <span
-                  className="rounded px-1.5 py-0.5 text-[0.5rem] font-bold uppercase tracking-wider"
-                  style={{ background: `${p.accent}20`, color: p.accent }}
-                >
-                  {lang === "el" ? LEVEL_LABEL[p.level].el : LEVEL_LABEL[p.level].en}
-                </span>
-              </div>
-              <p className="mt-1 text-[0.72rem] leading-relaxed text-white/40">
-                {lang === "el" ? p.desc_el : p.desc_en}
-              </p>
-              <div className="mt-2 flex items-center gap-3 text-[0.65rem] text-white/30">
-                <span>⏱ {fmtClock(presetTotalSecs(p))}</span>
-                {holdCount(p) > 0 && (
-                  <span>
-                    · {holdCount(p)} {lang === "el" ? "κρατήσεις" : "holds"}
-                  </span>
-                )}
-              </div>
-            </div>
-            <div
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full"
-              style={{ background: `${p.accent}18`, color: p.accent }}
+            <button
+              onClick={() => onStart(p)}
+              className="flex min-w-0 flex-1 items-center gap-4 text-left transition-all active:scale-[0.99]"
             >
-              <Play className="size-5" />
-            </div>
-          </button>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-bold text-white">
+                    {lang === "el" ? p.name_el : p.name_en}
+                  </span>
+                  <span
+                    className="rounded px-1.5 py-0.5 text-[0.5rem] font-bold uppercase tracking-wider"
+                    style={{ background: `${p.accent}20`, color: p.accent }}
+                  >
+                    {lang === "el" ? LEVEL_LABEL[p.level].el : LEVEL_LABEL[p.level].en}
+                  </span>
+                </div>
+                <p className="mt-1 text-[0.72rem] leading-relaxed text-white/40">
+                  {lang === "el" ? p.desc_el : p.desc_en}
+                </p>
+                <div className="mt-2 flex items-center gap-3 text-[0.65rem] text-white/30">
+                  <span>⏱ {fmtClock(presetTotalSecs(p))}</span>
+                  {holdCount(p) > 0 && (
+                    <span>
+                      · {holdCount(p)} {lang === "el" ? "κρατήσεις" : "holds"}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full"
+                style={{ background: `${p.accent}18`, color: p.accent }}
+              >
+                <Play className="size-5" />
+              </div>
+            </button>
+            <button
+              onClick={() => onEdit(p)}
+              aria-label={lang === "el" ? "Επεξεργασία αντιγράφου" : "Edit a copy"}
+              className="shrink-0 rounded-lg p-2 text-white/25 hover:text-white/60"
+            >
+              <Pencil className="size-4" />
+            </button>
+          </div>
         ))}
       </div>
     </div>
@@ -875,7 +993,7 @@ function WarmupBuilder({
       >
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-base font-bold text-white">
-            {lang === "el" ? "Ζέσταμα" : "Warm-up"}
+            {lang === "el" ? "Ροή STA" : "STA Flow"}
           </h2>
           <button onClick={onCancel} className="rounded-lg p-1.5 text-white/40">
             <X className="size-5" />
