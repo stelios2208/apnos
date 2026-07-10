@@ -25,6 +25,8 @@ export interface StaTable {
 export const TABLE_ROUNDS = 6;
 
 // CO2: hold is fixed (% of PB), breathe shrinks 2:00 → 0:30 across the rounds.
+// Percentages verified against a real 6:36 PB (see src/lib/sta-tables.ts
+// history) — easy anchors at 1:20, matching the athlete's own reference.
 export const CO2_BREATHE_START = 120;
 export const CO2_BREATHE_END = 30;
 const CO2_HOLD_PCT: Record<PresetLevel, number> = { easy: 0.2, medium: 0.24, hard: 0.28 };

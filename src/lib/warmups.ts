@@ -18,6 +18,13 @@ export interface WarmupPreset {
   desc_el: string;
   desc_en: string;
   level: "beginner" | "intermediate" | "advanced";
+  // Why you'd pick this preset (shown as the card chip instead of a bare
+  // difficulty level) — e.g. "focus", "deep relaxation", "CO₂ tolerance".
+  purpose_el?: string;
+  purpose_en?: string;
+  // For flattened repeating patterns (box, 4-7-8, …): how many steps one
+  // cycle spans, so the player can show "Round x/y".
+  cycleLen?: number;
   accent: string;
   steps: WarmupStep[];
   custom?: boolean;
@@ -40,9 +47,13 @@ export const WARMUP_PRESETS: WarmupPreset[] = [
     id: "relax",
     name_el: "Ήρεμη Αναπνοή",
     name_en: "Relax & Breathe",
-    desc_el: "3 λεπτά καθοδηγούμενης χαλαρωτικής αναπνοής πριν ξεκινήσεις.",
-    desc_en: "3 minutes of guided relaxation breathing before you begin.",
+    desc_el:
+      "3 λεπτά ήρεμης αναπνοής — ενεργοποιεί το παρασυμπαθητικό σύστημα και ρίχνει τους παλμούς πριν ξεκινήσεις.",
+    desc_en:
+      "3 minutes of calm breathing — activates the parasympathetic system and lowers your heart rate before you begin.",
     level: "beginner",
+    purpose_el: "Χαλάρωση",
+    purpose_en: "Wind-down",
     accent: "#9FE1CB",
     steps: [b(180)],
   },
@@ -50,9 +61,14 @@ export const WARMUP_PRESETS: WarmupPreset[] = [
     id: "coherent",
     name_el: "Συνεκτική Αναπνοή",
     name_en: "Coherent Breathing",
-    desc_el: "Εισπνοή 5″ / Εκπνοή 5″ — καλή γενική ρύθμιση κάθε μέρα.",
-    desc_en: "Inhale 5s / Exhale 5s — best general daily regulation.",
+    desc_el:
+      "Εισπνοή 5″ / Εκπνοή 5″ — περίπου 6 αναπνοές το λεπτό, ο ρυθμός που μεγιστοποιεί το HRV και ηρεμεί το νευρικό σύστημα.",
+    desc_en:
+      "Inhale 5s / Exhale 5s — about 6 breaths per minute, the rate shown to maximise HRV and settle the nervous system.",
     level: "beginner",
+    purpose_el: "Ρύθμιση παλμών (HRV)",
+    purpose_en: "Heart-rate balance",
+    cycleLen: 2,
     accent: "#4FA8E0",
     steps: cycle(15, inh(5), exh(5)),
   },
@@ -60,9 +76,14 @@ export const WARMUP_PRESETS: WarmupPreset[] = [
     id: "box",
     name_el: "Τετράγωνη Αναπνοή",
     name_en: "Box Breathing",
-    desc_el: "Εισπνοή 4″ / Κράτα 4″ / Εκπνοή 4″ / Κράτα 4″ — ιδανικό για συγκέντρωση.",
-    desc_en: "Inhale 4s / Hold 4s / Exhale 4s / Hold 4s — best for focus.",
+    desc_el:
+      "Εισπνοή 4″ / Κράτα 4″ / Εκπνοή 4″ / Κράτα 4″ — το «τετράγωνο» κρατά τον νου αγκυρωμένο στο μέτρημα και επαναφέρει τον έλεγχο του στρες.",
+    desc_en:
+      "Inhale 4s / Hold 4s / Exhale 4s / Hold 4s — the square anchors the mind on the count and resets the stress response.",
     level: "beginner",
+    purpose_el: "Συγκέντρωση & έλεγχος",
+    purpose_en: "Focus & control",
+    cycleLen: 4,
     accent: "#5DCAA5",
     steps: cycle(12, inh(4), h(4), exh(4), r(4)),
   },
@@ -70,9 +91,14 @@ export const WARMUP_PRESETS: WarmupPreset[] = [
     id: "478",
     name_el: "Αναπνοή 4-7-8",
     name_en: "4-7-8 Breath",
-    desc_el: "Εισπνοή 4″ / Κράτα 7″ / Εκπνοή 8″ — ιδανικό πριν τον ύπνο ή για βαθιά χαλάρωση.",
-    desc_en: "Inhale 4s / Hold 7s / Exhale 8s — best for sleep/downshifting.",
+    desc_el:
+      "Εισπνοή 4″ / Κράτα 7″ / Εκπνοή 8″ — οι ασκήσεις αναπνοής 4-7-8 διεγείρουν το παρασυμπαθητικό νευρικό σύστημα· ιδανική για ύπνο ή αποφόρτιση.",
+    desc_en:
+      "Inhale 4s / Hold 7s / Exhale 8s — 4-7-8 breathing stimulates the parasympathetic nervous system; ideal for sleep or downshifting.",
     level: "beginner",
+    purpose_el: "Βαθιά χαλάρωση",
+    purpose_en: "Deep relaxation",
+    cycleLen: 3,
     accent: "#B58BE8",
     steps: cycle(10, inh(4), h(7), exh(8)),
   },
@@ -80,9 +106,14 @@ export const WARMUP_PRESETS: WarmupPreset[] = [
     id: "freediving-prep",
     name_el: "Προετοιμασία Ελεύθερης",
     name_en: "Freediving Prep",
-    desc_el: "Εισπνοή 4″ / Εκπνοή 8″ — μεγαλύτερες εκπνοές για να καθίσεις πριν την άπνοια.",
-    desc_en: "Inhale 4s / Exhale 8s — longer exhales to settle before apnea.",
+    desc_el:
+      "Εισπνοή 4″ / Εκπνοή 8″ — εκπνοή διπλάσια της εισπνοής: ρίχνει τους παλμούς και σε «κατεβάζει» πριν τις κρατήσεις.",
+    desc_en:
+      "Inhale 4s / Exhale 8s — exhaling twice as long as you inhale lowers the pulse and settles you before your holds.",
     level: "beginner",
+    purpose_el: "Πριν την άπνοια",
+    purpose_en: "Pre-apnea settling",
+    cycleLen: 2,
     accent: "#EF9F27",
     steps: cycle(12, inh(4), exh(8)),
   },
@@ -90,9 +121,12 @@ export const WARMUP_PRESETS: WarmupPreset[] = [
     id: "pre-max",
     name_el: "Προθέρμανση Max",
     name_en: "Pre-Max Static",
-    desc_el: "Δύο ανεβαίνουσες κρατήσεις για να ετοιμαστείς για μέγιστη προσπάθεια.",
-    desc_en: "Two building holds to prime you for a maximal attempt.",
+    desc_el:
+      "Δύο ανεβαίνουσες κρατήσεις που «ξυπνούν» το mammalian dive reflex πριν από μια μέγιστη προσπάθεια.",
+    desc_en: "Two building holds that wake up the dive reflex before a maximal attempt.",
     level: "intermediate",
+    purpose_el: "Πριν από max",
+    purpose_en: "Before a max",
     accent: "#1D9E75",
     steps: [b(120), h(60), r(120), b(120), h(120), r(180)],
   },
@@ -101,9 +135,12 @@ export const WARMUP_PRESETS: WarmupPreset[] = [
     name_el: "CO₂ Ανοχή",
     name_en: "CO₂ Tolerance",
     desc_el:
-      "Για αρχάριους. Σταθερές κρατήσεις 0:45 με μειούμενη ξεκούραση — χτίζει ανοχή στο CO₂.",
-    desc_en: "Beginner-friendly. Fixed 0:45 holds with shrinking rest — builds CO₂ tolerance.",
+      "Για αρχάριους. Σταθερές κρατήσεις 0:45 με μειούμενη ξεκούραση — μαθαίνει το σώμα να ανέχεται το ανεβασμένο CO₂, την πρώτη αιτία του «θέλω να αναπνεύσω».",
+    desc_en:
+      "Beginner-friendly. Fixed 0:45 holds with shrinking rest — teaches the body to tolerate rising CO₂, the main source of the urge to breathe.",
     level: "beginner",
+    purpose_el: "Ανοχή στο CO₂",
+    purpose_en: "CO₂ tolerance",
     accent: "#EF9F27",
     steps: [b(120), h(45), r(105), h(45), r(90), h(45), r(75), h(45), r(60), h(45)],
   },
@@ -111,9 +148,13 @@ export const WARMUP_PRESETS: WarmupPreset[] = [
     id: "o2",
     name_el: "O₂ Πρόοδος",
     name_en: "O₂ Progressive",
-    desc_el: "Για αρχάριους. Σταθερή ξεκούραση 2:00 με κρατήσεις 0:45→1:30 — χτίζει αντοχή σε O₂.",
-    desc_en: "Beginner-friendly. Fixed 2:00 rest with 0:45→1:30 holds — builds O₂ endurance.",
+    desc_el:
+      "Για αρχάριους. Σταθερή ξεκούραση 2:00 με κρατήσεις 0:45→1:30 — προσαρμογή του σώματος στη λειτουργία με λιγότερο οξυγόνο.",
+    desc_en:
+      "Beginner-friendly. Fixed 2:00 rest with 0:45→1:30 holds — adapts the body to functioning on less oxygen.",
     level: "beginner",
+    purpose_el: "Αντοχή σε χαμηλό O₂",
+    purpose_en: "Low-O₂ endurance",
     accent: "#5DCAA5",
     steps: [b(120), h(45), r(120), h(60), r(120), h(75), r(120), h(90)],
   },

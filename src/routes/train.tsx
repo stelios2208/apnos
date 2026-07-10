@@ -2,14 +2,12 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   Plus,
   Waves,
-  Flame,
   Timer,
   TimerReset,
   Users,
   CalendarDays,
   Brain,
   ChevronRight,
-  Table,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
@@ -47,29 +45,11 @@ const ITEMS: HubItem[] = [
   {
     to: "/sta-trainer",
     icon: Waves,
-    accent: "#1D9E75",
-    title_el: "STA Trainer",
-    title_en: "STA Trainer",
-    sub_el: "Καθοδηγούμενη στατική με ήχο",
-    sub_en: "Guided static with soundscape",
-  },
-  {
-    to: "/sta-tables",
-    icon: Table,
-    accent: "#1D9E75",
-    title_el: "STA Tables",
-    title_en: "STA Tables",
-    sub_el: "CO₂ / O₂ tables από το PB σου",
-    sub_en: "CO₂ / O₂ tables from your PB",
-  },
-  {
-    to: "/warmup",
-    icon: Flame,
-    accent: "#1D9E75",
-    title_el: "Ροή STA",
-    title_en: "STA Flow",
-    sub_el: "Ζεστάματα & custom προγράμματα",
-    sub_en: "Warm-ups & custom programs",
+    accent: "#5DCAA5",
+    title_el: "Στατική Trainer",
+    title_en: "Static Trainer",
+    sub_el: "Ζέσταμα, πίνακες CO₂/O₂ & ελεύθερη στατική",
+    sub_en: "Warm-up, CO₂/O₂ tables & guided static",
   },
   {
     to: "/stopwatch",

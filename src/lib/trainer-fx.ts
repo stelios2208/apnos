@@ -7,7 +7,7 @@ export type FxSettings = { voice: boolean; sound: boolean; haptics: boolean; sce
 
 const STORE_KEY = "apnos.trainer.fx";
 
-const FX_DEFAULTS: FxSettings = { voice: true, sound: true, haptics: true, scene: true };
+export const FX_DEFAULTS: FxSettings = { voice: true, sound: true, haptics: true, scene: true };
 
 export function loadFxSettings(): FxSettings {
   if (typeof localStorage === "undefined") return { ...FX_DEFAULTS };
