@@ -85,12 +85,14 @@ export function vibrate(pattern: number | number[]): void {
 
 // Fired the moment a Haptics toggle switches on — a direct-gesture vibrate so
 // the athlete gets real feedback on whether their device actually buzzes.
-// (navigator.vibrate is commonly a silent no-op on some Android/Samsung
-// builds depending on OS-level touch-vibration settings — this can't be
-// fixed from the web app, but a test pulse at least surfaces it honestly
-// instead of a toggle that looks "on" with no way to check.)
+// MUST be called synchronously from the tap handler (not from a React state
+// updater or a timer) so the browser's user-activation gate lets it through.
+// A firm ~300ms pulse so it's unmistakable when it does work.
+// (navigator.vibrate is a silent no-op on iOS entirely, and on some Android /
+// Samsung Internet builds when system "touch vibration" or battery-saver is
+// set — that's an OS limitation the web app can't override.)
 export function testHapticPulse(): void {
-  vibrate([40, 60, 40]);
+  vibrate([120, 80, 120]);
 }
 
 // ── Custom voice cues ────────────────────────────────────────────────────────
