@@ -181,7 +181,28 @@ export function WarmupTool({ onBack }: { onBack: () => void }) {
     setSaving(true);
     const best = maxHoldSecs(completedPreset);
     const name = lang === "el" ? completedPreset.name_el : completedPreset.name_en;
-    const notes = `Warm-up — ${name}\nBest hold: ${fmtClock(best)}`;
+    // If the preset is a breathe/hold table (CO2/O2 style), log every round so
+    // the dive page shows the full breakdown — same "Rounds: [JSON]" shape the
+    // guided static and STA tables use. Presets that aren't a rounds shape
+    // (box/4-7-8 breathing, single-step relax) just get the summary line.
+    const wRounds = roundsFromSteps(completedPreset.steps);
+    let notes = `Warm-up — ${name}\nBest hold: ${fmtClock(best)}`;
+    if (wRounds && wRounds.length > 0) {
+      const holds = wRounds.map((r) => r.holdSecs);
+      const avg = Math.round(holds.reduce((a, b) => a + b, 0) / holds.length);
+      notes = [
+        `Warm-up — ${name} — ${wRounds.length} rounds`,
+        `Best: ${fmtClock(best)} | Avg: ${fmtClock(avg)}`,
+        `Rounds: ${JSON.stringify(
+          wRounds.map((r) => ({
+            breathe: fmtClock(r.breatheSecs),
+            hold: fmtClock(r.holdSecs),
+            recovery: "0:00",
+            contractions: 0,
+          })),
+        )}`,
+      ].join("\n");
+    }
     try {
       await logStaHold(user.id, best, notes);
       queryClient.invalidateQueries({ queryKey: ["dives", user.id] });
