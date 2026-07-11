@@ -20,6 +20,11 @@ dist-ssr
 .wrangler/
 .dev.vars
 
+# Capacitor native projects — generated locally with `npx cap add android`,
+# not committed (regenerate on the machine that builds the app).
+/android
+/ios
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

@@ -3,6 +3,8 @@
 // synthesized relaxing soundscape, and haptics. All client-side, offline,
 // zero asset files — synth built with the Web Audio API.
 
+import { isNativeApp, nativeVibrate } from "./native";
+
 export type FxSettings = { voice: boolean; sound: boolean; haptics: boolean; scene: boolean };
 
 const STORE_KEY = "apnos.trainer.fx";
@@ -69,18 +71,15 @@ export function beep(freq = 660): void {
 // ── Haptics ──────────────────────────────────────────────────────────────────
 
 export function hapticsSupported(): boolean {
-  // iOS Safari (incl. PWA) does not expose the Vibration API at all.
-  return typeof navigator !== "undefined" && "vibrate" in navigator;
+  // Native shell always has real haptics; in a browser, iOS Safari (incl. PWA)
+  // exposes no Vibration API at all.
+  return isNativeApp() || (typeof navigator !== "undefined" && "vibrate" in navigator);
 }
 
 export function vibrate(pattern: number | number[]): void {
-  if (hapticsSupported()) {
-    try {
-      navigator.vibrate(pattern);
-    } catch {
-      /* ignore */
-    }
-  }
+  // Routes through the native Haptics plugin inside the Capacitor app, and
+  // falls back to navigator.vibrate in a plain browser.
+  nativeVibrate(pattern);
 }
 
 // Fired the moment a Haptics toggle switches on — a direct-gesture vibrate so

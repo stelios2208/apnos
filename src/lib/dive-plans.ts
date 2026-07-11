@@ -15,7 +15,6 @@ export interface DivePlan {
   warmupId: string | null;
   warmupName: string; // denormalised for display
   warmupMins: number; // minutes before top that the warm-up starts
-  programName?: string; // optional loaded coach programme (reference)
   sleepGoal: string; // e.g. "8" (hours) — desired
   notes: string;
   wetStatic: boolean; // STA only: wet (face-down) vs dry
