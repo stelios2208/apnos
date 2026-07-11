@@ -118,12 +118,17 @@ function dateTimeAt(dateISO: string, hhmm: string): Date {
   return d;
 }
 
-function fmtCountdown(ms: number): string {
+function fmtCountdown(ms: number, lang: string): string {
   const total = Math.max(0, Math.round(ms / 1000));
-  const h = Math.floor(total / 3600);
+  const d = Math.floor(total / 86400);
+  const h = Math.floor((total % 86400) / 3600);
   const m = Math.floor((total % 3600) / 60);
   const s = total % 60;
   const pad = (n: number) => n.toString().padStart(2, "0");
+  if (d > 0) {
+    const dLabel = lang === "el" ? "η" : "d";
+    return `${d}${dLabel} ${h}:${pad(m)}:${pad(s)}`;
+  }
   return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
 }
 
@@ -851,7 +856,7 @@ function CountdownPanel({
                       : lang === "el"
                         ? "πέρασε"
                         : "passed"
-                    : fmtCountdown(diff)}
+                    : fmtCountdown(diff, lang)}
                 </p>
               </div>
             );
