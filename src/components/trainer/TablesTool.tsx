@@ -806,8 +806,24 @@ function TableRunner({
   const handleLogDive = useCallback(async () => {
     if (!user || saving) return;
     setSaving(true);
-    const best = Math.max(...rounds.map((r) => r.holdSecs));
-    const notes = `STA Table — ${rounds.length} rounds\nBest hold: ${fmtClock(best)}`;
+    const holds = rounds.map((r) => r.holdSecs);
+    const best = Math.max(...holds);
+    const avg = Math.round(holds.reduce((a, b) => a + b, 0) / holds.length);
+    // Same notes shape FreeTrainer writes, so the dive page renders every round
+    // in its structured "session breakdown" (not just the best hold). Tables have
+    // no recovery/contractions, so those are logged as zero.
+    const notes = [
+      `STA Table — ${rounds.length} rounds`,
+      `Best: ${fmtClock(best)} | Avg: ${fmtClock(avg)}`,
+      `Rounds: ${JSON.stringify(
+        rounds.map((r) => ({
+          breathe: fmtClock(r.breatheSecs),
+          hold: fmtClock(r.holdSecs),
+          recovery: "0:00",
+          contractions: 0,
+        })),
+      )}`,
+    ].join("\n");
     try {
       await logStaHold(user.id, best, notes);
       queryClient.invalidateQueries({ queryKey: ["dives", user.id] });
