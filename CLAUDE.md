@@ -50,6 +50,10 @@ A deliberate chain keeps SSR crashes from rendering raw h3 500s: `src/start.ts` 
 
 Render is the primary target (`render.yaml`: `NITRO_PRESET=node-server npm run build`, serves `.output/server/index.mjs`); `render-server.mjs` is a fallback Node server supporting both old and new build layouts. `vercel.json` only rewrites everything to `/`.
 
+### Native app (Capacitor)
+
+Phones run a Capacitor shell (`capacitor.config.ts`) that loads the live deployment via `server.url` in a native WebView — see `CAPACITOR.md`. Native access goes through `src/lib/native.ts` (`isNativeApp()`, `nativeVibrate()`), which `src/lib/trainer-fx.ts` `vibrate()` delegates to, so haptics use the native Haptics plugin in the app and fall back to `navigator.vibrate` in a browser. Keep all Capacitor usage guarded so it's SSR-safe. `/android` and `/ios` are git-ignored (generated with `npx cap add …`).
+
 ## Conventions
 
 - Path alias `@/*` → `src/*`.

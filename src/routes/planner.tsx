@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import {
   Play,
   Square,
@@ -18,12 +17,9 @@ import {
   Waves,
   Calendar,
   Check,
-  ClipboardList,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AppLayout } from "@/components/AppLayout";
-import { useAuth } from "@/hooks/use-auth";
-import { fetchAthletes } from "@/lib/athletes";
 import { useI18n } from "@/lib/i18n";
 import {
   DISCIPLINES,
@@ -158,7 +154,6 @@ function fmtDayLabel(iso: string, lang: string): string {
 
 function DivePlanPage() {
   const { lang } = useI18n();
-  const { user } = useAuth();
   const [plans, setPlans] = useState<DivePlan[]>([]);
   const [editing, setEditing] = useState<DivePlan | null>(null);
   const [showForm, setShowForm] = useState(false);
@@ -182,19 +177,6 @@ function DivePlanPage() {
     setWarmupPreset(w);
     setWarmupMin(false);
   };
-
-  const { data: athletes = [] } = useQuery({
-    queryKey: ["coach_athletes", user?.id],
-    queryFn: () => fetchAthletes(user!.id),
-    enabled: !!user,
-  });
-  const programmes = useMemo(
-    () =>
-      athletes.flatMap((a) =>
-        (a.programs ?? []).map((p) => ({ name: p.name, athleteName: a.name })),
-      ),
-    [athletes],
-  );
 
   useEffect(() => {
     setPlans(loadPlans());
@@ -279,7 +261,6 @@ function DivePlanPage() {
         <PlanFormModal
           plan={editing}
           lang={lang}
-          programmes={programmes}
           onClose={() => setShowForm(false)}
           onSaved={onSaved}
         />
@@ -362,11 +343,6 @@ function PlanCard({
                 <Flame className="size-3" style={{ color: "#EF9F27" }} /> {plan.warmupName}
               </span>
             )}
-            {plan.programName && (
-              <span className="flex items-center gap-1">
-                <ClipboardList className="size-3" style={{ color: "#B58BE8" }} /> {plan.programName}
-              </span>
-            )}
           </div>
         </div>
         <button
@@ -407,19 +383,16 @@ function PlanCard({
 function PlanFormModal({
   plan,
   lang,
-  programmes,
   onClose,
   onSaved,
 }: {
   plan: DivePlan;
   lang: string;
-  programmes: { name: string; athleteName: string }[];
   onClose: () => void;
   onSaved: (p: DivePlan) => void;
 }) {
   const [p, setP] = useState<DivePlan>(plan);
   const [showWarmups, setShowWarmups] = useState(false);
-  const [showProgrammes, setShowProgrammes] = useState(false);
   const set = (patch: Partial<DivePlan>) => setP((prev) => ({ ...prev, ...patch }));
 
   const time = isTimeDiscipline(p.discipline);
@@ -588,39 +561,6 @@ function PlanFormModal({
         )}
         {!p.warmupId && <div className="mb-3" />}
 
-        {/* programme loader (from your coach programmes) */}
-        {programmes.length > 0 && (
-          <>
-            <label className={labelCls}>{lang === "el" ? "ΠΡΟΓΡΑΜΜΑ" : "PROGRAMME"}</label>
-            <button
-              onClick={() => setShowProgrammes(true)}
-              className="mb-3 flex w-full items-center justify-between rounded-xl px-3 py-3"
-              style={{
-                background: "rgba(var(--ink),0.03)",
-                border: "1px solid rgba(var(--ink),0.06)",
-              }}
-            >
-              <span className="flex items-center gap-2 text-sm">
-                <ClipboardList className="size-4" style={{ color: "#B58BE8" }} />
-                <span className={p.programName ? "text-foreground/80" : "text-foreground/35"}>
-                  {p.programName || (lang === "el" ? "Φόρτωσε πρόγραμμα…" : "Load a programme…")}
-                </span>
-              </span>
-              {p.programName ? (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    set({ programName: "" });
-                  }}
-                  className="text-[0.65rem] text-foreground/30 hover:text-red-400/70"
-                >
-                  {lang === "el" ? "αφαίρεση" : "remove"}
-                </button>
-              ) : null}
-            </button>
-          </>
-        )}
-
         {/* STA wet + sleep */}
         <div className="mb-3 grid grid-cols-2 gap-3">
           {p.discipline === "STA" ? (
@@ -685,72 +625,6 @@ function PlanFormModal({
             onClose={() => setShowWarmups(false)}
           />
         )}
-        {showProgrammes && (
-          <ProgrammePicker
-            programmes={programmes}
-            lang={lang}
-            onPick={(name) => {
-              set({ programName: name });
-              setShowProgrammes(false);
-            }}
-            onClose={() => setShowProgrammes(false)}
-          />
-        )}
-      </div>
-    </div>
-  );
-}
-
-function ProgrammePicker({
-  programmes,
-  lang,
-  onPick,
-  onClose,
-}: {
-  programmes: { name: string; athleteName: string }[];
-  lang: string;
-  onPick: (name: string) => void;
-  onClose: () => void;
-}) {
-  return (
-    <div
-      className="fixed inset-0 z-[60] flex flex-col justify-end"
-      style={{ background: "rgba(0,0,0,0.7)" }}
-      onClick={onClose}
-    >
-      <div
-        className="max-h-[75vh] overflow-y-auto rounded-t-3xl p-5"
-        style={{ background: "var(--popover)" }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="mb-3 flex items-center justify-between">
-          <h3 className="text-sm font-bold text-foreground">
-            {lang === "el" ? "Διάλεξε πρόγραμμα" : "Choose a programme"}
-          </h3>
-          <button onClick={onClose} className="rounded-lg p-1.5 text-foreground/40">
-            <X className="size-5" />
-          </button>
-        </div>
-        <div className="space-y-2">
-          {programmes.map((pr, i) => (
-            <button
-              key={i}
-              onClick={() => onPick(pr.name)}
-              className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left"
-              style={{
-                background: "var(--card)",
-                border: "1px solid rgba(var(--ink),0.05)",
-                borderLeft: "3px solid #B58BE8",
-              }}
-            >
-              <ClipboardList className="size-4 shrink-0" style={{ color: "#B58BE8" }} />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold text-foreground">{pr.name}</p>
-                <p className="text-[0.65rem] text-foreground/40">{pr.athleteName}</p>
-              </div>
-            </button>
-          ))}
-        </div>
       </div>
     </div>
   );
