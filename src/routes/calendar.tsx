@@ -1,13 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ChevronLeft, ChevronRight, Plus, Droplet, Clock, Target, Flame } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { useAuth } from "@/hooks/use-auth";
 import { fetchDives } from "@/lib/dives";
 import { disciplineName, formatResult } from "@/lib/diving";
 import { useI18n } from "@/lib/i18n";
-import type { Dive } from "@/lib/diving";
+import type { Dive, DisciplineCode } from "@/lib/diving";
+import { loadPlans, sortPlans } from "@/lib/dive-plans";
+import type { DivePlan } from "@/lib/dive-plans";
 
 export const Route = createFileRoute("/calendar")({
   head: () => ({ meta: [{ title: "Ημερολόγιο — Apnos" }] }),
@@ -65,16 +67,37 @@ const MONTHS_EN = [
   "December",
 ];
 
+// Discipline accent colours for the planned-dive chip — mirrors the palette
+// used on the /planner page so the same discipline reads the same colour
+// everywhere.
+const PLAN_DISC_COLOR: Record<string, string> = {
+  STA: "#9FE1CB",
+  DYN: "#1D9E75",
+  DYNB: "#1D9E75",
+  DNF: "#5DCAA5",
+  CWT: "#EF9F27",
+  CWTB: "#EF9F27",
+  CNF: "#e8a020",
+  FIM: "#d4912a",
+};
+const planDiscColor = (d: DisciplineCode) => PLAN_DISC_COLOR[d] ?? "#5DCAA5";
+
 // ── component ──────────────────────────────────────────────────────────────────
 
 function Calendar() {
   const { user } = useAuth();
   const { lang } = useI18n();
   const today = new Date();
+  const todayStr = toYMD(today);
 
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
   const [selected, setSelected] = useState<string | null>(toYMD(today));
+  const [plans, setPlans] = useState<DivePlan[]>([]);
+
+  useEffect(() => {
+    setPlans(loadPlans());
+  }, []);
 
   const { data: dives = [] } = useQuery({
     queryKey: ["dives", user?.id],
@@ -87,6 +110,10 @@ function Calendar() {
     (acc[d.dive_date] ??= []).push(d);
     return acc;
   }, {});
+
+  // planned (not-yet-passed) dive-plan dates — plans have no "completed" flag
+  // of their own, so "planned" here just means today or in the future.
+  const plannedDates = new Set(plans.filter((p) => p.date >= todayStr).map((p) => p.date));
 
   const prevMonth = () => {
     if (viewMonth === 0) {
@@ -103,11 +130,11 @@ function Calendar() {
 
   const days = daysInMonth(viewYear, viewMonth);
   const offset = firstWeekday(viewYear, viewMonth);
-  const todayStr = toYMD(today);
   const weekdays = lang === "el" ? WEEKDAYS_EL : WEEKDAYS_EN;
   const monthName = (lang === "el" ? MONTHS_EL : MONTHS_EN)[viewMonth];
 
   const selectedDives = selected ? (byDate[selected] ?? []) : [];
+  const selectedPlans = selected ? sortPlans(plans.filter((p) => p.date === selected)) : [];
 
   return (
     <div className="space-y-5">
@@ -173,6 +200,7 @@ function Calendar() {
             const isFuture = ymd > todayStr;
             const hasComp = dayDives.some((d) => d.session_type === "competition");
             const hasTraining = dayDives.some((d) => d.session_type !== "competition");
+            const hasPlanned = plannedDates.has(ymd);
 
             return (
               <button
@@ -203,8 +231,8 @@ function Calendar() {
                 </span>
 
                 {/* dot indicators */}
-                {dayDives.length > 0 && (
-                  <div className="mt-0.5 flex gap-0.5">
+                {(dayDives.length > 0 || hasPlanned) && (
+                  <div className="mt-0.5 flex items-center gap-0.5">
                     {hasTraining && (
                       <span
                         className="h-1.5 w-1.5 rounded-full"
@@ -216,6 +244,9 @@ function Calendar() {
                         className="h-1.5 w-1.5 rounded-full"
                         style={{ background: "#EF9F27" }}
                       />
+                    )}
+                    {hasPlanned && (
+                      <Droplet className="size-2" style={{ color: "#EF9F27" }} fill="#EF9F27" />
                     )}
                   </div>
                 )}
@@ -233,6 +264,10 @@ function Calendar() {
           <span className="flex items-center gap-1.5 text-[0.6rem] text-foreground/30">
             <span className="h-2 w-2 rounded-full bg-[#EF9F27]" />
             {lang === "el" ? "Αγώνας" : "Competition"}
+          </span>
+          <span className="flex items-center gap-1.5 text-[0.6rem] text-foreground/30">
+            <Droplet className="size-2.5" style={{ color: "#EF9F27" }} fill="#EF9F27" />
+            {lang === "el" ? "Προγραμματισμένη" : "Planned"}
           </span>
         </div>
       </div>
@@ -252,12 +287,15 @@ function Calendar() {
             </Link>
           </div>
 
-          {selectedDives.length === 0 ? (
+          {selectedPlans.length === 0 && selectedDives.length === 0 ? (
             <p className="text-sm text-foreground/25">
               {lang === "el" ? "Καμία βουτιά αυτή την ημέρα." : "No dives logged this day."}
             </p>
           ) : (
             <div className="space-y-2">
+              {selectedPlans.map((plan) => (
+                <PlannedDiveRow key={plan.id} plan={plan} lang={lang as "el" | "en"} />
+              ))}
               {selectedDives.map((dive) => (
                 <DayDiveRow key={dive.id} dive={dive} lang={lang as "el" | "en"} />
               ))}
@@ -337,6 +375,62 @@ function DayDiveRow({ dive, lang }: { dive: Dive; lang: "el" | "en" }) {
           🏆
         </span>
       )}
+    </Link>
+  );
+}
+
+// ── PlannedDiveRow ───────────────────────────────────────────────────────────
+// Planned dives live in localStorage (src/lib/dive-plans.ts), not Supabase —
+// this renders the full detail (discipline, target, top time, linked warm-up
+// protocol, notes) tapping a day exposes, mirroring the /planner page's card.
+
+function PlannedDiveRow({ plan, lang }: { plan: DivePlan; lang: "el" | "en" }) {
+  const color = planDiscColor(plan.discipline);
+  return (
+    <Link
+      to="/planner"
+      className="flex flex-col gap-1.5 rounded-xl px-4 py-3 transition-colors"
+      style={{
+        background: "var(--card)",
+        borderLeft: `3px solid ${color}`,
+        border: "1px dashed rgba(239,159,39,0.3)",
+      }}
+    >
+      <div className="flex items-center gap-2">
+        <span
+          className="shrink-0 rounded-md px-2 py-0.5 text-[0.6rem] font-bold tracking-wider"
+          style={{ background: `${color}22`, color }}
+        >
+          {plan.discipline}
+        </span>
+        <span className="text-xs font-semibold text-foreground/80">
+          {disciplineName(plan.discipline, lang)}
+        </span>
+        <Droplet className="ml-auto size-3.5" style={{ color: "#EF9F27" }} fill="#EF9F27" />
+        <span className="text-[0.6rem] font-bold tracking-wider" style={{ color: "#EF9F27" }}>
+          {lang === "el" ? "ΠΡΟΓΡΑΜΜΑΤΙΣΜΕΝΗ" : "PLANNED"}
+        </span>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[0.68rem] text-foreground/45">
+        {plan.topTime && (
+          <span className="flex items-center gap-1">
+            <Clock className="size-3" /> {plan.topTime}
+          </span>
+        )}
+        {plan.target && (
+          <span className="flex items-center gap-1">
+            <Target className="size-3" /> {plan.target}
+          </span>
+        )}
+        {plan.warmupName && (
+          <span className="flex items-center gap-1">
+            <Flame className="size-3" style={{ color: "#EF9F27" }} /> {plan.warmupName}
+          </span>
+        )}
+      </div>
+
+      {plan.notes && <p className="text-xs text-foreground/40">{plan.notes}</p>}
     </Link>
   );
 }
