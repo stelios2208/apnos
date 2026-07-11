@@ -246,7 +246,7 @@ function Calendar() {
                       />
                     )}
                     {hasPlanned && (
-                      <Droplet className="size-2" style={{ color: "#EF9F27" }} fill="#EF9F27" />
+                      <Droplet className="size-2" style={{ color: "#4FA8E0" }} fill="#4FA8E0" />
                     )}
                   </div>
                 )}
@@ -266,7 +266,7 @@ function Calendar() {
             {lang === "el" ? "Αγώνας" : "Competition"}
           </span>
           <span className="flex items-center gap-1.5 text-[0.6rem] text-foreground/30">
-            <Droplet className="size-2.5" style={{ color: "#EF9F27" }} fill="#EF9F27" />
+            <Droplet className="size-2.5" style={{ color: "#4FA8E0" }} fill="#4FA8E0" />
             {lang === "el" ? "Προγραμματισμένη" : "Planned"}
           </span>
         </div>
@@ -393,7 +393,7 @@ function PlannedDiveRow({ plan, lang }: { plan: DivePlan; lang: "el" | "en" }) {
       style={{
         background: "var(--card)",
         borderLeft: `3px solid ${color}`,
-        border: "1px dashed rgba(239,159,39,0.3)",
+        border: "1px dashed rgba(79,168,224,0.3)",
       }}
     >
       <div className="flex items-center gap-2">
@@ -406,8 +406,8 @@ function PlannedDiveRow({ plan, lang }: { plan: DivePlan; lang: "el" | "en" }) {
         <span className="text-xs font-semibold text-foreground/80">
           {disciplineName(plan.discipline, lang)}
         </span>
-        <Droplet className="ml-auto size-3.5" style={{ color: "#EF9F27" }} fill="#EF9F27" />
-        <span className="text-[0.6rem] font-bold tracking-wider" style={{ color: "#EF9F27" }}>
+        <Droplet className="ml-auto size-3.5" style={{ color: "#4FA8E0" }} fill="#4FA8E0" />
+        <span className="text-[0.6rem] font-bold tracking-wider" style={{ color: "#4FA8E0" }}>
           {lang === "el" ? "ΠΡΟΓΡΑΜΜΑΤΙΣΜΕΝΗ" : "PLANNED"}
         </span>
       </div>
