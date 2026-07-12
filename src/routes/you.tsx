@@ -6,7 +6,6 @@ import {
   ChevronRight,
   UserCircle,
   Trophy,
-  BadgeCheck,
   Store,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -42,23 +41,16 @@ const ITEMS: HubItem[] = [
     sub_el: "Στοιχεία, δημόσιο/ιδιωτικό",
     sub_en: "Details, public/private",
   },
+  // One entry for records: the verified performances system (/performances)
+  // replaced the older self-reported /rankings page in the hub.
   {
-    to: "/rankings",
+    to: "/performances",
     icon: Trophy,
     accent: "#EF9F27",
     title_el: "Ρεκόρ & Κατατάξεις",
     title_en: "Records & Rankings",
-    sub_el: "CMAS/AIDA, πανελλήνια, θάλασσα & πισίνα",
-    sub_en: "CMAS/AIDA, national, sea & pool",
-  },
-  {
-    to: "/performances",
-    icon: BadgeCheck,
-    accent: "#1D9E75",
-    title_el: "Επιδόσεις & Verified",
-    title_en: "Performances & Verified",
-    sub_el: "Δήλωσε επίδοση, επιβεβαιωμένη κατάταξη",
-    sub_en: "Declare a result, verified leaderboard",
+    sub_el: "Δήλωσε επίδοση → έλεγχος → verified κατάταξη",
+    sub_en: "Declare a result → review → verified leaderboard",
   },
   {
     to: "/equipment",

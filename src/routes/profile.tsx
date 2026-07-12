@@ -14,9 +14,9 @@ import {
   emptyProfile,
   ageFromBirthdate,
   uploadAvatar,
-  flagEmoji,
 } from "@/lib/profile";
 import { athleteInitials, athleteColor } from "@/lib/athletes";
+import { Flag } from "@/components/Flag";
 
 export const Route = createFileRoute("/profile")({
   head: () => ({ meta: [{ title: "Profile — Apnos" }] }),
@@ -187,9 +187,9 @@ function ProfilePage() {
           />
         </label>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-lg font-bold text-foreground">
-            {form.countryCode && <span className="mr-1.5">{flagEmoji(form.countryCode)}</span>}
-            {nameForAvatar}
+          <p className="flex items-center gap-1.5 text-lg font-bold text-foreground">
+            <Flag code={form.countryCode} className="inline-block h-4 w-auto rounded-[2px]" />
+            <span className="truncate">{nameForAvatar}</span>
           </p>
           <p className="mt-0.5 text-xs text-foreground/40">
             {[
@@ -327,8 +327,8 @@ function ProfilePage() {
             />
           </div>
           <div className="flex w-24 shrink-0 flex-col gap-1.5">
-            <label className={labelCls}>
-              {form.countryCode ? `${flagEmoji(form.countryCode)} ` : ""}
+            <label className={`${labelCls} flex items-center gap-1`}>
+              <Flag code={form.countryCode} className="inline-block h-2.5 w-auto rounded-[2px]" />
               {lang === "el" ? "ΚΩΔ." : "CODE"}
             </label>
             <input

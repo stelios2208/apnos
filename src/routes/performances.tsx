@@ -47,8 +47,9 @@ import {
   createCompetition,
   deleteCompetition,
 } from "@/lib/performances";
-import { fetchProfile, flagEmoji } from "@/lib/profile";
+import { fetchProfile } from "@/lib/profile";
 import { athleteInitials, athleteColor } from "@/lib/athletes";
+import { Flag } from "@/components/Flag";
 
 export const Route = createFileRoute("/performances")({
   head: () => ({ meta: [{ title: "Επιδόσεις & Verified — Apnos" }] }),
@@ -87,9 +88,9 @@ function AthleteChip({
           {athleteInitials(display)}
         </span>
       )}
-      <span className="truncate text-xs font-semibold text-foreground/80">
-        {countryCode && <span className="mr-1">{flagEmoji(countryCode)}</span>}
-        {display}
+      <span className="flex min-w-0 items-center gap-1.5 text-xs font-semibold text-foreground/80">
+        <Flag code={countryCode} />
+        <span className="truncate">{display}</span>
       </span>
     </span>
   );
@@ -144,11 +145,11 @@ function PerformancesPage() {
   const admin = isAdminUser(user);
   const [tab, setTab] = useState<Tab>("leaderboard");
 
-  const tabs: { id: Tab; el: string; en: string; show: boolean }[] = [
+  const tabs: { id: Tab; el: string; en: string; show: boolean; adminTab?: boolean }[] = [
     { id: "leaderboard", el: "Κατάταξη", en: "Leaderboard", show: true },
     { id: "mine", el: "Οι επιδόσεις μου", en: "My results", show: true },
-    { id: "verify", el: "Έλεγχος", en: "Verify", show: admin },
-    { id: "events", el: "Αγώνες", en: "Events", show: admin },
+    { id: "verify", el: "Έλεγχος", en: "Verify", show: admin, adminTab: true },
+    { id: "events", el: "Αγώνες", en: "Events", show: admin, adminTab: true },
   ];
 
   return (
@@ -174,13 +175,17 @@ function PerformancesPage() {
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              className="flex-1 rounded-lg py-2 text-xs font-bold transition-colors"
+              className="flex flex-1 items-center justify-center gap-1 rounded-lg py-2 text-xs font-bold transition-colors"
               style={
                 tab === t.id
-                  ? { background: "var(--card)", color: "var(--foreground)" }
-                  : { color: "rgba(var(--ink),0.4)" }
+                  ? {
+                      background: "var(--card)",
+                      color: t.adminTab ? "#1D9E75" : "var(--foreground)",
+                    }
+                  : { color: t.adminTab ? "rgba(29,158,117,0.55)" : "rgba(var(--ink),0.4)" }
               }
             >
+              {t.adminTab && <ShieldCheck className="size-3.5" />}
               {lang === "el" ? t.el : t.en}
             </button>
           ))}
@@ -205,6 +210,30 @@ function LeaderboardTab({ lang }: { lang: "el" | "en" }) {
 
   return (
     <div className="space-y-3">
+      {/* how it works */}
+      <div
+        className="rounded-xl px-4 py-3 text-[0.7rem] leading-relaxed text-foreground/45"
+        style={{ background: "rgba(79,168,224,0.07)", border: "1px solid rgba(79,168,224,0.18)" }}
+      >
+        {lang === "el" ? (
+          <>
+            <b className="text-foreground/70">Πώς λειτουργεί:</b> Δηλώνεις επίδοση στο «Οι επιδόσεις
+            μου». Χωρίς αγώνα μπαίνει ως <b style={{ color: "#4FA8E0" }}>Δηλωμένη</b>. Με αγώνα +
+            φωτό-απόδειξη πάει για έλεγχο και, αν εγκριθεί, γίνεται{" "}
+            <b style={{ color: "#1D9E75" }}>Επιβεβαιωμένη ✓</b>. Εδώ βλέπεις την καλύτερη δημόσια
+            επίδοση κάθε αθλητή.
+          </>
+        ) : (
+          <>
+            <b className="text-foreground/70">How it works:</b> Declare a result in "My results".
+            Without a competition it's listed as <b style={{ color: "#4FA8E0" }}>Self-reported</b>.
+            With a competition + proof photo it goes for review and, if approved, becomes{" "}
+            <b style={{ color: "#1D9E75" }}>Verified ✓</b>. This tab shows each athlete's best
+            public result.
+          </>
+        )}
+      </div>
+
       <DisciplinePicker value={discipline} onChange={setDiscipline} />
 
       {isLoading ? (
@@ -542,8 +571,9 @@ function EventsTab({ lang }: { lang: "el" | "en" }) {
             />
           </div>
           <div className="w-20 shrink-0">
-            <label className={labelCls}>
-              {countryCode ? `${flagEmoji(countryCode)} ` : ""}ΚΩΔ.
+            <label className={`${labelCls} flex items-center gap-1`}>
+              <Flag code={countryCode} className="inline-block h-2.5 w-auto rounded-[2px]" />
+              {lang === "el" ? "ΚΩΔ." : "CODE"}
             </label>
             <input
               className={`${inputCls} text-center uppercase`}
@@ -622,9 +652,9 @@ function EventsTab({ lang }: { lang: "el" | "en" }) {
               style={{ background: "var(--card)", border: "1px solid rgba(var(--ink),0.05)" }}
             >
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold text-foreground">
-                  {c.country_code && <span className="mr-1">{flagEmoji(c.country_code)}</span>}
-                  {c.name}
+                <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                  <Flag code={c.country_code} />
+                  <span className="truncate">{c.name}</span>
                 </p>
                 <p className="mt-0.5 text-[0.65rem] text-foreground/40">
                   {[c.location, c.date, c.federation].filter(Boolean).join(" · ")}
@@ -785,16 +815,24 @@ function DeclareModal({ lang, onClose }: { lang: "el" | "en"; onClose: () => voi
         <select
           value={competitionId}
           onChange={(e) => setCompetitionId(e.target.value)}
-          className={`${inputCls} mb-1`}
-          style={{ colorScheme: "dark" }}
+          className="mb-1 w-full rounded-xl px-3 py-3 text-sm font-medium outline-none focus:ring-1 focus:ring-[#1D9E75]"
+          style={{
+            background: "var(--card)",
+            color: "var(--foreground)",
+            border: "1px solid rgba(var(--ink),0.15)",
+          }}
         >
-          <option value="">
+          <option value="" style={{ background: "var(--card)", color: "var(--foreground)" }}>
             {lang === "el"
               ? "— Χωρίς αγώνα (self-reported) —"
               : "— No competition (self-reported) —"}
           </option>
           {competitions.map((c: Competition) => (
-            <option key={c.id} value={c.id}>
+            <option
+              key={c.id}
+              value={c.id}
+              style={{ background: "var(--card)", color: "var(--foreground)" }}
+            >
               {c.name}
               {c.date ? ` · ${c.date}` : ""} · {c.federation}
             </option>
