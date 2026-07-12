@@ -30,6 +30,11 @@ export interface Performance {
   proof_photo_url: string | null;
   status: PerformanceStatus;
   is_public: boolean;
+  // athlete identity, denormalised from the profile at declare time (profiles
+  // live in auth user_metadata and can't be joined across users)
+  athlete_name?: string;
+  country_code?: string;
+  avatar_url?: string | null;
   created_at: string;
 }
 
@@ -39,6 +44,17 @@ export interface NewPerformanceInput {
   competition_id: string | null;
   proof_photo_url: string | null;
   is_public: boolean;
+  athlete_name?: string;
+  country_code?: string;
+  avatar_url?: string | null;
+}
+
+export interface NewCompetitionInput {
+  name: string;
+  location: string;
+  country_code: string;
+  federation: Federation;
+  date: string | null;
 }
 
 const PROOFS_BUCKET = "performance-proofs";
@@ -72,6 +88,18 @@ export async function fetchCompetitions(): Promise<Competition[]> {
     throw error;
   }
   return (data ?? []) as Competition[];
+}
+
+// ── competitions: admin CRUD ─────────────────────────────────────────────────
+
+export async function createCompetition(input: NewCompetitionInput): Promise<void> {
+  const { error } = await supabase.from("competitions").insert(input);
+  if (error) throw error;
+}
+
+export async function deleteCompetition(id: string): Promise<void> {
+  const { error } = await supabase.from("competitions").delete().eq("id", id);
+  if (error) throw error;
 }
 
 // ── performances: athlete ────────────────────────────────────────────────────
@@ -134,7 +162,17 @@ export async function uploadProof(userId: string, file: File): Promise<string> {
 export async function createPerformance(userId: string, input: NewPerformanceInput): Promise<void> {
   // status is intentionally omitted — the DB trigger derives it.
   const { error } = await supabase.from("performances").insert({ user_id: userId, ...input });
-  if (error) throw error;
+  if (error) {
+    // athlete-info columns may not be migrated yet (PGRST204 = unknown column):
+    // drop them and retry so declaring keeps working.
+    if (error.code === "PGRST204") {
+      const { athlete_name: _n, country_code: _c, avatar_url: _a, ...bare } = input;
+      const retry = await supabase.from("performances").insert({ user_id: userId, ...bare });
+      if (retry.error) throw retry.error;
+      return;
+    }
+    throw error;
+  }
 }
 
 export async function deletePerformance(id: string): Promise<void> {

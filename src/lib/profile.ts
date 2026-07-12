@@ -12,9 +12,11 @@ export interface AthleteProfile {
   heightCm: number | null;
   weightKg: number | null;
   country: string;
+  countryCode: string; // ISO alpha-2 ("GR") — drives the flag on leaderboards
   city: string;
   bio: string;
   isPublic: boolean;
+  avatarUrl: string; // public URL in the `avatars` bucket, "" if none
 }
 
 export function emptyProfile(): AthleteProfile {
@@ -25,10 +27,33 @@ export function emptyProfile(): AthleteProfile {
     heightCm: null,
     weightKg: null,
     country: "",
+    countryCode: "",
     city: "",
     bio: "",
     isPublic: false,
+    avatarUrl: "",
   };
+}
+
+/** ISO alpha-2 country code → flag emoji ("GR" → 🇬🇷); "" if invalid. */
+export function flagEmoji(code: string): string {
+  const c = code.trim().toUpperCase();
+  if (!/^[A-Z]{2}$/.test(c)) return "";
+  return String.fromCodePoint(...[...c].map((ch) => 0x1f1e6 + ch.charCodeAt(0) - 65));
+}
+
+/** Upload a profile photo to the owner's folder in `avatars`; returns its
+ *  public URL (cache-busted so a re-upload shows immediately). */
+export async function uploadAvatar(userId: string, file: File): Promise<string> {
+  const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+  const path = `${userId}/avatar.${ext}`;
+  const { error } = await supabase.storage.from("avatars").upload(path, file, {
+    upsert: true,
+    contentType: file.type || "image/jpeg",
+  });
+  if (error) throw error;
+  const base = supabase.storage.from("avatars").getPublicUrl(path).data.publicUrl;
+  return `${base}?v=${Date.now()}`;
 }
 
 export function ageFromBirthdate(iso: string): number | null {
@@ -57,9 +82,11 @@ function coerce(meta: Record<string, unknown> | undefined): AthleteProfile {
     heightCm: typeof p.heightCm === "number" ? p.heightCm : base.heightCm,
     weightKg: typeof p.weightKg === "number" ? p.weightKg : base.weightKg,
     country: typeof p.country === "string" ? p.country : base.country,
+    countryCode: typeof p.countryCode === "string" ? p.countryCode : base.countryCode,
     city: typeof p.city === "string" ? p.city : base.city,
     bio: typeof p.bio === "string" ? p.bio : base.bio,
     isPublic: typeof p.isPublic === "boolean" ? p.isPublic : base.isPublic,
+    avatarUrl: typeof p.avatarUrl === "string" ? p.avatarUrl : base.avatarUrl,
   };
 }
 

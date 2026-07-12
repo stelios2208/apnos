@@ -15,6 +15,7 @@ import {
   Camera,
   Check,
   Ban,
+  CalendarPlus,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AppLayout } from "@/components/AppLayout";
@@ -22,10 +23,12 @@ import { useAuth } from "@/hooks/use-auth";
 import { useI18n } from "@/lib/i18n";
 import {
   DISCIPLINES,
+  FEDERATIONS,
   disciplineName,
   formatResult,
   isTimeDiscipline,
   type DisciplineCode,
+  type Federation,
 } from "@/lib/diving";
 import {
   type Competition,
@@ -41,7 +44,11 @@ import {
   setPerformancePublic,
   reviewPerformance,
   uploadProof,
+  createCompetition,
+  deleteCompetition,
 } from "@/lib/performances";
+import { fetchProfile, flagEmoji } from "@/lib/profile";
+import { athleteInitials, athleteColor } from "@/lib/athletes";
 
 export const Route = createFileRoute("/performances")({
   head: () => ({ meta: [{ title: "Επιδόσεις & Verified — Apnos" }] }),
@@ -52,7 +59,41 @@ export const Route = createFileRoute("/performances")({
   ),
 });
 
-type Tab = "leaderboard" | "mine" | "verify";
+type Tab = "leaderboard" | "mine" | "verify" | "events";
+
+// Small athlete identity block: photo (or initials), flag, name.
+function AthleteChip({
+  name,
+  countryCode,
+  avatarUrl,
+  seed,
+}: {
+  name: string;
+  countryCode: string;
+  avatarUrl: string | null | undefined;
+  seed: string;
+}) {
+  const display = name || "—";
+  const color = athleteColor(seed || display);
+  return (
+    <span className="flex min-w-0 items-center gap-2">
+      {avatarUrl ? (
+        <img src={avatarUrl} alt="" className="h-7 w-7 shrink-0 rounded-full object-cover" />
+      ) : (
+        <span
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[0.6rem] font-bold"
+          style={{ background: `${color}22`, color }}
+        >
+          {athleteInitials(display)}
+        </span>
+      )}
+      <span className="truncate text-xs font-semibold text-foreground/80">
+        {countryCode && <span className="mr-1">{flagEmoji(countryCode)}</span>}
+        {display}
+      </span>
+    </span>
+  );
+}
 
 // ── value parse/format ───────────────────────────────────────────────────────
 
@@ -107,6 +148,7 @@ function PerformancesPage() {
     { id: "leaderboard", el: "Κατάταξη", en: "Leaderboard", show: true },
     { id: "mine", el: "Οι επιδόσεις μου", en: "My results", show: true },
     { id: "verify", el: "Έλεγχος", en: "Verify", show: admin },
+    { id: "events", el: "Αγώνες", en: "Events", show: admin },
   ];
 
   return (
@@ -147,6 +189,7 @@ function PerformancesPage() {
       {tab === "leaderboard" && <LeaderboardTab lang={lang as "el" | "en"} />}
       {tab === "mine" && <MineTab lang={lang as "el" | "en"} />}
       {tab === "verify" && admin && <VerifyTab lang={lang as "el" | "en"} />}
+      {tab === "events" && admin && <EventsTab lang={lang as "el" | "en"} />}
     </div>
   );
 }
@@ -187,13 +230,19 @@ function LeaderboardTab({ lang }: { lang: "el" | "en" }) {
                 {i + 1}
               </span>
               <div className="min-w-0 flex-1">
-                <p className="truncate font-mono text-sm font-bold text-foreground">
-                  {formatResult(p.discipline, p.value)}
-                </p>
-                <div className="mt-0.5">
+                <AthleteChip
+                  name={p.athlete_name ?? ""}
+                  countryCode={p.country_code ?? ""}
+                  avatarUrl={p.avatar_url}
+                  seed={p.user_id}
+                />
+                <div className="mt-1">
                   <StatusBadge status={p.status} lang={lang} />
                 </div>
               </div>
+              <p className="shrink-0 font-mono text-base font-bold text-foreground">
+                {formatResult(p.discipline, p.value)}
+              </p>
               {p.proof_photo_url && (
                 <a
                   href={p.proof_photo_url}
@@ -370,10 +419,17 @@ function VerifyTab({ lang }: { lang: "el" | "en" }) {
               </a>
             )}
           </div>
-          <p className="mt-1 truncate text-[0.6rem] text-foreground/30">
-            {lang === "el" ? "αθλητής" : "athlete"} {p.user_id.slice(0, 8)}… ·{" "}
-            {new Date(p.created_at).toLocaleDateString()}
-          </p>
+          <div className="mt-2 flex items-center gap-2">
+            <AthleteChip
+              name={p.athlete_name ?? ""}
+              countryCode={p.country_code ?? ""}
+              avatarUrl={p.avatar_url}
+              seed={p.user_id}
+            />
+            <span className="ml-auto shrink-0 text-[0.6rem] text-foreground/30">
+              {new Date(p.created_at).toLocaleDateString()}
+            </span>
+          </div>
 
           <div className="mt-3 flex gap-2">
             <button
@@ -399,6 +455,198 @@ function VerifyTab({ lang }: { lang: "el" | "en" }) {
   );
 }
 
+// ── Events tab (admin: manage official competitions) ────────────────────────
+
+function EventsTab({ lang }: { lang: "el" | "en" }) {
+  const qc = useQueryClient();
+  const [name, setName] = useState("");
+  const [location, setLocation] = useState("");
+  const [countryCode, setCountryCode] = useState("GR");
+  const [federation, setFederation] = useState<Federation>("AIDA");
+  const [date, setDate] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const { data: competitions = [], isLoading } = useQuery({
+    queryKey: ["competitions"],
+    queryFn: fetchCompetitions,
+  });
+
+  const add = async () => {
+    if (!name.trim() || saving) {
+      if (!name.trim()) toast.error(lang === "el" ? "Βάλε όνομα αγώνα" : "Enter an event name");
+      return;
+    }
+    setSaving(true);
+    try {
+      await createCompetition({
+        name: name.trim(),
+        location: location.trim(),
+        country_code: countryCode.trim().toUpperCase(),
+        federation,
+        date: date || null,
+      });
+      qc.invalidateQueries({ queryKey: ["competitions"] });
+      setName("");
+      setLocation("");
+      setDate("");
+      toast.success(lang === "el" ? "Ο αγώνας προστέθηκε" : "Event added");
+    } catch (e) {
+      console.error(e);
+      toast.error(lang === "el" ? "Σφάλμα (είσαι admin;)" : "Failed (are you admin?)");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const del = useMutation({
+    mutationFn: (id: string) => deleteCompetition(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["competitions"] });
+      toast.success(lang === "el" ? "Διαγράφηκε" : "Deleted");
+    },
+    onError: () => toast.error(lang === "el" ? "Σφάλμα" : "Error"),
+  });
+
+  const labelCls = "mb-1.5 block text-[0.6rem] font-bold tracking-wider text-foreground/35";
+  const inputCls =
+    "w-full rounded-xl bg-foreground/5 px-3 py-2.5 text-sm text-foreground outline-none focus:ring-1 focus:ring-[#1D9E75]";
+
+  return (
+    <div className="space-y-4">
+      {/* add form */}
+      <div
+        className="rounded-2xl p-4"
+        style={{ background: "var(--card)", border: "1px solid rgba(var(--ink),0.06)" }}
+      >
+        <p className="mb-3 flex items-center gap-1.5 text-xs font-bold text-foreground/70">
+          <CalendarPlus className="size-4" style={{ color: "#1D9E75" }} />
+          {lang === "el" ? "Νέος επίσημος αγώνας" : "New official event"}
+        </p>
+
+        <label className={labelCls}>{lang === "el" ? "ΟΝΟΜΑ" : "NAME"}</label>
+        <input
+          className={`${inputCls} mb-3`}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder={lang === "el" ? "Πανελλήνιο Πρωτάθλημα 2026" : "National Championship 2026"}
+        />
+
+        <div className="mb-3 flex gap-2">
+          <div className="flex-1">
+            <label className={labelCls}>{lang === "el" ? "ΤΟΠΟΘΕΣΙΑ" : "LOCATION"}</label>
+            <input
+              className={inputCls}
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              placeholder={lang === "el" ? "Αθήνα" : "Athens"}
+            />
+          </div>
+          <div className="w-20 shrink-0">
+            <label className={labelCls}>
+              {countryCode ? `${flagEmoji(countryCode)} ` : ""}ΚΩΔ.
+            </label>
+            <input
+              className={`${inputCls} text-center uppercase`}
+              value={countryCode}
+              maxLength={2}
+              onChange={(e) =>
+                setCountryCode(e.target.value.replace(/[^a-zA-Z]/g, "").toUpperCase())
+              }
+              placeholder="GR"
+            />
+          </div>
+        </div>
+
+        <div className="mb-4 flex gap-2">
+          <div className="flex-1">
+            <label className={labelCls}>{lang === "el" ? "ΗΜΕΡΟΜΗΝΙΑ" : "DATE"}</label>
+            <input
+              type="date"
+              className={inputCls}
+              style={{ colorScheme: "dark" }}
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+            />
+          </div>
+          <div className="w-32 shrink-0">
+            <label className={labelCls}>{lang === "el" ? "ΟΜΟΣΠΟΝΔΙΑ" : "FEDERATION"}</label>
+            <div className="flex gap-1">
+              {FEDERATIONS.map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setFederation(f)}
+                  className="flex-1 rounded-lg py-2.5 text-[0.65rem] font-bold"
+                  style={
+                    federation === f
+                      ? {
+                          background: "rgba(29,158,117,0.18)",
+                          color: "#1D9E75",
+                          border: "1px solid rgba(29,158,117,0.4)",
+                        }
+                      : {
+                          background: "rgba(var(--ink),0.03)",
+                          color: "rgba(var(--ink),0.4)",
+                          border: "1px solid rgba(var(--ink),0.06)",
+                        }
+                  }
+                >
+                  {f}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <button
+          onClick={add}
+          disabled={saving}
+          className="flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold"
+          style={{ background: "#1D9E75", color: "#fff" }}
+        >
+          {saving ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
+          {lang === "el" ? "Προσθήκη αγώνα" : "Add event"}
+        </button>
+      </div>
+
+      {/* list */}
+      {isLoading ? (
+        <Spinner />
+      ) : competitions.length === 0 ? (
+        <Empty text={lang === "el" ? "Κανένας αγώνας ακόμα." : "No events yet."} />
+      ) : (
+        <div className="space-y-2">
+          {competitions.map((c) => (
+            <div
+              key={c.id}
+              className="flex items-center gap-3 rounded-xl px-4 py-3"
+              style={{ background: "var(--card)", border: "1px solid rgba(var(--ink),0.05)" }}
+            >
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold text-foreground">
+                  {c.country_code && <span className="mr-1">{flagEmoji(c.country_code)}</span>}
+                  {c.name}
+                </p>
+                <p className="mt-0.5 text-[0.65rem] text-foreground/40">
+                  {[c.location, c.date, c.federation].filter(Boolean).join(" · ")}
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  if (confirm(lang === "el" ? "Διαγραφή αγώνα;" : "Delete event?"))
+                    del.mutate(c.id);
+                }}
+                className="rounded-lg p-1.5 text-foreground/20 hover:text-red-400/70"
+              >
+                <Trash2 className="size-4" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Declare modal ────────────────────────────────────────────────────────────
 
 function DeclareModal({ lang, onClose }: { lang: "el" | "en"; onClose: () => void }) {
@@ -416,6 +664,9 @@ function DeclareModal({ lang, onClose }: { lang: "el" | "en"; onClose: () => voi
     queryKey: ["competitions"],
     queryFn: fetchCompetitions,
   });
+  // athlete identity (name / flag / photo) rides along on the row, since
+  // profiles aren't queryable across users
+  const { data: profile } = useQuery({ queryKey: ["profile"], queryFn: fetchProfile });
 
   const submit = async () => {
     if (!user || saving) return;
@@ -434,6 +685,9 @@ function DeclareModal({ lang, onClose }: { lang: "el" | "en"; onClose: () => voi
         competition_id: competitionId || null,
         proof_photo_url: proofUrl,
         is_public: isPublic,
+        athlete_name: profile?.displayName ?? "",
+        country_code: profile?.countryCode ?? "",
+        avatar_url: profile?.avatarUrl || null,
       });
       qc.invalidateQueries({ queryKey: ["my-performances", user.id] });
       qc.invalidateQueries({ queryKey: ["leaderboard"] });

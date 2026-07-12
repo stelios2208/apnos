@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Loader2, Lock, Globe2, Ruler, Weight } from "lucide-react";
+import { ArrowLeft, Loader2, Lock, Globe2, Ruler, Weight, Camera } from "lucide-react";
 import { toast } from "sonner";
 import { AppLayout } from "@/components/AppLayout";
 import { useI18n } from "@/lib/i18n";
@@ -13,6 +13,8 @@ import {
   saveProfile,
   emptyProfile,
   ageFromBirthdate,
+  uploadAvatar,
+  flagEmoji,
 } from "@/lib/profile";
 import { athleteInitials, athleteColor } from "@/lib/athletes";
 
@@ -32,9 +34,11 @@ interface FormState {
   heightStr: string;
   weightStr: string;
   country: string;
+  countryCode: string;
   city: string;
   bio: string;
   isPublic: boolean;
+  avatarUrl: string;
 }
 
 function toForm(p: AthleteProfile): FormState {
@@ -45,9 +49,11 @@ function toForm(p: AthleteProfile): FormState {
     heightStr: p.heightCm != null ? String(p.heightCm) : "",
     weightStr: p.weightKg != null ? String(p.weightKg) : "",
     country: p.country,
+    countryCode: p.countryCode,
     city: p.city,
     bio: p.bio,
     isPublic: p.isPublic,
+    avatarUrl: p.avatarUrl,
   };
 }
 
@@ -61,9 +67,11 @@ function toProfile(f: FormState): AthleteProfile {
     heightCm: Number.isFinite(h) && h > 0 ? h : null,
     weightKg: Number.isFinite(w) && w > 0 ? w : null,
     country: f.country.trim(),
+    countryCode: f.countryCode.trim().toUpperCase(),
     city: f.city.trim(),
     bio: f.bio.trim(),
     isPublic: f.isPublic,
+    avatarUrl: f.avatarUrl,
   };
 }
 
@@ -138,14 +146,51 @@ function ProfilePage() {
         className="flex items-center gap-4 rounded-2xl px-5 py-4"
         style={{ background: "var(--card)", border: "1px solid rgba(var(--ink),0.06)" }}
       >
-        <div
-          className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full text-xl font-bold"
-          style={{ background: `${avatar}22`, color: avatar, border: `1px solid ${avatar}45` }}
-        >
-          {athleteInitials(nameForAvatar)}
-        </div>
+        <label className="relative shrink-0 cursor-pointer" title="Upload photo">
+          {form.avatarUrl ? (
+            <img
+              src={form.avatarUrl}
+              alt=""
+              className="h-16 w-16 rounded-full object-cover"
+              style={{ border: `1px solid ${avatar}45` }}
+            />
+          ) : (
+            <div
+              className="flex h-16 w-16 items-center justify-center rounded-full text-xl font-bold"
+              style={{ background: `${avatar}22`, color: avatar, border: `1px solid ${avatar}45` }}
+            >
+              {athleteInitials(nameForAvatar)}
+            </div>
+          )}
+          <span
+            className="absolute -bottom-0.5 -right-0.5 flex h-6 w-6 items-center justify-center rounded-full"
+            style={{ background: "#1D9E75", border: "2px solid var(--card)" }}
+          >
+            <Camera className="size-3 text-white" />
+          </span>
+          <input
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              if (!file || !user) return;
+              try {
+                const url = await uploadAvatar(user.id, file);
+                set("avatarUrl", url);
+                toast.success(lang === "el" ? "Η φωτογραφία ανέβηκε" : "Photo uploaded");
+              } catch (err) {
+                console.error(err);
+                toast.error(lang === "el" ? "Σφάλμα στο ανέβασμα" : "Upload failed");
+              }
+            }}
+          />
+        </label>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-lg font-bold text-foreground">{nameForAvatar}</p>
+          <p className="truncate text-lg font-bold text-foreground">
+            {form.countryCode && <span className="mr-1.5">{flagEmoji(form.countryCode)}</span>}
+            {nameForAvatar}
+          </p>
           <p className="mt-0.5 text-xs text-foreground/40">
             {[
               age != null ? `${age} ${lang === "el" ? "ετών" : "yo"}` : null,
@@ -279,6 +324,21 @@ function ProfilePage() {
               value={form.country}
               onChange={(e) => set("country", e.target.value)}
               placeholder={lang === "el" ? "Ελλάδα" : "Greece"}
+            />
+          </div>
+          <div className="flex w-24 shrink-0 flex-col gap-1.5">
+            <label className={labelCls}>
+              {form.countryCode ? `${flagEmoji(form.countryCode)} ` : ""}
+              {lang === "el" ? "ΚΩΔ." : "CODE"}
+            </label>
+            <input
+              className={`${inputCls} text-center uppercase`}
+              value={form.countryCode}
+              maxLength={2}
+              onChange={(e) =>
+                set("countryCode", e.target.value.replace(/[^a-zA-Z]/g, "").toUpperCase())
+              }
+              placeholder="GR"
             />
           </div>
           <div className="flex flex-1 flex-col gap-1.5">
