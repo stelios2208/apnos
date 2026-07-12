@@ -6,6 +6,7 @@ import {
   ChevronRight,
   UserCircle,
   Trophy,
+  BadgeCheck,
   Store,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -49,6 +50,15 @@ const ITEMS: HubItem[] = [
     title_en: "Records & Rankings",
     sub_el: "CMAS/AIDA, πανελλήνια, θάλασσα & πισίνα",
     sub_en: "CMAS/AIDA, national, sea & pool",
+  },
+  {
+    to: "/performances",
+    icon: BadgeCheck,
+    accent: "#1D9E75",
+    title_el: "Επιδόσεις & Verified",
+    title_en: "Performances & Verified",
+    sub_el: "Δήλωσε επίδοση, επιβεβαιωμένη κατάταξη",
+    sub_en: "Declare a result, verified leaderboard",
   },
   {
     to: "/equipment",

@@ -22,6 +22,7 @@ import { Route as RulesRouteImport } from './routes/rules'
 import { Route as RankingsRouteImport } from './routes/rankings'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as PlannerRouteImport } from './routes/planner'
+import { Route as PerformancesRouteImport } from './routes/performances'
 import { Route as LogRouteImport } from './routes/log'
 import { Route as HistoryRouteImport } from './routes/history'
 import { Route as EquipmentRouteImport } from './routes/equipment'
@@ -100,6 +101,11 @@ const PlannerRoute = PlannerRouteImport.update({
   path: '/planner',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PerformancesRoute = PerformancesRouteImport.update({
+  id: '/performances',
+  path: '/performances',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LogRoute = LogRouteImport.update({
   id: '/log',
   path: '/log',
@@ -170,6 +176,7 @@ export interface FileRoutesByFullPath {
   '/equipment': typeof EquipmentRoute
   '/history': typeof HistoryRoute
   '/log': typeof LogRoute
+  '/performances': typeof PerformancesRoute
   '/planner': typeof PlannerRoute
   '/profile': typeof ProfileRoute
   '/rankings': typeof RankingsRoute
@@ -196,6 +203,7 @@ export interface FileRoutesByTo {
   '/equipment': typeof EquipmentRoute
   '/history': typeof HistoryRoute
   '/log': typeof LogRoute
+  '/performances': typeof PerformancesRoute
   '/planner': typeof PlannerRoute
   '/profile': typeof ProfileRoute
   '/rankings': typeof RankingsRoute
@@ -224,6 +232,7 @@ export interface FileRoutesById {
   '/equipment': typeof EquipmentRoute
   '/history': typeof HistoryRoute
   '/log': typeof LogRoute
+  '/performances': typeof PerformancesRoute
   '/planner': typeof PlannerRoute
   '/profile': typeof ProfileRoute
   '/rankings': typeof RankingsRoute
@@ -253,6 +262,7 @@ export interface FileRouteTypes {
     | '/equipment'
     | '/history'
     | '/log'
+    | '/performances'
     | '/planner'
     | '/profile'
     | '/rankings'
@@ -279,6 +289,7 @@ export interface FileRouteTypes {
     | '/equipment'
     | '/history'
     | '/log'
+    | '/performances'
     | '/planner'
     | '/profile'
     | '/rankings'
@@ -306,6 +317,7 @@ export interface FileRouteTypes {
     | '/equipment'
     | '/history'
     | '/log'
+    | '/performances'
     | '/planner'
     | '/profile'
     | '/rankings'
@@ -334,6 +346,7 @@ export interface RootRouteChildren {
   EquipmentRoute: typeof EquipmentRoute
   HistoryRoute: typeof HistoryRoute
   LogRoute: typeof LogRoute
+  PerformancesRoute: typeof PerformancesRoute
   PlannerRoute: typeof PlannerRoute
   ProfileRoute: typeof ProfileRoute
   RankingsRoute: typeof RankingsRoute
@@ -444,6 +457,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PlannerRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/performances': {
+      id: '/performances'
+      path: '/performances'
+      fullPath: '/performances'
+      preLoaderRoute: typeof PerformancesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/log': {
       id: '/log'
       path: '/log'
@@ -552,6 +572,7 @@ const rootRouteChildren: RootRouteChildren = {
   EquipmentRoute: EquipmentRoute,
   HistoryRoute: HistoryRoute,
   LogRoute: LogRoute,
+  PerformancesRoute: PerformancesRoute,
   PlannerRoute: PlannerRoute,
   ProfileRoute: ProfileRoute,
   RankingsRoute: RankingsRoute,
