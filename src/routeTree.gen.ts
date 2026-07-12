@@ -19,6 +19,7 @@ import { Route as StaTablesRouteImport } from './routes/sta-tables'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as RulesRouteImport } from './routes/rules'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as RankingsRouteImport } from './routes/rankings'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as PlannerRouteImport } from './routes/planner'
@@ -84,6 +85,11 @@ const SettingsRoute = SettingsRouteImport.update({
 const RulesRoute = RulesRouteImport.update({
   id: '/rules',
   path: '/rules',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RankingsRoute = RankingsRouteImport.update({
@@ -180,6 +186,7 @@ export interface FileRoutesByFullPath {
   '/planner': typeof PlannerRoute
   '/profile': typeof ProfileRoute
   '/rankings': typeof RankingsRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/rules': typeof RulesRoute
   '/settings': typeof SettingsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -207,6 +214,7 @@ export interface FileRoutesByTo {
   '/planner': typeof PlannerRoute
   '/profile': typeof ProfileRoute
   '/rankings': typeof RankingsRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/rules': typeof RulesRoute
   '/settings': typeof SettingsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -236,6 +244,7 @@ export interface FileRoutesById {
   '/planner': typeof PlannerRoute
   '/profile': typeof ProfileRoute
   '/rankings': typeof RankingsRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/rules': typeof RulesRoute
   '/settings': typeof SettingsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -266,6 +275,7 @@ export interface FileRouteTypes {
     | '/planner'
     | '/profile'
     | '/rankings'
+    | '/reset-password'
     | '/rules'
     | '/settings'
     | '/sitemap.xml'
@@ -293,6 +303,7 @@ export interface FileRouteTypes {
     | '/planner'
     | '/profile'
     | '/rankings'
+    | '/reset-password'
     | '/rules'
     | '/settings'
     | '/sitemap.xml'
@@ -321,6 +332,7 @@ export interface FileRouteTypes {
     | '/planner'
     | '/profile'
     | '/rankings'
+    | '/reset-password'
     | '/rules'
     | '/settings'
     | '/sitemap.xml'
@@ -350,6 +362,7 @@ export interface RootRouteChildren {
   PlannerRoute: typeof PlannerRoute
   ProfileRoute: typeof ProfileRoute
   RankingsRoute: typeof RankingsRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   RulesRoute: typeof RulesRoute
   SettingsRoute: typeof SettingsRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
@@ -434,6 +447,13 @@ declare module '@tanstack/react-router' {
       path: '/rules'
       fullPath: '/rules'
       preLoaderRoute: typeof RulesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/rankings': {
@@ -576,6 +596,7 @@ const rootRouteChildren: RootRouteChildren = {
   PlannerRoute: PlannerRoute,
   ProfileRoute: ProfileRoute,
   RankingsRoute: RankingsRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   RulesRoute: RulesRoute,
   SettingsRoute: SettingsRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,

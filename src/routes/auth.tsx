@@ -18,7 +18,7 @@ function AuthPage() {
   const { user, loading } = useAuth();
   const { t, lang } = useI18n();
   const navigate = useNavigate();
-  const [mode, setMode] = useState<"login" | "register">("login");
+  const [mode, setMode] = useState<"login" | "register" | "forgot">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -31,7 +31,21 @@ function AuthPage() {
     e.preventDefault();
     setSubmitting(true);
     try {
-      if (mode === "login") {
+      if (mode === "forgot") {
+        // Sends a recovery email; the link lands on /reset-password where the
+        // user sets a new password. Supabase doesn't reveal whether the email
+        // exists (anti-enumeration), so the toast is unconditional.
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: window.location.origin + "/reset-password",
+        });
+        if (error) throw error;
+        toast.success(
+          lang === "el"
+            ? "Σου στείλαμε email με οδηγίες επαναφοράς. Έλεγξε και τα ανεπιθύμητα."
+            : "We sent you a reset email. Check spam too.",
+        );
+        setMode("login");
+      } else if (mode === "login") {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         toast.success(t("auth.welcomeBack"));
@@ -76,22 +90,30 @@ function AuthPage() {
           {/* TITLE */}
           <div className="mb-2">
             <h1 className="text-xl font-semibold text-white">
-              {mode === "login"
+              {mode === "forgot"
                 ? lang === "el"
-                  ? "Καλώς ήρθες πίσω"
-                  : "Welcome back"
-                : lang === "el"
-                  ? "Δημιούργησε λογαριασμό"
-                  : "Create account"}
+                  ? "Επαναφορά κωδικού"
+                  : "Reset password"
+                : mode === "login"
+                  ? lang === "el"
+                    ? "Καλώς ήρθες πίσω"
+                    : "Welcome back"
+                  : lang === "el"
+                    ? "Δημιούργησε λογαριασμό"
+                    : "Create account"}
             </h1>
             <p className="text-xs text-white/40 mt-1">
-              {mode === "login"
+              {mode === "forgot"
                 ? lang === "el"
-                  ? "Βούτα ξανά."
-                  : "Dive back in."
-                : lang === "el"
-                  ? "Ξεκίνα να καταγράφεις τις βουτιές σου."
-                  : "Start tracking your dives."}
+                  ? "Βάλε το email σου και θα σου στείλουμε link επαναφοράς."
+                  : "Enter your email and we'll send you a reset link."
+                : mode === "login"
+                  ? lang === "el"
+                    ? "Βούτα ξανά."
+                    : "Dive back in."
+                  : lang === "el"
+                    ? "Ξεκίνα να καταγράφεις τις βουτιές σου."
+                    : "Start tracking your dives."}
             </p>
           </div>
 
@@ -119,28 +141,41 @@ function AuthPage() {
               />
             </div>
 
-            {/* Password */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-white/60 uppercase tracking-wider">
-                {lang === "el" ? "Κωδικός" : "Password"}
-              </label>
-              <input
-                type="password"
-                required
-                minLength={6}
-                autoComplete={mode === "login" ? "current-password" : "new-password"}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full rounded-xl px-4 py-3 text-sm text-white placeholder-white/25 outline-none transition-all"
-                style={{
-                  background: "#0d1320",
-                  border: "1px solid rgba(255,255,255,0.08)",
-                }}
-                onFocus={(e) => (e.target.style.borderColor = "rgba(93,202,165,0.6)")}
-                onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.08)")}
-              />
-            </div>
+            {/* Password (hidden while requesting a reset email) */}
+            {mode !== "forgot" && (
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-medium text-white/60 uppercase tracking-wider">
+                  {lang === "el" ? "Κωδικός" : "Password"}
+                </label>
+                <input
+                  type="password"
+                  required
+                  minLength={6}
+                  autoComplete={mode === "login" ? "current-password" : "new-password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full rounded-xl px-4 py-3 text-sm text-white placeholder-white/25 outline-none transition-all"
+                  style={{
+                    background: "#0d1320",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                  }}
+                  onFocus={(e) => (e.target.style.borderColor = "rgba(93,202,165,0.6)")}
+                  onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.08)")}
+                />
+              </div>
+            )}
+
+            {/* forgot link (login mode only) */}
+            {mode === "login" && (
+              <button
+                type="button"
+                onClick={() => setMode("forgot")}
+                className="-mt-2 self-end text-xs text-white/35 transition-colors hover:text-[#5DCAA5]"
+              >
+                {lang === "el" ? "Ξέχασες τον κωδικό;" : "Forgot password?"}
+              </button>
+            )}
 
             {/* Submit button */}
             <button
@@ -155,39 +190,56 @@ function AuthPage() {
                 ? lang === "el"
                   ? "Παρακαλώ περιμένετε..."
                   : "Please wait..."
-                : mode === "login"
+                : mode === "forgot"
                   ? lang === "el"
-                    ? "Σύνδεση"
-                    : "Sign in"
-                  : lang === "el"
-                    ? "Δημιουργία λογαριασμού"
-                    : "Create account"}
+                    ? "Στείλε link επαναφοράς"
+                    : "Send reset link"
+                  : mode === "login"
+                    ? lang === "el"
+                      ? "Σύνδεση"
+                      : "Sign in"
+                    : lang === "el"
+                      ? "Δημιουργία λογαριασμού"
+                      : "Create account"}
             </button>
           </form>
 
           {/* SWITCH MODE */}
           <p className="text-center text-xs text-white/30">
-            {mode === "login"
-              ? lang === "el"
-                ? "Νέος στο Apnos;"
-                : "New to Apnos?"
-              : lang === "el"
-                ? "Έχεις ήδη λογαριασμό;"
-                : "Already have an account?"}{" "}
-            <button
-              type="button"
-              className="font-semibold transition-colors hover:text-[#5DCAA5]"
-              style={{ color: "#5DCAA5" }}
-              onClick={() => setMode(mode === "login" ? "register" : "login")}
-            >
-              {mode === "login"
-                ? lang === "el"
-                  ? "Δημιούργησε έναν"
-                  : "Create one"
-                : lang === "el"
-                  ? "Σύνδεση"
-                  : "Sign in"}
-            </button>
+            {mode === "forgot" ? (
+              <button
+                type="button"
+                className="font-semibold transition-colors hover:text-[#5DCAA5]"
+                style={{ color: "#5DCAA5" }}
+                onClick={() => setMode("login")}
+              >
+                {lang === "el" ? "← Πίσω στη σύνδεση" : "← Back to sign in"}
+              </button>
+            ) : (
+              <>
+                {mode === "login"
+                  ? lang === "el"
+                    ? "Νέος στο Apnos;"
+                    : "New to Apnos?"
+                  : lang === "el"
+                    ? "Έχεις ήδη λογαριασμό;"
+                    : "Already have an account?"}{" "}
+                <button
+                  type="button"
+                  className="font-semibold transition-colors hover:text-[#5DCAA5]"
+                  style={{ color: "#5DCAA5" }}
+                  onClick={() => setMode(mode === "login" ? "register" : "login")}
+                >
+                  {mode === "login"
+                    ? lang === "el"
+                      ? "Δημιούργησε έναν"
+                      : "Create one"
+                    : lang === "el"
+                      ? "Σύνδεση"
+                      : "Sign in"}
+                </button>
+              </>
+            )}
           </p>
         </main>
 
