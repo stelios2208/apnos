@@ -90,8 +90,12 @@ set search_path = public, pg_temp
 as $$
 begin
   if tg_op = 'INSERT' then
-    if public.is_admin() then
-      return new;                    -- admin may seed any status
+    -- Admins only bypass the derivation when EXPLICITLY seeding a reviewed
+    -- status. The app never sends status on declare, so without this check an
+    -- admin's own declarations landed on the column default (self_reported)
+    -- instead of pending and never reached the review queue.
+    if public.is_admin() and new.status in ('verified', 'rejected') then
+      return new;
     end if;
     if new.competition_id is null then
       new.status := 'self_reported'; -- no event → unverified self-report
