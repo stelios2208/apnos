@@ -204,7 +204,7 @@ function TablesToolPage() {
               <p className="mb-1.5 text-[0.6rem] font-bold tracking-wider text-white/35">
                 {el ? "ΤΟ PB ΣΟΥ ΣΤΗ ΣΤΑΤΙΚΗ" : "YOUR STATIC PB"}
               </p>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-2">
                 <PbStepper
                   label={el ? "ΛΕΠΤΑ" : "MINUTES"}
                   value={String(pbMin)}
@@ -319,6 +319,11 @@ function TablesToolPage() {
 
 // Minutes/seconds stepper — big 48px tap targets instead of free text, so the
 // value is always valid (seconds clamp to 0-55 in 5s steps, minutes 0-10).
+// One full-width row per unit: side-by-side columns overflowed on narrow
+// phones (each pair needs ~144px but a 360px screen gives each column ~138px,
+// with shrink-0 buttons spilling into the neighbour and visually overlapping
+// the SECONDS pair). Fixed gaps instead of justify-between keep the -/value/+
+// cluster identical for both rows at any viewport width.
 function PbStepper({
   label,
   value,
@@ -337,11 +342,11 @@ function PbStepper({
     border: "1px solid rgba(255,255,255,0.1)",
   };
   return (
-    <div>
-      <p className="mb-1 text-center text-[0.55rem] font-bold tracking-wider text-white/30">
+    <div className="flex items-center justify-between gap-3">
+      <p className="min-w-0 truncate text-[0.55rem] font-bold tracking-wider text-white/30">
         {label}
       </p>
-      <div className="flex items-center justify-between gap-1">
+      <div className="flex shrink-0 items-center gap-2">
         <button
           type="button"
           onClick={onDec}
@@ -351,7 +356,7 @@ function PbStepper({
         >
           <Minus className="size-4" />
         </button>
-        <span className="min-w-10 text-center font-mono text-2xl font-bold tabular-nums text-white">
+        <span className="w-12 text-center font-mono text-2xl font-bold tabular-nums text-white">
           {value}
         </span>
         <button
