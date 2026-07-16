@@ -1,7 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import type {} from "@tanstack/react-start";
+import { SITE_URL } from "@/lib/site";
 
-const BASE_URL = "";
+// The sitemap spec requires absolute <loc> URLs — an empty base emitted
+// relative paths that Google rejects.
+const BASE_URL = SITE_URL;
 
 interface SitemapEntry {
   path: string;

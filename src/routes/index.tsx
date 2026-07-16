@@ -5,17 +5,46 @@ import { Logo } from "@/components/Logo";
 import { UnderwaterScene } from "@/components/UnderwaterScene";
 import { useAuth } from "@/hooks/use-auth";
 import { useI18n } from "@/lib/i18n";
+import { SITE_URL, OG_IMAGE } from "@/lib/site";
+
+// 157 chars — the landing's search snippet. Leads with the money keywords
+// (freediving training log, dive tracking, coach) inside the ~160-char limit.
+const LANDING_TITLE = "Apnos — Freediving Training Log & Coach Platform";
+const LANDING_DESCRIPTION =
+  "Free freediving training log with dive tracking for STA, DYN & CWT, CO₂/O₂ training tables, verified rankings and coach tools. Log dives, hit new PBs — free.";
+
+// Structured data so Google can show a rich result for the app. Rendered
+// server-side in <head>, so crawlers see it without executing JS.
+const LANDING_JSON_LD = JSON.stringify({
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "SoftwareApplication",
+      name: "Apnos",
+      url: SITE_URL + "/",
+      image: OG_IMAGE,
+      applicationCategory: "SportsApplication",
+      operatingSystem: "Web, Android",
+      description: LANDING_DESCRIPTION,
+      offers: { "@type": "Offer", price: "0", priceCurrency: "EUR" },
+    },
+    { "@type": "WebSite", name: "Apnos", url: SITE_URL + "/" },
+  ],
+});
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Apnos — Freediving Training Log" },
-      {
-        name: "description",
-        content:
-          "Log every freediving session, track personal bests across STA, DYN, CWT and more. Breathe · dive · repeat.",
-      },
+      { title: LANDING_TITLE },
+      { name: "description", content: LANDING_DESCRIPTION },
+      { property: "og:title", content: LANDING_TITLE },
+      { property: "og:description", content: LANDING_DESCRIPTION },
+      { property: "og:url", content: SITE_URL + "/" },
+      { name: "twitter:title", content: LANDING_TITLE },
+      { name: "twitter:description", content: LANDING_DESCRIPTION },
     ],
+    links: [{ rel: "canonical", href: SITE_URL + "/" }],
+    scripts: [{ type: "application/ld+json", children: LANDING_JSON_LD }],
   }),
   component: Landing,
 });
@@ -122,35 +151,42 @@ function Landing() {
           </div>
 
           {/* STAT PREVIEW CARDS */}
-          <div className="grid grid-cols-3 gap-3">
-            {[
-              {
-                icon: Timer,
-                label: lang === "el" ? "STA · DYN · DNF" : "STA · DYN · DNF",
-                val: "Pool",
-              },
-              {
-                icon: TrendingUp,
-                label: lang === "el" ? "Προσωπικά ρεκόρ" : "Personal bests",
-                val: "PB",
-              },
-              {
-                icon: Waves,
-                label: lang === "el" ? "CWT · CNF · FIM" : "CWT · CNF · FIM",
-                val: "Depth",
-              },
-            ].map(({ icon: Icon, label, val }) => (
-              <div
-                key={val}
-                className="rounded-xl border border-white/10 p-3 flex flex-col gap-2"
-                style={{ background: "#0d1320" }}
-              >
-                <Icon className="size-4 text-[#5DCAA5]" />
-                <p className="text-[0.65rem] text-white/40 leading-tight">{label}</p>
-                <p className="text-xs font-semibold text-white">{val}</p>
-              </div>
-            ))}
-          </div>
+          <section aria-labelledby="landing-features">
+            <h2 id="landing-features" className="sr-only">
+              {lang === "el"
+                ? "Αγωνίσματα και λειτουργίες — πισίνα, βάθος, προσωπικά ρεκόρ"
+                : "Disciplines and features — pool, depth, personal bests"}
+            </h2>
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                {
+                  icon: Timer,
+                  label: lang === "el" ? "STA · DYN · DNF" : "STA · DYN · DNF",
+                  val: "Pool",
+                },
+                {
+                  icon: TrendingUp,
+                  label: lang === "el" ? "Προσωπικά ρεκόρ" : "Personal bests",
+                  val: "PB",
+                },
+                {
+                  icon: Waves,
+                  label: lang === "el" ? "CWT · CNF · FIM" : "CWT · CNF · FIM",
+                  val: "Depth",
+                },
+              ].map(({ icon: Icon, label, val }) => (
+                <div
+                  key={val}
+                  className="rounded-xl border border-white/10 p-3 flex flex-col gap-2"
+                  style={{ background: "#0d1320" }}
+                >
+                  <Icon className="size-4 text-[#5DCAA5]" />
+                  <p className="text-[0.65rem] text-white/40 leading-tight">{label}</p>
+                  <h3 className="text-xs font-semibold text-white">{val}</h3>
+                </div>
+              ))}
+            </div>
+          </section>
 
           {/* CTA */}
           <Link

@@ -1,6 +1,28 @@
 User-agent: *
 Allow: /
+# Logged-in-only app screens — nothing useful for crawlers behind /auth.
 Disallow: /auth
+Disallow: /reset-password
 Disallow: /dashboard
 Disallow: /log
 Disallow: /history
+Disallow: /calendar
+Disallow: /coach
+Disallow: /dive
+Disallow: /discipline
+Disallow: /equipment
+Disallow: /performances
+Disallow: /planner
+Disallow: /profile
+Disallow: /rankings
+Disallow: /rules
+Disallow: /settings
+Disallow: /sta-tables
+Disallow: /sta-trainer
+Disallow: /stopwatch
+Disallow: /tips
+Disallow: /train
+Disallow: /warmup
+Disallow: /you
+
+Sitemap: https://apnos-three.vercel.app/sitemap.xml

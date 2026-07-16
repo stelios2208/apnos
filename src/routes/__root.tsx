@@ -14,6 +14,7 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AuthProvider } from "@/hooks/use-auth";
 import { I18nProvider } from "@/lib/i18n";
 import { Toaster } from "@/components/ui/sonner";
+import { SITE_URL, OG_IMAGE } from "@/lib/site";
 
 function NotFoundComponent() {
   return (
@@ -80,46 +81,38 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Apnos — Freediving Training Log" },
+      // One value per tag — duplicated/conflicting descriptions confuse
+      // crawlers. Route-level head() entries (e.g. the landing page) override
+      // these app-wide defaults.
+      { title: "Apnos — Freediving Training Log & Coach Platform" },
       {
         name: "description",
         content:
-          "Apnos is a freediving training log to track dives, personal bests and recovery across every discipline. Breathe, dive, repeat.",
+          "Apnos is a freediving training log with dive tracking for STA, DYN, CWT & every discipline — personal bests, CO₂/O₂ tables, verified rankings and coach tools.",
       },
       { name: "author", content: "Apnos" },
-      { property: "og:title", content: "Apnos — Freediving Training Log" },
-      {
-        property: "og:description",
-        content: "Track your freediving sessions and personal bests. Breathe · dive · repeat.",
-      },
+      { property: "og:site_name", content: "Apnos" },
       { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
-      { name: "twitter:title", content: "Apnos — Freediving Training Log" },
-      {
-        name: "description",
-        content:
-          "Track your freediving dives, personal bests, nutrition and mental state. Log every discipline — STA, DYN, CWT and more. Built for competitive freedivers.",
-      },
+      { property: "og:url", content: SITE_URL + "/" },
+      { property: "og:title", content: "Apnos — Freediving Training Log & Coach Platform" },
       {
         property: "og:description",
         content:
-          "Track your freediving dives, personal bests, nutrition and mental state. Log every discipline — STA, DYN, CWT and more. Built for competitive freedivers.",
+          "Track your freediving dives and personal bests across STA, DYN, CWT and more. Training tables, verified rankings and coach tools. Breathe · dive · repeat.",
       },
+      { property: "og:image", content: OG_IMAGE },
+      { property: "og:image:width", content: "1200" },
+      { property: "og:image:height", content: "630" },
+      { property: "og:image:alt", content: "Apnos — freediving training log app" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Apnos — Freediving Training Log & Coach Platform" },
       {
         name: "twitter:description",
         content:
-          "Track your freediving dives, personal bests, nutrition and mental state. Log every discipline — STA, DYN, CWT and more. Built for competitive freedivers.",
+          "Track your freediving dives and personal bests across STA, DYN, CWT and more. Training tables, verified rankings and coach tools.",
       },
-      {
-        property: "og:image",
-        content:
-          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/9dbcc58f-39c3-4237-aa50-3fff6dc38f40/id-preview-225a5f16--5cc244fb-1fab-481f-8259-a5bb9e400730.lovable.app-1781730265401.png",
-      },
-      {
-        name: "twitter:image",
-        content:
-          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/9dbcc58f-39c3-4237-aa50-3fff6dc38f40/id-preview-225a5f16--5cc244fb-1fab-481f-8259-a5bb9e400730.lovable.app-1781730265401.png",
-      },
+      { name: "twitter:image", content: OG_IMAGE },
+      { name: "theme-color", content: "#020a13" },
     ],
     scripts: [
       {
