@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { ArrowRight, TriangleAlert, Wind, Timer } from "lucide-react";
+import { ArrowRight, TriangleAlert, Wind, Timer, Plus, Minus } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { TableCard } from "@/components/TableCard";
 import { useI18n } from "@/lib/i18n";
@@ -22,26 +22,29 @@ import { fmtClock } from "@/lib/warmups";
 // so crawlers see real content, and funnels visitors to sign-up.
 
 const PAGE_PATH = "/tools/co2-o2-tables";
-const PAGE_TITLE = "Free CO₂ & O₂ Training Tables Generator for Freediving — Apnos";
+// Ελληνική έκδοση — the visible page is uniformly Greek, so the snippet and
+// the FAQ structured data are Greek too (Google requires JSON-LD FAQ text to
+// match the on-page text). A separate English page will follow later.
+const PAGE_TITLE = "Πίνακες CO₂ & O₂ για Ελεύθερη Κατάδυση — Δωρεάν Generator | Apnos";
 const PAGE_DESCRIPTION =
-  "Generate personalised CO₂ and O₂ static apnea training tables from your breath-hold PB. Free freediving tool by Apnos — dry training, easy to hard levels.";
+  "Δωρεάν generator πινάκων CO₂ & O₂ για στατική άπνοια από το PB σου — 3 επίπεδα, ξηρή προπόνηση, οδηγίες ασφαλείας. Από το Apnos, το ημερολόγιο ελεύθερης κατάδυσης.";
 
 const FAQ: { q: string; a: string }[] = [
   {
-    q: "What is a CO₂ table in freediving?",
-    a: "A CO₂ table is a series of breath-holds with progressively shorter rests. The hold stays fixed while recovery time shrinks, training your body to tolerate rising carbon dioxide — the main trigger of the urge to breathe.",
+    q: "Τι είναι ο πίνακας CO₂ στην ελεύθερη κατάδυση;",
+    a: "Ο πίνακας CO₂ είναι μια σειρά από κρατήσεις αναπνοής με προοδευτικά μικρότερη ανάπαυση. Η κράτηση μένει σταθερή ενώ ο χρόνος αποκατάστασης μικραίνει, μαθαίνοντας στο σώμα σου να ανέχεται το διοξείδιο που ανεβαίνει — τη βασική αιτία της ανάγκης για αναπνοή.",
   },
   {
-    q: "What is an O₂ table in freediving?",
-    a: "An O₂ table keeps the rest fixed while each breath-hold gets progressively longer, adapting your body to work with lower oxygen levels and extending your comfortable hold time.",
+    q: "Τι είναι ο πίνακας O₂ στην ελεύθερη κατάδυση;",
+    a: "Ο πίνακας O₂ κρατά σταθερή την ανάπαυση ενώ κάθε κράτηση μεγαλώνει προοδευτικά, προσαρμόζοντας το σώμα σου να λειτουργεί με λιγότερο οξυγόνο και επεκτείνοντας τον άνετο χρόνο κράτησης.",
   },
   {
-    q: "How long should my breath-holds be in a training table?",
-    a: "Tables are built from your static personal best (PB). A common starting point is holds around 20–30% of your PB for CO₂ tables. Enter your PB above and this generator scales every round for you across easy, medium and hard levels.",
+    q: "Πόσο μεγάλες πρέπει να είναι οι κρατήσεις σε έναν πίνακα προπόνησης;",
+    a: "Οι πίνακες χτίζονται από το προσωπικό σου ρεκόρ (PB) στη στατική άπνοια. Συνηθισμένη αφετηρία είναι κρατήσεις γύρω στο 20–30% του PB για πίνακες CO₂. Βάλε το PB σου παραπάνω και ο generator κλιμακώνει κάθε γύρο σε εύκολο, μεσαίο και δύσκολο επίπεδο.",
   },
   {
-    q: "Is it safe to train breath-hold tables alone?",
-    a: "Only dry, never in water. Never practise breath-holds in water without a trained safety buddy — shallow water blackout can be fatal. Dry static tables on a couch or bed are the safe way to train alone.",
+    q: "Είναι ασφαλές να προπονούμαι μόνος με πίνακες άπνοιας;",
+    a: "Μόνο σε ξηρή προπόνηση, ποτέ στο νερό. Ποτέ κρατήσεις αναπνοής στο νερό χωρίς εκπαιδευμένο άτομο ασφαλείας δίπλα σου — η απώλεια αισθήσεων σε ρηχό νερό (shallow water blackout) μπορεί να είναι μοιραία. Οι ξηροί πίνακες σε καναπέ ή κρεβάτι είναι ο ασφαλής τρόπος να προπονείσαι μόνος.",
   },
 ];
 
@@ -70,7 +73,7 @@ const JSON_LD = JSON.stringify({
       "@type": "BreadcrumbList",
       itemListElement: [
         { "@type": "ListItem", position: 1, name: "Apnos", item: SITE_URL + "/" },
-        { "@type": "ListItem", position: 2, name: "CO₂ & O₂ Tables", item: SITE_URL + PAGE_PATH },
+        { "@type": "ListItem", position: 2, name: "Πίνακες CO₂ & O₂", item: SITE_URL + PAGE_PATH },
       ],
     },
   ],
@@ -93,17 +96,6 @@ export const Route = createFileRoute("/tools/co2-o2-tables")({
   component: TablesToolPage,
 });
 
-function parseMMSS(s: string): number {
-  const t = s.trim();
-  if (t.includes(":")) {
-    const [m, sec = "0"] = t.split(":");
-    return (parseInt(m || "0", 10) || 0) * 60 + (parseInt(sec, 10) || 0);
-  }
-  const d = t.replace(/\D/g, "");
-  if (!d) return 0;
-  return (parseInt(d.slice(0, -2) || "0", 10) || 0) * 60 + (parseInt(d.slice(-2), 10) || 0);
-}
-
 const TEAL = "#1D9E75";
 const TEAL_SOFT = "#5DCAA5";
 const ORANGE = "#EF9F27";
@@ -111,13 +103,19 @@ const ORANGE = "#EF9F27";
 function TablesToolPage() {
   const { lang } = useI18n();
   const el = lang === "el";
-  // SSR defaults render a complete, realistic table (PB 4:00, CO₂ easy) so the
+  // SSR defaults render a complete, realistic table (PB 3:00, CO₂ easy) so the
   // crawler-visible HTML contains the actual tool output, not an empty shell.
-  const [pbStr, setPbStr] = useState("4:00");
+  // PB is entered as minutes + seconds with +/- steppers (wet hands, big
+  // targets) — a free-text field invited invalid input like "100".
+  const [pbMin, setPbMin] = useState(3);
+  const [pbSec, setPbSec] = useState(0);
   const [type, setType] = useState<StaTableType>("co2");
   const [level, setLevel] = useState<PresetLevel>("easy");
 
-  const pbSecs = Math.max(30, parseMMSS(pbStr) || 240);
+  const stepMin = (d: number) => setPbMin((m) => Math.min(10, Math.max(0, m + d)));
+  const stepSec = (d: number) => setPbSec((s) => Math.min(55, Math.max(0, s + d)));
+
+  const pbSecs = Math.max(30, pbMin * 60 + pbSec);
   const rounds = useMemo(() => presetRounds(type, level, pbSecs), [type, level, pbSecs]);
 
   const seg = (on: boolean) =>
@@ -133,9 +131,10 @@ function TablesToolPage() {
     <div className="relative min-h-screen" style={{ background: "#020a13" }}>
       <div className="mx-auto w-full max-w-md px-5 py-8">
         <header className="mb-8 flex items-center justify-between">
-          <Link to="/" aria-label="Apnos home">
-            <Logo onDark />
-          </Link>
+          {/* Logo is itself a <Link to="/"> — wrapping it in another Link
+              nested <a> inside <a>, which is invalid HTML and forced a full
+              hydration re-render (dropping early taps on the CTA). */}
+          <Logo onDark />
           <Link
             to="/auth"
             className="rounded-lg px-3 py-1.5 text-xs font-bold"
@@ -202,24 +201,29 @@ function TablesToolPage() {
               ))}
             </div>
             <div>
-              <label
-                htmlFor="pb"
-                className="mb-1.5 block text-[0.6rem] font-bold tracking-wider text-white/35"
+              <p className="mb-1.5 text-[0.6rem] font-bold tracking-wider text-white/35">
+                {el ? "ΤΟ PB ΣΟΥ ΣΤΗ ΣΤΑΤΙΚΗ" : "YOUR STATIC PB"}
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <PbStepper
+                  label={el ? "ΛΕΠΤΑ" : "MINUTES"}
+                  value={String(pbMin)}
+                  onDec={() => stepMin(-1)}
+                  onInc={() => stepMin(1)}
+                />
+                <PbStepper
+                  label={el ? "ΔΕΥΤΕΡΟΛΕΠΤΑ" : "SECONDS"}
+                  value={String(pbSec).padStart(2, "0")}
+                  onDec={() => stepSec(-5)}
+                  onInc={() => stepSec(5)}
+                />
+              </div>
+              <p
+                className="mt-1.5 text-center font-mono text-sm font-bold"
+                style={{ color: TEAL_SOFT }}
               >
-                {el ? "ΤΟ PB ΣΟΥ ΣΤΗ ΣΤΑΤΙΚΗ (Λ:ΔΔ)" : "YOUR STATIC PB (M:SS)"}
-              </label>
-              <input
-                id="pb"
-                inputMode="numeric"
-                value={pbStr}
-                onChange={(e) => setPbStr(e.target.value.replace(/[^0-9:]/g, ""))}
-                placeholder="4:00"
-                className="w-full rounded-xl px-3 py-3 text-center text-lg font-bold text-white outline-none"
-                style={{
-                  background: "rgba(255,255,255,0.05)",
-                  border: "1px solid rgba(255,255,255,0.1)",
-                }}
-              />
+                PB: {fmtClock(pbSecs)}
+              </p>
             </div>
           </div>
 
@@ -242,22 +246,28 @@ function TablesToolPage() {
           >
             <TriangleAlert className="mt-0.5 size-4 shrink-0" style={{ color: ORANGE }} />
             <p className="text-white/70">
-              {el
-                ? "Ασφάλεια: κάνε πίνακες ΜΟΝΟ σε ξηρή προπόνηση (καναπές/κρεβάτι). Ποτέ κρατήσεις αναπνοής στο νερό χωρίς εκπαιδευμένο συνασφαλιστή — το shallow water blackout σκοτώνει."
-                : "Safety: practise tables DRY only (couch/bed). Never do breath-holds in water without a trained safety buddy — shallow water blackout kills."}
+              Οι πίνακες άπνοιας είναι ΜΟΝΟ για ξηρή προπόνηση (καναπές, κρεβάτι). Ποτέ κρατήσεις
+              αναπνοής στο νερό χωρίς εκπαιδευμένο άτομο ασφαλείας δίπλα σου — ακόμα κι αν είσαι
+              έμπειρος. Αν είσαι αρχάριος, ξεκίνα με πιστοποιημένο εκπαιδευτή.
             </p>
           </div>
 
-          {/* CTA */}
+          {/* CTA — two-line layout: bold action + smaller subtext, arrow pinned
+              right, ≥56px tall so it reads as the page's primary button */}
           <Link
             to="/auth"
-            className="flex items-center justify-center gap-2 rounded-xl py-4 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+            className="flex min-h-14 items-center justify-between gap-3 rounded-xl px-5 py-3 text-white transition-opacity hover:opacity-90"
             style={{ background: "linear-gradient(135deg, #534AB7, #1D9E75)" }}
           >
-            {el
-              ? "Τρέξε τον πίνακα με φωνητικά cues & timer — δωρεάν"
-              : "Run this table with voice cues & timer — free"}
-            <ArrowRight className="size-4" />
+            <span className="flex min-w-0 flex-col text-left">
+              <span className="truncate text-sm font-bold">
+                {el ? "Τρέξε τον πίνακα με timer" : "Run this table with a timer"}
+              </span>
+              <span className="text-[0.7rem] text-white/70">
+                {el ? "Δωρεάν με λογαριασμό Apnos" : "Free with an Apnos account"}
+              </span>
+            </span>
+            <ArrowRight className="size-5 shrink-0" />
           </Link>
           <p className="text-center text-[0.7rem] text-white/35">
             {el
@@ -265,41 +275,29 @@ function TablesToolPage() {
               : "With a free Apnos account: live runner, haptics, saved tables, a full dive log and verified rankings."}
           </p>
 
-          {/* SEO copy — EN */}
+          {/* SEO copy — ενιαία ελληνικά (η αγγλική σελίδα θα γίνει ξεχωριστά) */}
           <section className="space-y-3 border-t border-white/10 pt-6 text-sm leading-relaxed text-white/55">
-            <h2 className="text-base font-semibold text-white">
-              How CO₂ and O₂ tables improve your breath-hold
-            </h2>
-            <p>
-              CO₂ tables keep every hold the same length while the breathe-up between rounds gets
-              shorter, teaching your body to stay relaxed as carbon dioxide builds up. O₂ tables do
-              the opposite: the rest stays fixed while each hold gets longer, adapting you to lower
-              oxygen levels. Together they are the foundation of static apnea (STA) training used by
-              beginner and competitive freedivers alike.
-            </p>
-            <p>
-              This generator scales every round from your personal best, the same engine used inside
-              the Apnos freediving training log — where you can also run the table with a guided
-              timer, log the session as a dive and watch your PBs grow.
-            </p>
-          </section>
-
-          {/* SEO copy — EL */}
-          <section className="space-y-3 text-sm leading-relaxed text-white/55">
             <h2 className="text-base font-semibold text-white">
               Πώς οι πίνακες CO₂ και O₂ βελτιώνουν την άπνοιά σου
             </h2>
             <p>
               Οι πίνακες CO₂ κρατούν σταθερή την κράτηση και μικραίνουν την ανάπαυση, μαθαίνοντας
               στο σώμα να μένει χαλαρό καθώς ανεβαίνει το διοξείδιο. Οι πίνακες O₂ κάνουν το
-              αντίθετο: σταθερή ανάπαυση, ολοένα μεγαλύτερες κρατήσεις. Είναι η βάση της προπόνησης
-              στατικής άπνοιας για αρχάριους και αγωνιστικούς ελεύθερους δύτες.
+              αντίθετο: σταθερή ανάπαυση, ολοένα μεγαλύτερες κρατήσεις — προσαρμογή σε χαμηλότερα
+              επίπεδα οξυγόνου. Μαζί αποτελούν τη βάση της προπόνησης στατικής άπνοιας (STA) για
+              αρχάριους και αγωνιστικούς ελεύθερους δύτες.
+            </p>
+            <p>
+              Ο generator κλιμακώνει κάθε γύρο από το προσωπικό σου ρεκόρ — με την ίδια μηχανή που
+              χρησιμοποιεί το Apnos, το ημερολόγιο προπόνησης ελεύθερης κατάδυσης, όπου μπορείς να
+              τρέξεις τον πίνακα με καθοδηγούμενο timer, να καταγράψεις τη συνεδρία ως βουτιά και να
+              βλέπεις τα PB σου να ανεβαίνουν.
             </p>
           </section>
 
           {/* FAQ */}
           <section className="space-y-4 border-t border-white/10 pt-6">
-            <h2 className="text-base font-semibold text-white">FAQ</h2>
+            <h2 className="text-base font-semibold text-white">Συχνές ερωτήσεις</h2>
             {FAQ.map(({ q, a }) => (
               <div key={q}>
                 <h3 className="text-sm font-semibold text-white/85">{q}</h3>
@@ -314,6 +312,57 @@ function TablesToolPage() {
             ← Apnos — {el ? "Ημερολόγιο προπόνησης ελεύθερης κατάδυσης" : "Freediving training log"}
           </Link>
         </footer>
+      </div>
+    </div>
+  );
+}
+
+// Minutes/seconds stepper — big 48px tap targets instead of free text, so the
+// value is always valid (seconds clamp to 0-55 in 5s steps, minutes 0-10).
+function PbStepper({
+  label,
+  value,
+  onDec,
+  onInc,
+}: {
+  label: string;
+  value: string;
+  onDec: () => void;
+  onInc: () => void;
+}) {
+  const btn =
+    "flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-white/70 transition-colors hover:text-white";
+  const btnStyle = {
+    background: "rgba(255,255,255,0.06)",
+    border: "1px solid rgba(255,255,255,0.1)",
+  };
+  return (
+    <div>
+      <p className="mb-1 text-center text-[0.55rem] font-bold tracking-wider text-white/30">
+        {label}
+      </p>
+      <div className="flex items-center justify-between gap-1">
+        <button
+          type="button"
+          onClick={onDec}
+          className={btn}
+          style={btnStyle}
+          aria-label={`${label} -`}
+        >
+          <Minus className="size-4" />
+        </button>
+        <span className="min-w-10 text-center font-mono text-2xl font-bold tabular-nums text-white">
+          {value}
+        </span>
+        <button
+          type="button"
+          onClick={onInc}
+          className={btn}
+          style={btnStyle}
+          aria-label={`${label} +`}
+        >
+          <Plus className="size-4" />
+        </button>
       </div>
     </div>
   );

@@ -37,12 +37,12 @@ export const TIPS: Tip[] = [
   {
     id: "buddy",
     category: "safety",
-    title_el: "Ποτέ μόνος — πάντα με buddy",
-    title_en: "Never alone — always with a buddy",
+    title_el: "Ποτέ μόνος — πάντα με ασφάλεια",
+    title_en: "Never alone — always with a safety",
     body_el:
-      "Μην κάνεις ποτέ άπνοια μόνος, ούτε στην πισίνα ούτε στη θάλασσα ούτε στο ξηρό μέσα σε νερό. Δουλέψτε «ένας κάτω, ένας πάνω»: ο buddy σε παρακολουθεί ενεργά και είναι έτοιμος να επέμβει. Η πλειοψηφία των θανάτων στην ελεύθερη κατάδυση συμβαίνει σε άτομα που κατέδυαν μόνα τους.",
+      "Μην κάνεις ποτέ άπνοια μόνος, ούτε στην πισίνα ούτε στη θάλασσα ούτε στο ξηρό μέσα σε νερό. Δουλέψτε «ένας κάτω, ένας πάνω»: η ασφάλειά σου σε παρακολουθεί ενεργά και είναι έτοιμος να επέμβει. Η πλειοψηφία των θανάτων στην ελεύθερη κατάδυση συμβαίνει σε άτομα που κατέδυαν μόνα τους.",
     body_en:
-      "Never do apnea alone — not in the pool, not in open water, not dry-static near water. Work one-up-one-down: your buddy actively watches you and is ready to act. The majority of freediving fatalities happen to people diving alone.",
+      "Never do apnea alone — not in the pool, not in open water, not dry-static near water. Work one-up-one-down: your safety diver actively watches you and is ready to act. The majority of freediving fatalities happen to people diving alone.",
   },
   {
     id: "supervision",
@@ -50,9 +50,9 @@ export const TIPS: Tip[] = [
     title_el: "Άμεση επιτήρηση & επιφάνεια 30''",
     title_en: "Direct supervision & 30s at the surface",
     body_el:
-      "Ο buddy επιτηρεί ενεργά το τελευταίο και πιο επικίνδυνο κομμάτι: την ανάδυση και τα πρώτα 30 δευτερόλεπτα στην επιφάνεια, όπου συμβαίνουν τα περισσότερα blackout. Μείνε δίπλα, με βλεμματική επαφή, μέχρι ο διαχειριστής να δώσει καθαρό σήμα OK.",
+      "Η ασφάλεια επιτηρεί ενεργά το τελευταίο και πιο επικίνδυνο κομμάτι: την ανάδυση και τα πρώτα 30 δευτερόλεπτα στην επιφάνεια, όπου συμβαίνουν τα περισσότερα blackout. Μείνε δίπλα, με βλεμματική επαφή, μέχρι ο διαχειριστής να δώσει καθαρό σήμα OK.",
     body_en:
-      "Your buddy actively supervises the most dangerous phase: the ascent and the first 30 seconds at the surface, where most blackouts occur. Stay close, keep eye contact, until the diver gives a clear OK signal.",
+      "Your safety diver actively supervises the most dangerous phase: the ascent and the first 30 seconds at the surface, where most blackouts occur. Stay close, keep eye contact, until the diver gives a clear OK signal.",
   },
   {
     id: "surface-protocol",
@@ -60,9 +60,9 @@ export const TIPS: Tip[] = [
     title_el: "Πρωτόκολλο επιφάνειας",
     title_en: "Surface protocol",
     body_el:
-      "Μόλις βγεις: κράτα το σημείο, βγάλε κλιπ/μάσκα, κάνε hook breaths, δώσε το σήμα «OK» και πες φωναχτά «I'm OK». Αυτή η σειρά κρατά ανοιχτό τον αεραγωγό και επιβεβαιώνει στον buddy ότι έχεις συνείδηση.",
+      "Μόλις βγεις: κράτα το σημείο, βγάλε κλιπ/μάσκα, κάνε hook breaths, δώσε το σήμα «OK» και πες φωναχτά «I'm OK». Αυτή η σειρά κρατά ανοιχτό τον αεραγωγό και επιβεβαιώνει στην ασφάλεια ότι έχεις συνείδηση.",
     body_en:
-      "On surfacing: hold the float, remove noseclip/mask, do hook breaths, give the OK sign and say out loud \"I'm OK\". This sequence keeps the airway open and confirms to your buddy that you're conscious.",
+      "On surfacing: hold the float, remove noseclip/mask, do hook breaths, give the OK sign and say out loud \"I'm OK\". This sequence keeps the airway open and confirms to your safety diver that you're conscious.",
   },
   {
     id: "no-hyperventilation",
