@@ -25,4 +25,4 @@ Disallow: /train
 Disallow: /warmup
 Disallow: /you
 
-Sitemap: https://apnos-three.vercel.app/sitemap.xml
+Sitemap: https://apnos.app/sitemap.xml

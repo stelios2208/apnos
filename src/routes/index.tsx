@@ -204,6 +204,14 @@ function Landing() {
               {lang === "el" ? "Σύνδεση" : "Sign in"}
             </Link>
           </p>
+
+          {/* public tool — indexable entry point, no login needed */}
+          <p className="text-center text-xs text-white/30">
+            {lang === "el" ? "Δοκίμασε χωρίς λογαριασμό:" : "Try without an account:"}{" "}
+            <Link to="/tools/co2-o2-tables" className="text-[#5DCAA5] hover:underline">
+              {lang === "el" ? "Δωρεάν πίνακες CO₂/O₂" : "Free CO₂/O₂ tables generator"}
+            </Link>
+          </p>
         </main>
 
         {/* FOOTER */}

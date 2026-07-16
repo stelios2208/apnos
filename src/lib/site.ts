@@ -1,7 +1,8 @@
 // Canonical public origin of the deployed app — the single source of truth for
 // SEO surfaces (canonical link, og:url, sitemap <loc>, robots Sitemap line).
-// ▸ When the custom domain goes live, change it HERE and in public/robots.txt.
-export const SITE_URL = "https://apnos-three.vercel.app";
+// If this ever changes again, update it HERE and in public/robots.txt.
+// (apnos.gr is also owned — it should 301-redirect here, never serve the app.)
+export const SITE_URL = "https://apnos.app";
 
 // Social-share image (1200×630-ish raster; SVG isn't supported by FB/Twitter
 // crawlers). Currently the Lovable-hosted screenshot — replace with a

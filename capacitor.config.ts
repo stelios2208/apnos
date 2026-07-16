@@ -6,7 +6,6 @@ import type { CapacitorConfig } from "@capacitor/cli";
 // any future native plugin) works — this is what finally makes vibration
 // reliable, since native haptics don't depend on the flaky web Vibration API.
 //
-// ▸ Change `server.url` to your own production domain before building.
 // ▸ To ship a fully offline bundle later, drop `server.url`, point `webDir`
 //   at a static export of the app, and run `npx cap sync`.
 const config: CapacitorConfig = {
@@ -14,7 +13,7 @@ const config: CapacitorConfig = {
   appName: "Apnos",
   webDir: "public",
   server: {
-    url: "https://apnos-three.vercel.app",
+    url: "https://apnos.app",
     androidScheme: "https",
     cleartext: false,
   },

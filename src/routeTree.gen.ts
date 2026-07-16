@@ -33,6 +33,7 @@ import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CoachIndexRouteImport } from './routes/coach.index'
+import { Route as ToolsCo2O2TablesRouteImport } from './routes/tools.co2-o2-tables'
 import { Route as DiveIdRouteImport } from './routes/dive.$id'
 import { Route as DisciplineCodeRouteImport } from './routes/discipline.$code'
 import { Route as CoachAthleteIdRouteImport } from './routes/coach.athlete.$id'
@@ -157,6 +158,11 @@ const CoachIndexRoute = CoachIndexRouteImport.update({
   path: '/',
   getParentRoute: () => CoachRoute,
 } as any)
+const ToolsCo2O2TablesRoute = ToolsCo2O2TablesRouteImport.update({
+  id: '/tools/co2-o2-tables',
+  path: '/tools/co2-o2-tables',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DiveIdRoute = DiveIdRouteImport.update({
   id: '/dive/$id',
   path: '/dive/$id',
@@ -199,6 +205,7 @@ export interface FileRoutesByFullPath {
   '/you': typeof YouRoute
   '/discipline/$code': typeof DisciplineCodeRoute
   '/dive/$id': typeof DiveIdRoute
+  '/tools/co2-o2-tables': typeof ToolsCo2O2TablesRoute
   '/coach/': typeof CoachIndexRoute
   '/coach/athlete/$id': typeof CoachAthleteIdRoute
 }
@@ -227,6 +234,7 @@ export interface FileRoutesByTo {
   '/you': typeof YouRoute
   '/discipline/$code': typeof DisciplineCodeRoute
   '/dive/$id': typeof DiveIdRoute
+  '/tools/co2-o2-tables': typeof ToolsCo2O2TablesRoute
   '/coach': typeof CoachIndexRoute
   '/coach/athlete/$id': typeof CoachAthleteIdRoute
 }
@@ -257,6 +265,7 @@ export interface FileRoutesById {
   '/you': typeof YouRoute
   '/discipline/$code': typeof DisciplineCodeRoute
   '/dive/$id': typeof DiveIdRoute
+  '/tools/co2-o2-tables': typeof ToolsCo2O2TablesRoute
   '/coach/': typeof CoachIndexRoute
   '/coach/athlete/$id': typeof CoachAthleteIdRoute
 }
@@ -288,6 +297,7 @@ export interface FileRouteTypes {
     | '/you'
     | '/discipline/$code'
     | '/dive/$id'
+    | '/tools/co2-o2-tables'
     | '/coach/'
     | '/coach/athlete/$id'
   fileRoutesByTo: FileRoutesByTo
@@ -316,6 +326,7 @@ export interface FileRouteTypes {
     | '/you'
     | '/discipline/$code'
     | '/dive/$id'
+    | '/tools/co2-o2-tables'
     | '/coach'
     | '/coach/athlete/$id'
   id:
@@ -345,6 +356,7 @@ export interface FileRouteTypes {
     | '/you'
     | '/discipline/$code'
     | '/dive/$id'
+    | '/tools/co2-o2-tables'
     | '/coach/'
     | '/coach/athlete/$id'
   fileRoutesById: FileRoutesById
@@ -375,6 +387,7 @@ export interface RootRouteChildren {
   YouRoute: typeof YouRoute
   DisciplineCodeRoute: typeof DisciplineCodeRoute
   DiveIdRoute: typeof DiveIdRoute
+  ToolsCo2O2TablesRoute: typeof ToolsCo2O2TablesRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -547,6 +560,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CoachIndexRouteImport
       parentRoute: typeof CoachRoute
     }
+    '/tools/co2-o2-tables': {
+      id: '/tools/co2-o2-tables'
+      path: '/tools/co2-o2-tables'
+      fullPath: '/tools/co2-o2-tables'
+      preLoaderRoute: typeof ToolsCo2O2TablesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/dive/$id': {
       id: '/dive/$id'
       path: '/dive/$id'
@@ -609,6 +629,7 @@ const rootRouteChildren: RootRouteChildren = {
   YouRoute: YouRoute,
   DisciplineCodeRoute: DisciplineCodeRoute,
   DiveIdRoute: DiveIdRoute,
+  ToolsCo2O2TablesRoute: ToolsCo2O2TablesRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
