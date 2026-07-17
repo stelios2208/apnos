@@ -92,7 +92,7 @@ function AdminPage() {
     );
   }
 
-  if (!user || !isAdmin(user)) {
+  if (!user || !isAdmin(user?.id)) {
     return (
       <div className="flex flex-col items-center gap-3 py-20 text-center">
         <Lock className="size-8 text-foreground/20" />
@@ -664,11 +664,14 @@ function RulesTab({ lang }: { lang: string }) {
                       sectionPoints.map((point) => (
                         <li
                           key={point.id}
-                          className="flex items-start gap-2 rounded-lg border border-input px-3 py-2"
+                          className={cn(
+                            "flex items-start gap-2 rounded-lg border border-input px-3 py-2",
+                            !point.is_active && "opacity-40",
+                          )}
                         >
                           <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-primary/70" />
                           <span className="min-w-0 flex-1 text-sm text-foreground/80">
-                            {point.text_en}
+                            {point.content_en}
                           </span>
                           <button
                             onClick={() => setEditingPoint(point)}
@@ -864,18 +867,20 @@ function PointFormDialog({
   onSave: (id: string | null, input: RulePointInput, isNew: boolean) => void;
 }) {
   const isNew = point === null;
-  const [textEl, setTextEl] = useState("");
-  const [textEn, setTextEn] = useState("");
+  const [contentEl, setContentEl] = useState("");
+  const [contentEn, setContentEn] = useState("");
   const [sortOrder, setSortOrder] = useState(0);
+  const [isActive, setIsActive] = useState(true);
 
   useEffect(() => {
     if (!open) return;
-    setTextEl(point?.text_el ?? "");
-    setTextEn(point?.text_en ?? "");
+    setContentEl(point?.content_el ?? "");
+    setContentEn(point?.content_en ?? "");
     setSortOrder(point?.sort_order ?? 0);
+    setIsActive(point?.is_active ?? true);
   }, [open, point]);
 
-  const valid = textEn.trim() !== "" && sectionId !== "";
+  const valid = contentEn.trim() !== "" && sectionId !== "";
 
   return (
     <Dialog
@@ -899,10 +904,10 @@ function PointFormDialog({
 
         <div className="space-y-4">
           <Field label={lang === "el" ? "Κείμενο (EN)" : "Text (EN)"}>
-            <Textarea rows={3} value={textEn} onChange={(e) => setTextEn(e.target.value)} />
+            <Textarea rows={3} value={contentEn} onChange={(e) => setContentEn(e.target.value)} />
           </Field>
           <Field label={lang === "el" ? "Κείμενο (EL)" : "Text (EL)"}>
-            <Textarea rows={3} value={textEl} onChange={(e) => setTextEl(e.target.value)} />
+            <Textarea rows={3} value={contentEl} onChange={(e) => setContentEl(e.target.value)} />
           </Field>
           <Field label={lang === "el" ? "Σειρά" : "Sort order"}>
             <Input
@@ -911,6 +916,11 @@ function PointFormDialog({
               onChange={(e) => setSortOrder(Number.parseInt(e.target.value, 10) || 0)}
             />
           </Field>
+          <ToggleRow
+            label={lang === "el" ? "Ενεργό" : "Active"}
+            checked={isActive}
+            onChange={setIsActive}
+          />
         </div>
 
         <DialogFooter>
@@ -924,9 +934,10 @@ function PointFormDialog({
                 point?.id ?? null,
                 {
                   section_id: sectionId,
-                  text_el: textEl,
-                  text_en: textEn,
+                  content_el: contentEl,
+                  content_en: contentEn,
                   sort_order: sortOrder,
+                  is_active: isActive,
                 },
                 isNew,
               )

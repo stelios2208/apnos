@@ -1,15 +1,17 @@
-import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
 // Admin data layer for content that used to be hardcoded in src/lib/tips.ts
 // and src/routes/rules.tsx, now stored in Supabase. Plain async functions
 // wrapping the Supabase client; RLS authorizes writes to admins.
 
-// The admin flag lives in the user's app_metadata (set server-side, surfaced
-// in the JWT) — same source of truth as isAdminUser() in performances.ts. It
-// can't be derived from a bare user id on the client, so this takes the User.
-export function isAdmin(user: User | null): boolean {
-  return user?.app_metadata?.is_admin === true;
+// The single admin's user id. This is the exact UID the RLS policies on
+// tips / rule_sections / rule_points check auth.uid() against, so the UI gate
+// and the database's real security boundary share one source of truth — they
+// can't silently disagree.
+export const ADMIN_UID = "968b47dc-297a-4290-808f-ed022366b3e4";
+
+export function isAdmin(userId: string | null | undefined): boolean {
+  return userId === ADMIN_UID;
 }
 
 // Kebab-case slug from an English title, used to seed a tip / rule-section id
@@ -52,9 +54,10 @@ export interface RuleSection {
 export interface RulePoint {
   id: string;
   section_id: string;
-  text_el: string;
-  text_en: string;
+  content_el: string;
+  content_en: string;
   sort_order: number;
+  is_active: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -155,9 +158,10 @@ export async function deleteRuleSection(id: string): Promise<void> {
 
 export interface RulePointInput {
   section_id: string;
-  text_el: string;
-  text_en: string;
+  content_el: string;
+  content_en: string;
   sort_order: number;
+  is_active: boolean;
 }
 
 export async function fetchRulePoints(sectionId?: string): Promise<RulePoint[]> {
