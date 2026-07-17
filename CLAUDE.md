@@ -60,3 +60,46 @@ Phones run a Capacitor shell (`capacitor.config.ts`) that loads the live deploym
 - shadcn/ui primitives live in `src/components/ui/` (config in `components.json`); shared app components in `src/components/`.
 - Prettier: 100-char width, double quotes, semicolons, trailing commas. ESLint has `@typescript-eslint/no-unused-vars` off and forbids importing `server-only` (use `*.server.ts` naming instead).
 - Dark theme is the default (`<html class="dark">` in the root shell).
+
+## Context Snapshot
+
+Condensed handoff (see `HANDOFF.md` for the full reference brief).
+
+**Stack / infra**
+- TanStack Start (SSR, file-based routing) + React 19 + TypeScript strict; Nitro server.
+- Supabase (Postgres + Auth + Storage) is the entire backend — no custom API tier; authz = RLS `auth.uid() = user_id`.
+- Tailwind v4 + shadcn/ui; Web Audio API (zero audio assets); Capacitor 7 native shell (WebView loads live site, native Haptics).
+- Hosting: Render (primary, `NITRO_PRESET=node-server`) + Vercel (rewrite-all). Connected to Lovable → `main` auto-deploys, **never rewrite pushed history**.
+- Tooling: ESLint (Prettier-as-rule) + `tsc --noEmit`. **No tests** — verify via typecheck + lint + build.
+
+**Folder structure**
+- `src/routes/*.tsx` — pages (`__root.tsx` shell; `$id` dynamic; `routeTree.gen.ts` auto-gen, never edit).
+- `src/components/` — app components + `trainer/` + `ui/` (shadcn); `src/lib/*.ts` — data layer + domain logic (the real "backend").
+- `src/hooks/` — `use-auth`, `use-theme`, `use-session-fx`, `use-wake-lock`; `src/integrations/supabase/client.ts`; `supabase/migrations/` (manual SQL).
+
+**Completed features**
+- Dive log (8 disciplines) + client-computed personal bests + CSV export; dive detail with structured STA "session breakdown".
+- Warm-ups / breathwork, CO₂/O₂ tables (builder + runner), guided free-static trainer (voice + haptic + soundscape cues), stopwatch→STA.
+- Dive planner (localStorage), calendar (logged + planned), coach tool (athletes + programs), competition results + public rankings.
+- Bilingual EL/EN, light/dark themes, profile, equipment, public SEO pages (landing, CO₂/O₂ tables), sitemap, share cards, native haptics.
+
+**Design system**
+- Fonts: `Outfit` (display/headings, `--font-display`), `Inter` (body, `--font-sans`).
+- Palette (OKLCH): deep-navy background `0.16 0.025 255`; teal primary/accent/ring `0.66 0.115 168` (glow `0.74 0.13 172`); cards `0.21 0.03 258`; destructive red `0.62 0.2 18`.
+- Signature: `--gradient-ocean`, `--shadow-glow`, underwater visual language (`UnderwaterScene`, `Bubbles`, `LogoBreathPacer`). Dark is default; training screens stay hard-coded dark even in light theme.
+
+**Known issues / debt**
+- No test suite. Dive **plans** + custom **warm-ups** + FX settings live only in `localStorage` (no cross-device sync).
+- Profile stored in auth `user_metadata` (not queryable) — no `profiles` table yet. PBs recomputed client-side each view.
+- Supabase URL + anon key hardcoded (not env-based). `capacitor.config.ts` `server.url` must be set to prod domain before native build.
+- Deployed DB can lag code → data layer uses PGRST204/205/42P01 drop-and-retry; i18n dictionary is hand-rolled (easy to miss one language).
+
+**Roadmap priorities**
+1. Promote `localStorage` data (plans, warm-ups) to Supabase tables with RLS.
+2. Real `profiles` table for public profiles + rankings joins.
+3. Add tests (start with `lib/` domain math). 4. Env-based Supabase config. 5. Monetization is greenfield — `premium` flag in `tips.ts` is cosmetic scaffolding only.
+
+**Conventions** (see `## Conventions` above for full list)
+- `@/*` → `src/*`; Prettier 100-col / double-quotes / semicolons / trailing commas.
+- Every user-facing string in **both** `el` + `en`; domain data carries paired fields (`name`/`name_el`).
+- Round-based sessions log as `dives` rows with a `Rounds: [JSON]` block in `notes` to reuse the detail-view breakdown. New Supabase columns follow the drop-and-retry degradation pattern.
