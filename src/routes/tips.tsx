@@ -1,17 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Brain, Ear, Wind, Waves, ShieldAlert, X, ChevronRight } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { useI18n } from "@/lib/i18n";
-import {
-  TIPS,
-  TIP_CATEGORIES,
-  categoryColor,
-  categoryLabel,
-  type Tip,
-  type TipCategory,
-} from "@/lib/tips";
+import { TIP_CATEGORIES, categoryColor, categoryLabel, type TipCategory } from "@/lib/tips";
+import { fetchTips, type Tip } from "@/lib/admin-content";
 
 export const Route = createFileRoute("/tips")({
   head: () => ({ meta: [{ title: "Συμβουλές & Νους — Apnos" }] }),
@@ -31,11 +26,21 @@ const CAT_ICON: Record<TipCategory, LucideIcon> = {
 };
 
 function TipsPage() {
-  const { lang } = useI18n();
+  const { t, lang } = useI18n();
   const [filter, setFilter] = useState<TipCategory | "all">("all");
   const [open, setOpen] = useState<Tip | null>(null);
 
-  const shown = filter === "all" ? TIPS : TIPS.filter((t) => t.category === filter);
+  const {
+    data: tips = [],
+    isLoading,
+    isError,
+  } = useQuery({
+    queryKey: ["tips"],
+    queryFn: fetchTips,
+  });
+
+  const active = tips.filter((t) => t.is_active);
+  const shown = filter === "all" ? active : active.filter((t) => t.category === filter);
 
   return (
     <div className="space-y-4">
@@ -68,53 +73,61 @@ function TipsPage() {
       </div>
 
       {/* cards */}
-      <div className="space-y-2.5">
-        {shown.map((tip) => {
-          const color = categoryColor(tip.category);
-          const Icon = CAT_ICON[tip.category];
-          return (
-            <button
-              key={tip.id}
-              onClick={() => setOpen(tip)}
-              className="flex w-full items-center gap-3.5 rounded-2xl px-4 py-3.5 text-left transition-all active:scale-[0.99]"
-              style={{
-                background: "var(--card)",
-                border: "1px solid rgba(var(--ink),0.06)",
-                borderLeft: `3px solid ${color}`,
-              }}
-            >
-              <div
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
-                style={{ background: `${color}18`, color }}
+      {isLoading ? (
+        <p className="text-sm text-muted-foreground">{t("common.loading")}</p>
+      ) : isError ? (
+        <p className="text-sm text-muted-foreground">
+          {lang === "el" ? "Σφάλμα φόρτωσης συμβουλών." : "Failed to load tips."}
+        </p>
+      ) : (
+        <div className="space-y-2.5">
+          {shown.map((tip) => {
+            const color = categoryColor(tip.category);
+            const Icon = CAT_ICON[tip.category];
+            return (
+              <button
+                key={tip.id}
+                onClick={() => setOpen(tip)}
+                className="flex w-full items-center gap-3.5 rounded-2xl px-4 py-3.5 text-left transition-all active:scale-[0.99]"
+                style={{
+                  background: "var(--card)",
+                  border: "1px solid rgba(var(--ink),0.06)",
+                  borderLeft: `3px solid ${color}`,
+                }}
               >
-                <Icon className="size-5" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <p className="truncate text-sm font-bold text-foreground">
-                    {lang === "el" ? tip.title_el : tip.title_en}
-                  </p>
-                  {tip.premium && (
-                    <span
-                      className="shrink-0 rounded px-1.5 py-0.5 text-[0.5rem] font-bold"
-                      style={{ background: "rgba(239,159,39,0.18)", color: "#EF9F27" }}
-                    >
-                      {lang === "el" ? "ΠΡΟΧ." : "ADV"}
-                    </span>
-                  )}
-                </div>
-                <p
-                  className="mt-0.5 text-[0.65rem] font-semibold uppercase tracking-wider"
-                  style={{ color: `${color}cc` }}
+                <div
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
+                  style={{ background: `${color}18`, color }}
                 >
-                  {categoryLabel(tip.category, lang)}
-                </p>
-              </div>
-              <ChevronRight className="size-4 shrink-0 text-foreground/20" />
-            </button>
-          );
-        })}
-      </div>
+                  <Icon className="size-5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="truncate text-sm font-bold text-foreground">
+                      {lang === "el" ? tip.title_el : tip.title_en}
+                    </p>
+                    {tip.premium && (
+                      <span
+                        className="shrink-0 rounded px-1.5 py-0.5 text-[0.5rem] font-bold"
+                        style={{ background: "rgba(239,159,39,0.18)", color: "#EF9F27" }}
+                      >
+                        {lang === "el" ? "ΠΡΟΧ." : "ADV"}
+                      </span>
+                    )}
+                  </div>
+                  <p
+                    className="mt-0.5 text-[0.65rem] font-semibold uppercase tracking-wider"
+                    style={{ color: `${color}cc` }}
+                  >
+                    {categoryLabel(tip.category, lang)}
+                  </p>
+                </div>
+                <ChevronRight className="size-4 shrink-0 text-foreground/20" />
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {open && <TipSheet tip={open} lang={lang} onClose={() => setOpen(null)} />}
     </div>
