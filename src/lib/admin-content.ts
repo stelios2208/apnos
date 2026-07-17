@@ -1,8 +1,26 @@
+import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
 // Admin data layer for content that used to be hardcoded in src/lib/tips.ts
 // and src/routes/rules.tsx, now stored in Supabase. Plain async functions
 // wrapping the Supabase client; RLS authorizes writes to admins.
+
+// The admin flag lives in the user's app_metadata (set server-side, surfaced
+// in the JWT) — same source of truth as isAdminUser() in performances.ts. It
+// can't be derived from a bare user id on the client, so this takes the User.
+export function isAdmin(user: User | null): boolean {
+  return user?.app_metadata?.is_admin === true;
+}
+
+// Kebab-case slug from an English title, used to seed a tip / rule-section id
+// (both are text primary keys) — e.g. "Never alone" → "never-alone".
+export function slugify(input: string): string {
+  return input
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
 
 export type TipCategory = "safety" | "eq" | "mental" | "relax" | "technique";
 
