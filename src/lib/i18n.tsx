@@ -190,6 +190,9 @@ const en: Dict = {
   "guided.safetyBuddy": "Never practise apnea alone, or in/near water without a buddy.",
   "guided.safetyDry":
     "Dry training: away from water, in a safe space, seated or lying on your back — never standing, never alone.",
+  // PRO freemium gate
+  "pro.unlockHint": "Unlock with Apnos PRO — coming soon.",
+  "pro.preview": "Preview — PRO content",
 };
 
 const el: Dict = {
@@ -363,6 +366,8 @@ const el: Dict = {
     "Ποτέ άπνοια μόνος σου, ούτε μέσα ή κοντά σε νερό χωρίς σύντροφο ασφαλείας.",
   "guided.safetyDry":
     "Ξηρή προπόνηση: μακριά από νερό, σε ασφαλή χώρο, καθιστός ή ξαπλωμένος ανάσκελα — ποτέ όρθιος, ποτέ μόνος.",
+  "pro.unlockHint": "Ξεκλειδώνεται με το Apnos PRO — έρχεται σύντομα.",
+  "pro.preview": "Προεπισκόπηση — περιεχόμενο PRO",
 };
 
 const DICTS: Record<Lang, Dict> = { el, en };

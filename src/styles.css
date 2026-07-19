@@ -433,6 +433,17 @@
   }
 }
 
+/* ── PRO blur teaser ─────────────────────────────────────────────────────── */
+/* Locked instructional text stays visible as a shape but unreadable and
+   uncopyable — pure CSS, no assets. */
+
+.pro-blur {
+  filter: blur(6px);
+  user-select: none;
+  -webkit-user-select: none;
+  pointer-events: none;
+}
+
 /* ── Guided breathing card (premium overlay on the breathwork countdown) ── */
 /* The card "breathes" with the live phase: grows over the inhale, holds with
    a subtle pulse, shrinks over the exhale. Inhale/exhale run once per step
