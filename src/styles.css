@@ -433,6 +433,70 @@
   }
 }
 
+/* ── Guided breathing card (premium overlay on the breathwork countdown) ── */
+/* The card "breathes" with the live phase: grows over the inhale, holds with
+   a subtle pulse, shrinks over the exhale. Inhale/exhale run once per step
+   (remounted per step via key) with the step's own duration. */
+
+.guided-card {
+  will-change: transform;
+  transform-origin: center;
+}
+
+.guided-anim-inhale {
+  animation: guided-inhale var(--guided-dur, 4s) ease-in-out forwards;
+}
+
+.guided-anim-exhale {
+  animation: guided-exhale var(--guided-dur, 6s) ease-in-out forwards;
+}
+
+.guided-anim-hold {
+  animation: guided-hold 3.2s ease-in-out infinite;
+}
+
+.guided-anim-breathe {
+  animation: guided-breathe 8s ease-in-out infinite;
+}
+
+@keyframes guided-inhale {
+  from {
+    transform: scale(0.97);
+  }
+  to {
+    transform: scale(1.03);
+  }
+}
+
+@keyframes guided-exhale {
+  from {
+    transform: scale(1.03);
+  }
+  to {
+    transform: scale(0.97);
+  }
+}
+
+@keyframes guided-hold {
+  0%,
+  100% {
+    transform: scale(1.03);
+  }
+  50% {
+    transform: scale(1.015);
+  }
+}
+
+@keyframes guided-breathe {
+  0%,
+  100% {
+    transform: scale(0.985);
+  }
+  50% {
+    transform: scale(1.015);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .bubble {
     animation: none;
@@ -443,7 +507,11 @@
   .uw-caustic,
   .uw-mote,
   .pacer-sweep,
-  .pacer-core {
+  .pacer-core,
+  .guided-anim-inhale,
+  .guided-anim-exhale,
+  .guided-anim-hold,
+  .guided-anim-breathe {
     animation: none;
   }
   .uw-mote {

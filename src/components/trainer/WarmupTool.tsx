@@ -45,12 +45,14 @@ import {
   stepsFromRounds,
   newRound,
 } from "@/lib/warmups";
+import { guideForPreset, hasPremiumAccess } from "@/lib/breathing-guides";
 import { logStaHold } from "@/lib/dives";
 import { useSessionFx } from "@/hooks/use-session-fx";
 import { useWakeLock } from "@/hooks/use-wake-lock";
 import { UnderwaterScene } from "@/components/UnderwaterScene";
 import { LogoBreathPacer } from "@/components/LogoBreathPacer";
 import { TableCard } from "@/components/TableCard";
+import { GuidedBreathingCard } from "@/components/trainer/GuidedBreathingCard";
 import { HoldAlertsCard } from "@/components/trainer/HoldAlertsCard";
 import { FxChipsRow } from "@/components/trainer/FxControls";
 
@@ -329,7 +331,14 @@ export function WarmupTool({ onBack }: { onBack: () => void }) {
       roundProgress = roundTotal > 0 ? Math.min(1, Math.max(0, elapsedInRound / roundTotal)) : 0;
     }
 
-    const showDots = !playRounds && preset.steps.length <= 16;
+    // Premium guided card: overlays the countdown with the pattern's steps,
+    // driven by the exact same stepIndex/remaining state (no second timer).
+    // Free tier (or presets without a guide) keeps the plain countdown.
+    const guide = guideForPreset(preset.id);
+    const showGuide = !!guide && (!guide.premium || hasPremiumAccess());
+    const guideIndex = preset.cycleLen ? stepIndex % preset.cycleLen : stepIndex;
+
+    const showDots = !playRounds && !showGuide && preset.steps.length <= 16;
 
     return (
       <div className="fixed inset-0 flex flex-col select-none" style={{ background: "#020a13" }}>
@@ -364,10 +373,12 @@ export function WarmupTool({ onBack }: { onBack: () => void }) {
         </div>
 
         {/* center */}
-        <div className="relative z-10 flex flex-1 flex-col items-center justify-center gap-5">
+        <div
+          className={`relative z-10 flex flex-1 flex-col items-center justify-center ${showGuide ? "gap-3" : "gap-5"}`}
+        >
           <LogoBreathPacer
             key={stepIndex}
-            size={playRounds ? 170 : 220}
+            size={playRounds || showGuide ? 170 : 220}
             color={color}
             duration={sweepDuration(step)}
             paused={paused}
@@ -387,6 +398,18 @@ export function WarmupTool({ onBack }: { onBack: () => void }) {
               {fmtClock(Math.max(0, remaining))}
             </span>
           </div>
+
+          {showGuide && guide && (
+            <GuidedBreathingCard
+              guide={guide}
+              stepIndex={stepIndex}
+              activeIndex={guideIndex}
+              stepKind={step.kind}
+              stepSecs={step.secs}
+              remaining={remaining}
+              paused={paused}
+            />
+          )}
 
           {showDots && (
             <div className="flex flex-wrap items-center justify-center gap-1.5 px-8">
@@ -685,6 +708,16 @@ function PresetSection({
                     >
                       {chip}
                     </span>
+                    {/* premium-tier badge — not a difficulty level; these
+                        guided patterns are beginner content */}
+                    {guideForPreset(p.id)?.premium && (
+                      <span
+                        className="rounded px-1.5 py-0.5 text-[0.5rem] font-bold"
+                        style={{ background: "rgba(239,159,39,0.18)", color: "#EF9F27" }}
+                      >
+                        PRO
+                      </span>
+                    )}
                   </div>
                   <p className="mt-1 text-[0.72rem] leading-relaxed text-white/40">
                     {lang === "el" ? p.desc_el : p.desc_en}
