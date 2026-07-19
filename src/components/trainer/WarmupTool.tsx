@@ -708,12 +708,14 @@ function PresetSection({
                     >
                       {chip}
                     </span>
+                    {/* premium-tier badge — not a difficulty level; these
+                        guided patterns are beginner content */}
                     {guideForPreset(p.id)?.premium && (
                       <span
                         className="rounded px-1.5 py-0.5 text-[0.5rem] font-bold"
                         style={{ background: "rgba(239,159,39,0.18)", color: "#EF9F27" }}
                       >
-                        {lang === "el" ? "ΠΡΟΧ." : "ADV"}
+                        PRO
                       </span>
                     )}
                   </div>

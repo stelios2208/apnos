@@ -182,7 +182,9 @@ const en: Dict = {
   "rules.sub": "CMAS pool — offline reference.",
   // guided breathing card (premium overlay on the breathwork player)
   "guided.title": "Guided breathing",
-  "guided.badge": "ADV",
+  // Premium-tier badge, NOT a difficulty level — the guided patterns are
+  // beginner content, so "ADV/ΠΡΟΧ." (borrowed from tips) would mislead.
+  "guided.badge": "PRO",
   "guided.safetyTitle": "Train safe",
   "guided.safetyCalm": "Slow, calm breathing — no fast or deep over-breathing before a hold.",
   "guided.safetyBuddy": "Never practise apnea alone, or in/near water without a buddy.",
@@ -353,7 +355,7 @@ const el: Dict = {
   "rules.title": "Γρήγορη αναφορά κανόνων",
   "rules.sub": "CMAS πισίνα — αναφορά χωρίς σύνδεση.",
   "guided.title": "Καθοδηγούμενη αναπνοή",
-  "guided.badge": "ΠΡΟΧ.",
+  "guided.badge": "PRO",
   "guided.safetyTitle": "Ασφαλής προπόνηση",
   "guided.safetyCalm":
     "Αργή, ήρεμη αναπνοή — χωρίς γρήγορες ή βαθιές υπεραναπνοές πριν το κράτημα.",
