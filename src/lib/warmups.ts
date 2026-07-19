@@ -85,7 +85,9 @@ export const WARMUP_PRESETS: WarmupPreset[] = [
     purpose_en: "Focus & control",
     cycleLen: 4,
     accent: "#5DCAA5",
-    steps: cycle(12, inh(4), h(4), exh(4), r(4)),
+    // Box breathing is inhale/hold/exhale/hold — the second side is a
+    // breath-hold on empty lungs, not passive rest.
+    steps: cycle(12, inh(4), h(4), exh(4), h(4)),
   },
   {
     id: "478",
@@ -142,7 +144,9 @@ export const WARMUP_PRESETS: WarmupPreset[] = [
     purpose_el: "Ανοχή στο CO₂",
     purpose_en: "CO₂ tolerance",
     accent: "#EF9F27",
-    steps: [b(120), h(45), r(105), h(45), r(90), h(45), r(75), h(45), r(60), h(45)],
+    // The phases between holds are breathe-up recovery (shrinking here), not
+    // passive rest — same active-breathing role as the opening breathe-up.
+    steps: [b(120), h(45), b(105), h(45), b(90), h(45), b(75), h(45), b(60), h(45)],
   },
   {
     id: "o2",
@@ -156,7 +160,9 @@ export const WARMUP_PRESETS: WarmupPreset[] = [
     purpose_el: "Αντοχή σε χαμηλό O₂",
     purpose_en: "Low-O₂ endurance",
     accent: "#5DCAA5",
-    steps: [b(120), h(45), r(120), h(60), r(120), h(75), r(120), h(90)],
+    // Fixed 2:00 breathe-up recovery between the growing holds — active
+    // breathing, not passive rest.
+    steps: [b(120), h(45), b(120), h(60), b(120), h(75), b(120), h(90)],
   },
 ];
 
@@ -271,8 +277,10 @@ export function roundsFromSteps(steps: WarmupStep[]): WarmupRound[] | null {
 
 export function stepsFromRounds(rounds: WarmupRound[]): WarmupStep[] {
   const steps: WarmupStep[] = [];
-  rounds.forEach((round, i) => {
-    steps.push({ kind: i === 0 ? "breathe" : "rest", secs: Math.max(1, round.breatheSecs) });
+  rounds.forEach((round) => {
+    // The "breathe" column of every round is active breathe-up recovery, not
+    // passive rest — keep it "breathe" so the timer card shows Αναπνοή.
+    steps.push({ kind: "breathe", secs: Math.max(1, round.breatheSecs) });
     steps.push({ kind: "hold", secs: Math.max(1, round.holdSecs) });
   });
   return steps;
