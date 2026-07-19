@@ -25,6 +25,7 @@ import {
   Sparkles,
   ListOrdered,
   SlidersHorizontal,
+  Lock,
 } from "lucide-react";
 import {
   type WarmupPreset,
@@ -45,7 +46,9 @@ import {
   stepsFromRounds,
   newRound,
 } from "@/lib/warmups";
-import { guideForPreset, hasPremiumAccess } from "@/lib/breathing-guides";
+import { guideForPreset } from "@/lib/breathing-guides";
+import { hasProAccess, isLocked, isTeased, canUseProFeatures } from "@/lib/premium";
+import { ProBadge, ProPreviewModal, ProTrialNotice } from "@/components/trainer/ProGate";
 import { logStaHold } from "@/lib/dives";
 import { useSessionFx } from "@/hooks/use-session-fx";
 import { useWakeLock } from "@/hooks/use-wake-lock";
@@ -130,6 +133,17 @@ export function WarmupTool({ onBack }: { onBack: () => void }) {
 
   const [customs, setCustoms] = useState<WarmupPreset[]>(() => loadCustomWarmups());
   const [builder, setBuilder] = useState<WarmupPreset | null>(null);
+  // Locked preset being teased: tapping a PRO item opens its blurred preview
+  // instead of the usable session.
+  const [lockedPreview, setLockedPreview] = useState<WarmupPreset | null>(null);
+
+  // What the blurred preview shows for a locked preset: the guide's step
+  // instructions when one exists, otherwise the raw step sequence.
+  const previewLines = (p: WarmupPreset): string[] => {
+    const g = guideForPreset(p.id);
+    if (g) return g.steps.map((s) => (lang === "el" ? s.text_el : s.text_en));
+    return p.steps.slice(0, 6).map((s) => `${stepLabel(s.kind, lang)} — ${fmtClock(s.secs)}`);
+  };
 
   const stepIndexRef = useRef(0);
   const remainingRef = useRef(0);
@@ -158,6 +172,10 @@ export function WarmupTool({ onBack }: { onBack: () => void }) {
 
   // ── controls ──────────────────────────────────────────────────────────────
   const startPreset = (p: WarmupPreset) => {
+    if (isLocked(p)) {
+      setLockedPreview(p);
+      return;
+    }
     presetRef.current = p;
     stepIndexRef.current = 0;
     remainingRef.current = p.steps[0]!.secs;
@@ -287,8 +305,27 @@ export function WarmupTool({ onBack }: { onBack: () => void }) {
 
   // Opens the builder pre-filled with a copy of a built-in preset — saving
   // creates the user's own editable variant, the original stays untouched.
+  // Locked presets tease instead: the builder would reveal the step data.
   const handleEditPreset = (p: WarmupPreset) => {
+    if (isLocked(p)) {
+      setLockedPreview(p);
+      return;
+    }
     setBuilder({ ...p, id: crypto.randomUUID(), custom: true });
+  };
+
+  // The custom builder is PRO — tapping it locked previews the default
+  // template rather than opening an editable session. Open during the trial.
+  const openBuilder = (p: WarmupPreset) => {
+    if (!canUseProFeatures()) {
+      setLockedPreview({
+        ...p,
+        name_el: p.name_el || "Δικό σου ζέσταμα",
+        name_en: p.name_en || "Your own warm-up",
+      });
+      return;
+    }
+    setBuilder(p);
   };
 
   // ── custom warm-up builder ──────────────────────────────────────────────────
@@ -331,11 +368,12 @@ export function WarmupTool({ onBack }: { onBack: () => void }) {
       roundProgress = roundTotal > 0 ? Math.min(1, Math.max(0, elapsedInRound / roundTotal)) : 0;
     }
 
-    // Premium guided card: overlays the countdown with the pattern's steps,
-    // driven by the exact same stepIndex/remaining state (no second timer).
-    // Free tier (or presets without a guide) keeps the plain countdown.
+    // Guided card overlaying the countdown, driven by the exact same
+    // stepIndex/remaining state (no second timer). Locked presets never reach
+    // the player (startPreset gates through lib/premium.ts), so a running
+    // session is always entitled to its guide.
     const guide = guideForPreset(preset.id);
-    const showGuide = !!guide && (!guide.premium || hasPremiumAccess());
+    const showGuide = !!guide;
     const guideIndex = preset.cycleLen ? stepIndex % preset.cycleLen : stepIndex;
 
     const showDots = !playRounds && !showGuide && preset.steps.length <= 16;
@@ -372,75 +410,82 @@ export function WarmupTool({ onBack }: { onBack: () => void }) {
           <div className="w-10" />
         </div>
 
-        {/* center */}
-        <div
-          className={`relative z-10 flex flex-1 flex-col items-center justify-center ${showGuide ? "gap-3" : "gap-5"}`}
-        >
-          <LogoBreathPacer
-            key={stepIndex}
-            size={playRounds || showGuide ? 170 : 220}
-            color={color}
-            duration={sweepDuration(step)}
-            paused={paused}
-          />
-          <div className="flex flex-col items-center">
-            <span
-              className="mb-1 flex items-center gap-1.5 text-xs font-bold tracking-[0.3em]"
-              style={{ color }}
-            >
-              <StepIcon className="size-3.5" />
-              {stepLabel(step.kind, lang).toUpperCase()}
-            </span>
-            <span
-              className="font-mono text-[2.75rem] font-light leading-none tabular-nums"
-              style={{ color }}
-            >
-              {fmtClock(Math.max(0, remaining))}
-            </span>
-          </div>
-
-          {showGuide && guide && (
-            <GuidedBreathingCard
-              guide={guide}
-              stepIndex={stepIndex}
-              activeIndex={guideIndex}
-              stepKind={step.kind}
-              stepSecs={step.secs}
-              remaining={remaining}
+        {/* center — scrollable so nothing clips on short viewports; m-auto keeps
+            the countdown centred when content fits and scrollable from the top
+            when it doesn't */}
+        <div className="relative z-10 flex min-h-0 flex-1 flex-col overflow-y-auto">
+          <div
+            className={`m-auto flex w-full flex-col items-center ${showGuide ? "gap-3 py-3" : "gap-5 py-3"}`}
+          >
+            <LogoBreathPacer
+              key={stepIndex}
+              size={playRounds || showGuide ? 170 : 220}
+              color={color}
+              duration={sweepDuration(step)}
               paused={paused}
             />
-          )}
-
-          {showDots && (
-            <div className="flex flex-wrap items-center justify-center gap-1.5 px-8">
-              {preset.steps.map((s, i) => (
-                <span
-                  key={i}
-                  className="h-1.5 rounded-full transition-all"
-                  style={{
-                    width: i === stepIndex ? 20 : 6,
-                    background:
-                      i === stepIndex
-                        ? color
-                        : i < stepIndex
-                          ? "rgba(255,255,255,0.35)"
-                          : "rgba(255,255,255,0.12)",
-                  }}
-                />
-              ))}
+            <div className="flex flex-col items-center">
+              <span
+                className="mb-1 flex items-center gap-1.5 text-xs font-bold tracking-[0.3em]"
+                style={{ color }}
+              >
+                <StepIcon className="size-3.5" />
+                {stepLabel(step.kind, lang).toUpperCase()}
+              </span>
+              <span
+                className="font-mono text-[2.75rem] font-light leading-none tabular-nums"
+                style={{ color }}
+              >
+                {fmtClock(Math.max(0, remaining))}
+              </span>
             </div>
-          )}
 
-          {!playRounds && step.kind === "hold" && holdCount(preset) > 0 && (
-            <span className="text-[0.65rem] tracking-widest text-white/30">
-              {lang === "el" ? "Κράτηση" : "Hold"} {holdsBefore + 1}/{holdCount(preset)}
-            </span>
-          )}
-          {paused && (
-            <span className="text-[0.6rem] font-bold tracking-[0.3em]" style={{ color: "#EF9F27" }}>
-              {lang === "el" ? "ΠΑΥΣΗ" : "PAUSED"}
-            </span>
-          )}
+            {showGuide && guide && (
+              <GuidedBreathingCard
+                guide={guide}
+                stepIndex={stepIndex}
+                activeIndex={guideIndex}
+                stepKind={step.kind}
+                stepSecs={step.secs}
+                remaining={remaining}
+                paused={paused}
+              />
+            )}
+
+            {showDots && (
+              <div className="flex flex-wrap items-center justify-center gap-1.5 px-8">
+                {preset.steps.map((s, i) => (
+                  <span
+                    key={i}
+                    className="h-1.5 rounded-full transition-all"
+                    style={{
+                      width: i === stepIndex ? 20 : 6,
+                      background:
+                        i === stepIndex
+                          ? color
+                          : i < stepIndex
+                            ? "rgba(255,255,255,0.35)"
+                            : "rgba(255,255,255,0.12)",
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+
+            {!playRounds && step.kind === "hold" && holdCount(preset) > 0 && (
+              <span className="text-[0.65rem] tracking-widest text-white/30">
+                {lang === "el" ? "Κράτηση" : "Hold"} {holdsBefore + 1}/{holdCount(preset)}
+              </span>
+            )}
+            {paused && (
+              <span
+                className="text-[0.6rem] font-bold tracking-[0.3em]"
+                style={{ color: "#EF9F27" }}
+              >
+                {lang === "el" ? "ΠΑΥΣΗ" : "PAUSED"}
+              </span>
+            )}
+          </div>
         </div>
 
         {/* rounds table — same live card as the CO₂/O₂ tables */}
@@ -456,8 +501,8 @@ export function WarmupTool({ onBack }: { onBack: () => void }) {
           </div>
         )}
 
-        {/* controls */}
-        <div className="relative z-10 flex items-center justify-center gap-4 px-4 py-6">
+        {/* controls — safe-area padding keeps them tappable above home bars */}
+        <div className="relative z-10 flex items-center justify-center gap-4 px-4 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
           <button
             onClick={togglePause}
             className="flex h-16 w-16 items-center justify-center rounded-full"
@@ -559,6 +604,9 @@ export function WarmupTool({ onBack }: { onBack: () => void }) {
           <FxChipsRow sfx={sfx} />
         </div>
 
+        {/* free-trial notice — slim, non-blocking, near the teased PRO cards */}
+        <ProTrialNotice className="mt-6" />
+
         {/* beginner presets */}
         <PresetSection
           title={lang === "el" ? "ΓΙΑ ΑΡΧΑΡΙΟΥΣ — ΤΕΧΝΙΚΕΣ ΑΝΑΠΝΟΗΣ" : "BEGINNERS — BREATHING"}
@@ -601,11 +649,12 @@ export function WarmupTool({ onBack }: { onBack: () => void }) {
                     className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
                     style={{ background: `${p.accent}18`, color: p.accent }}
                   >
-                    <Play className="size-4" />
+                    {isLocked(p) ? <Lock className="size-4" /> : <Play className="size-4" />}
                   </div>
                   <div className="min-w-0">
-                    <span className="block truncate text-sm font-bold text-white">
-                      {p.name_el || p.name_en}
+                    <span className="flex items-center gap-2 text-sm font-bold text-white">
+                      <span className="truncate">{p.name_el || p.name_en}</span>
+                      {p.premium && <ProBadge />}
                     </span>
                     <span className="text-[0.65rem] text-white/30">
                       ⏱ {fmtClock(presetTotalSecs(p))} · {holdCount(p)}{" "}
@@ -614,7 +663,7 @@ export function WarmupTool({ onBack }: { onBack: () => void }) {
                   </div>
                 </button>
                 <button
-                  onClick={() => setBuilder(p)}
+                  onClick={() => openBuilder(p)}
                   className="rounded-lg p-2 text-white/25 hover:text-white/60"
                 >
                   <Pencil className="size-4" />
@@ -629,7 +678,7 @@ export function WarmupTool({ onBack }: { onBack: () => void }) {
             ))}
 
             <button
-              onClick={() => setBuilder(newCustomWarmup())}
+              onClick={() => openBuilder(newCustomWarmup())}
               className="flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-sm font-semibold transition-all"
               style={{
                 background: "rgba(255,255,255,0.015)",
@@ -637,8 +686,9 @@ export function WarmupTool({ onBack }: { onBack: () => void }) {
                 color: "rgba(255,255,255,0.5)",
               }}
             >
-              <Plus className="size-4" />
+              {canUseProFeatures() ? <Plus className="size-4" /> : <Lock className="size-4" />}
               {lang === "el" ? "Δημιούργησε ζέσταμα" : "Create warm-up"}
+              {!hasProAccess() && <ProBadge />}
             </button>
           </div>
         </div>
@@ -649,6 +699,15 @@ export function WarmupTool({ onBack }: { onBack: () => void }) {
             lang={lang}
             onCancel={() => setBuilder(null)}
             onSave={saveBuilder}
+          />
+        )}
+
+        {lockedPreview && (
+          <ProPreviewModal
+            title={lang === "el" ? lockedPreview.name_el : lockedPreview.name_en}
+            lines={previewLines(lockedPreview)}
+            accent={lockedPreview.accent}
+            onClose={() => setLockedPreview(null)}
           />
         )}
       </div>
@@ -683,6 +742,10 @@ function PresetSection({
             lang === "el"
               ? (p.purpose_el ?? LEVEL_LABEL[p.level].el)
               : (p.purpose_en ?? LEVEL_LABEL[p.level].en);
+          // teased = premium look while browsing (badge + blur); locked =
+          // hard gate (only once the free trial is over, via lib/premium.ts)
+          const teased = isTeased(p);
+          const locked = isLocked(p);
           return (
             <div
               key={p.id}
@@ -710,16 +773,14 @@ function PresetSection({
                     </span>
                     {/* premium-tier badge — not a difficulty level; these
                         guided patterns are beginner content */}
-                    {guideForPreset(p.id)?.premium && (
-                      <span
-                        className="rounded px-1.5 py-0.5 text-[0.5rem] font-bold"
-                        style={{ background: "rgba(239,159,39,0.18)", color: "#EF9F27" }}
-                      >
-                        PRO
-                      </span>
-                    )}
+                    {p.premium && <ProBadge />}
                   </div>
-                  <p className="mt-1 text-[0.72rem] leading-relaxed text-white/40">
+                  {/* premium teaser: the instructional text (which spells out
+                      the pattern timings) is blurred and unselectable while
+                      browsing — never inside a running session */}
+                  <p
+                    className={`mt-1 text-[0.72rem] leading-relaxed text-white/40 ${teased ? "pro-blur" : ""}`}
+                  >
                     {lang === "el" ? p.desc_el : p.desc_en}
                   </p>
                   <div className="mt-2 flex items-center gap-3 text-[0.65rem] text-white/30">
@@ -740,7 +801,7 @@ function PresetSection({
                   className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full"
                   style={{ background: `${p.accent}18`, color: p.accent }}
                 >
-                  <Play className="size-5" />
+                  {locked ? <Lock className="size-5" /> : <Play className="size-5" />}
                 </div>
               </button>
               <button

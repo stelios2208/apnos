@@ -78,9 +78,12 @@ export function GuidedBreathingCard({
 
   return (
     <div className="w-full max-w-sm px-6">
+      {/* Small phones (~640px tall) can't fit the whole card under the pacer +
+          countdown — the card body scrolls internally (dvh-capped) so the
+          safety note stays reachable while the countdown never leaves view. */}
       <div
         key={stepIndex}
-        className={`guided-card rounded-2xl px-4 py-3.5 ${look.anim}`}
+        className={`guided-card max-h-[34dvh] overflow-y-auto rounded-2xl px-4 py-3.5 ${look.anim}`}
         style={animStyle}
       >
         {/* header */}
@@ -121,7 +124,9 @@ export function GuidedBreathingCard({
                     : { background: "transparent", border: "1px solid transparent", opacity: 0.42 }
                 }
               >
-                {s.secs != null && (
+                {/* duration-less steps (table rounds vary) still get the live
+                    clock while active */}
+                {(s.secs != null || isActive) && (
                   <span
                     className="w-9 shrink-0 text-center font-mono text-[0.68rem] font-bold tabular-nums"
                     style={{ color: isActive ? stepColor : "rgba(255,255,255,0.5)" }}
