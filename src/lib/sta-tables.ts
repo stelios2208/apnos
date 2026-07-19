@@ -106,6 +106,25 @@ export const MODE_LABEL: Record<BreathingMode, string> = {
   rv: "RV",
 };
 
+// ── Freemium flags (gate resolved through lib/premium.ts, nowhere else) ──────
+// Free tier gets exactly one calculated CO₂ table and one O₂ table: the `easy`
+// preset in normal breathing. Harder levels, FRC/RV modes and custom/saved
+// tables are PRO content.
+
+export const LEVEL_PREMIUM: Record<PresetLevel, boolean> = {
+  easy: false,
+  medium: true,
+  hard: true,
+};
+
+export const MODE_PREMIUM: Record<BreathingMode, boolean> = {
+  normal: false,
+  frc: true,
+  rv: true,
+};
+
+export const CUSTOM_TABLE_PREMIUM = true;
+
 // ── persistence ──────────────────────────────────────────────────────────────
 // The deployed DB may not have the sta_tables migration yet; PostgREST then
 // reports a missing relation (PGRST205 / 42P01). Reads degrade to an empty

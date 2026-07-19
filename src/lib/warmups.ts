@@ -26,6 +26,9 @@ export interface WarmupPreset {
   // cycle spans, so the player can show "Round x/y".
   cycleLen?: number;
   accent: string;
+  // Freemium flag (see lib/premium.ts — same scaffold as lib/tips.ts). Only
+  // the basic 3-minute `relax` session is free; every other preset is PRO.
+  premium?: boolean;
   steps: WarmupStep[];
   custom?: boolean;
 }
@@ -69,6 +72,7 @@ export const WARMUP_PRESETS: WarmupPreset[] = [
     purpose_el: "Ρύθμιση παλμών (HRV)",
     purpose_en: "Heart-rate balance",
     cycleLen: 2,
+    premium: true,
     accent: "#4FA8E0",
     steps: cycle(15, inh(5), exh(5)),
   },
@@ -84,6 +88,7 @@ export const WARMUP_PRESETS: WarmupPreset[] = [
     purpose_el: "Συγκέντρωση & έλεγχος",
     purpose_en: "Focus & control",
     cycleLen: 4,
+    premium: true,
     accent: "#5DCAA5",
     // Box breathing is inhale/hold/exhale/hold — the second side is a
     // breath-hold on empty lungs, not passive rest.
@@ -101,6 +106,7 @@ export const WARMUP_PRESETS: WarmupPreset[] = [
     purpose_el: "Βαθιά χαλάρωση",
     purpose_en: "Deep relaxation",
     cycleLen: 3,
+    premium: true,
     accent: "#B58BE8",
     // Canonical 4-7-8 (Weil): four cycles total, after a full clearing exhale.
     steps: cycle(4, inh(4), h(7), exh(8)),
@@ -117,6 +123,7 @@ export const WARMUP_PRESETS: WarmupPreset[] = [
     purpose_el: "Πριν το κράτημα",
     purpose_en: "Core pre-hold",
     cycleLen: 3,
+    premium: true,
     accent: "#4FA8E0",
     steps: cycle(10, inh(5), h(2), exh(6)),
   },
@@ -131,6 +138,7 @@ export const WARMUP_PRESETS: WarmupPreset[] = [
     level: "beginner",
     purpose_el: "Πριν τη στατική",
     purpose_en: "Before a static",
+    premium: true,
     accent: "#1D9E75",
     steps: [b(120), inh(10)],
   },
@@ -146,6 +154,7 @@ export const WARMUP_PRESETS: WarmupPreset[] = [
     purpose_el: "Ασφάλεια μετά την ανάδυση",
     purpose_en: "After surfacing — safety",
     cycleLen: 3,
+    premium: true,
     accent: "#EF6B5E",
     steps: cycle(4, inh(2), h(2), exh(3)),
   },
@@ -161,6 +170,7 @@ export const WARMUP_PRESETS: WarmupPreset[] = [
     purpose_el: "Πριν την άπνοια",
     purpose_en: "Pre-apnea settling",
     cycleLen: 2,
+    premium: true,
     accent: "#EF9F27",
     steps: cycle(12, inh(4), exh(8)),
   },
@@ -174,6 +184,7 @@ export const WARMUP_PRESETS: WarmupPreset[] = [
     level: "intermediate",
     purpose_el: "Πριν από max",
     purpose_en: "Before a max",
+    premium: true,
     accent: "#1D9E75",
     steps: [b(120), h(60), r(120), b(120), h(120), r(180)],
   },
@@ -188,6 +199,7 @@ export const WARMUP_PRESETS: WarmupPreset[] = [
     level: "beginner",
     purpose_el: "Ανοχή στο CO₂",
     purpose_en: "CO₂ tolerance",
+    premium: true,
     accent: "#EF9F27",
     // The phases between holds are breathe-up recovery (shrinking here), not
     // passive rest — same active-breathing role as the opening breathe-up.
@@ -204,6 +216,7 @@ export const WARMUP_PRESETS: WarmupPreset[] = [
     level: "beginner",
     purpose_el: "Αντοχή σε χαμηλό O₂",
     purpose_en: "Low-O₂ endurance",
+    premium: true,
     accent: "#5DCAA5",
     // Fixed 2:00 breathe-up recovery between the growing holds — active
     // breathing, not passive rest.
@@ -222,9 +235,13 @@ export function loadCustomWarmups(): WarmupPreset[] {
     if (!raw) return [];
     const arr = JSON.parse(raw) as unknown;
     if (!Array.isArray(arr)) return [];
-    return (arr as WarmupPreset[])
-      .filter((p) => p && Array.isArray(p.steps) && p.steps.length > 0)
-      .map((p) => ({ ...p, custom: true }));
+    return (
+      (arr as WarmupPreset[])
+        .filter((p) => p && Array.isArray(p.steps) && p.steps.length > 0)
+        // custom programs are PRO content — normalise the flag on load so older
+        // saved entries pick it up too
+        .map((p) => ({ ...p, custom: true, premium: true }))
+    );
   } catch {
     return [];
   }
@@ -261,6 +278,7 @@ export function newCustomWarmup(): WarmupPreset {
     desc_el: "",
     desc_en: "",
     level: "intermediate",
+    premium: true,
     accent: "#4FA8E0",
     steps: [
       { kind: "breathe", secs: 120 },

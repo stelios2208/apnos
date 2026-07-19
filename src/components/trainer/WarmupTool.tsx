@@ -45,7 +45,8 @@ import {
   stepsFromRounds,
   newRound,
 } from "@/lib/warmups";
-import { guideForPreset, hasPremiumAccess } from "@/lib/breathing-guides";
+import { guideForPreset } from "@/lib/breathing-guides";
+import { isLocked } from "@/lib/premium";
 import { logStaHold } from "@/lib/dives";
 import { useSessionFx } from "@/hooks/use-session-fx";
 import { useWakeLock } from "@/hooks/use-wake-lock";
@@ -331,11 +332,12 @@ export function WarmupTool({ onBack }: { onBack: () => void }) {
       roundProgress = roundTotal > 0 ? Math.min(1, Math.max(0, elapsedInRound / roundTotal)) : 0;
     }
 
-    // Premium guided card: overlays the countdown with the pattern's steps,
-    // driven by the exact same stepIndex/remaining state (no second timer).
-    // Free tier (or presets without a guide) keeps the plain countdown.
+    // Guided card overlaying the countdown, driven by the exact same
+    // stepIndex/remaining state (no second timer). Locked presets never reach
+    // the player (startPreset gates through lib/premium.ts), so a running
+    // session is always entitled to its guide.
     const guide = guideForPreset(preset.id);
-    const showGuide = !!guide && (!guide.premium || hasPremiumAccess());
+    const showGuide = !!guide;
     const guideIndex = preset.cycleLen ? stepIndex % preset.cycleLen : stepIndex;
 
     const showDots = !playRounds && !showGuide && preset.steps.length <= 16;

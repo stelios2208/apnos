@@ -40,18 +40,37 @@ export interface BreathingGuide {
   steps: GuideStep[];
 }
 
-/**
- * Placeholder entitlement check — mirrors tips.ts, where premium content is
- * flagged and badged but not yet locked. Replace the body with a real
- * subscription lookup when billing lands; every premium gate goes through here.
- */
-export function hasPremiumAccess(): boolean {
-  return true;
-}
+// The entitlement check lives in lib/premium.ts (hasProAccess / isLocked) —
+// the single seam for a future subscription lookup.
 
 export function guideForPreset(presetId: string): BreathingGuide | undefined {
   return BREATHING_GUIDES.find((g) => g.presetId === presetId);
 }
+
+// Generic guide overlaid on the CO₂/O₂ table runner: two phase cards (active
+// breathe-up / hold) whose durations vary per round, so steps carry no fixed
+// seconds — the live countdown fills them in. Free `easy` tables run it too,
+// hence premium: false (free-tier items never show a PRO badge).
+export const STA_TABLE_GUIDE: BreathingGuide = {
+  id: "guide-sta-table",
+  presetId: "sta-table",
+  name_el: "Πίνακας Αναπνοής & Κρατήματος",
+  name_en: "Breathe & Hold Table",
+  prep_el: "Ήρεμος ρυθμός σε όλο τον πίνακα — χωρίς βιασύνη ανάμεσα στους γύρους.",
+  prep_en: "A calm rhythm through the whole table — no rushing between rounds.",
+  steps: [
+    {
+      kind: "breathe",
+      text_el: "Ήρεμη διαφραγματική αναπνοή — φουσκώνει η κοιλιά, μεγάλες χαλαρές εκπνοές",
+      text_en: "Calm diaphragmatic breathing — belly rises, long relaxed exhales",
+    },
+    {
+      kind: "hold",
+      text_el: "Κράτημα — χαλάρωσε πρόσωπο και ώμους, άσε το σώμα βαρύ",
+      text_en: "Hold — relax face and shoulders, let the body go heavy",
+    },
+  ],
+};
 
 export const BREATHING_GUIDES: BreathingGuide[] = [
   {
