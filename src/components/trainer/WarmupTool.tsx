@@ -47,8 +47,8 @@ import {
   newRound,
 } from "@/lib/warmups";
 import { guideForPreset } from "@/lib/breathing-guides";
-import { hasProAccess, isLocked } from "@/lib/premium";
-import { ProBadge, ProPreviewModal } from "@/components/trainer/ProGate";
+import { hasProAccess, isLocked, isTeased, canUseProFeatures } from "@/lib/premium";
+import { ProBadge, ProPreviewModal, ProTrialNotice } from "@/components/trainer/ProGate";
 import { logStaHold } from "@/lib/dives";
 import { useSessionFx } from "@/hooks/use-session-fx";
 import { useWakeLock } from "@/hooks/use-wake-lock";
@@ -315,9 +315,9 @@ export function WarmupTool({ onBack }: { onBack: () => void }) {
   };
 
   // The custom builder is PRO — tapping it locked previews the default
-  // template rather than opening an editable session.
+  // template rather than opening an editable session. Open during the trial.
   const openBuilder = (p: WarmupPreset) => {
-    if (!hasProAccess()) {
+    if (!canUseProFeatures()) {
       setLockedPreview({
         ...p,
         name_el: p.name_el || "Δικό σου ζέσταμα",
@@ -604,6 +604,9 @@ export function WarmupTool({ onBack }: { onBack: () => void }) {
           <FxChipsRow sfx={sfx} />
         </div>
 
+        {/* free-trial notice — slim, non-blocking, near the teased PRO cards */}
+        <ProTrialNotice className="mt-6" />
+
         {/* beginner presets */}
         <PresetSection
           title={lang === "el" ? "ΓΙΑ ΑΡΧΑΡΙΟΥΣ — ΤΕΧΝΙΚΕΣ ΑΝΑΠΝΟΗΣ" : "BEGINNERS — BREATHING"}
@@ -683,7 +686,7 @@ export function WarmupTool({ onBack }: { onBack: () => void }) {
                 color: "rgba(255,255,255,0.5)",
               }}
             >
-              {hasProAccess() ? <Plus className="size-4" /> : <Lock className="size-4" />}
+              {canUseProFeatures() ? <Plus className="size-4" /> : <Lock className="size-4" />}
               {lang === "el" ? "Δημιούργησε ζέσταμα" : "Create warm-up"}
               {!hasProAccess() && <ProBadge />}
             </button>
@@ -739,6 +742,9 @@ function PresetSection({
             lang === "el"
               ? (p.purpose_el ?? LEVEL_LABEL[p.level].el)
               : (p.purpose_en ?? LEVEL_LABEL[p.level].en);
+          // teased = premium look while browsing (badge + blur); locked =
+          // hard gate (only once the free trial is over, via lib/premium.ts)
+          const teased = isTeased(p);
           const locked = isLocked(p);
           return (
             <div
@@ -769,10 +775,11 @@ function PresetSection({
                         guided patterns are beginner content */}
                     {p.premium && <ProBadge />}
                   </div>
-                  {/* locked teaser: the instructional text (which spells out
-                      the pattern timings) is blurred and unselectable */}
+                  {/* premium teaser: the instructional text (which spells out
+                      the pattern timings) is blurred and unselectable while
+                      browsing — never inside a running session */}
                   <p
-                    className={`mt-1 text-[0.72rem] leading-relaxed text-white/40 ${locked ? "pro-blur" : ""}`}
+                    className={`mt-1 text-[0.72rem] leading-relaxed text-white/40 ${teased ? "pro-blur" : ""}`}
                   >
                     {lang === "el" ? p.desc_el : p.desc_en}
                   </p>

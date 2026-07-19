@@ -37,7 +37,7 @@ import {
 } from "@/lib/sta-tables";
 import { fmtClock } from "@/lib/warmups";
 import { STA_TABLE_GUIDE } from "@/lib/breathing-guides";
-import { hasProAccess } from "@/lib/premium";
+import { hasProAccess, isTeased, isLocked, canUseProFeatures } from "@/lib/premium";
 import { useI18n } from "@/lib/i18n";
 import { useSessionFx, type SessionFx } from "@/hooks/use-session-fx";
 import { useWakeLock } from "@/hooks/use-wake-lock";
@@ -47,7 +47,7 @@ import { LogoBreathPacer } from "@/components/LogoBreathPacer";
 import { GuidedBreathingCard } from "@/components/trainer/GuidedBreathingCard";
 import { HoldAlertsCard } from "@/components/trainer/HoldAlertsCard";
 import { FxChipsRow } from "@/components/trainer/FxControls";
-import { ProBadge, ProLockOverlay } from "@/components/trainer/ProGate";
+import { ProBadge, ProLockOverlay, ProTrialNotice } from "@/components/trainer/ProGate";
 
 const TEAL = "#1D9E75";
 const TEAL_SOFT = "#5DCAA5";
@@ -69,6 +69,9 @@ export function TablesTool({ onBack }: { onBack: () => void }) {
   const el = lang === "el";
   const { t } = useI18n();
   const pro = hasProAccess();
+  // usable-now gate — true while the free trial is on (or once entitled);
+  // `pro` alone keeps driving the badge/blur premium feel
+  const canUse = canUseProFeatures();
 
   const { data: dives = [] } = useQuery({
     queryKey: ["dives", user?.id],
@@ -97,9 +100,11 @@ export function TablesTool({ onBack }: { onBack: () => void }) {
 
   const rvMode = mode === "rv";
   // PRO gate (single source of truth in lib/premium.ts): the free tier gets
-  // exactly the easy CO₂ and easy O₂ presets in normal breathing. A locked
-  // selection still renders — as a blurred, unstartable teaser.
-  const lockedSel = !custom && !rvMode && LEVEL_PREMIUM[level] && !pro;
+  // exactly the easy CO₂ and easy O₂ presets in normal breathing. A teased
+  // selection renders blurred (premium feel); it is only unstartable when
+  // actually locked — i.e. once the free trial is over.
+  const teasedSel = !custom && !rvMode && isTeased({ premium: LEVEL_PREMIUM[level] });
+  const lockedSel = !custom && !rvMode && isLocked({ premium: LEVEL_PREMIUM[level] });
   const proHint = () => toast.info(t("pro.unlockHint"));
 
   // keep the preview in sync with the selected preset
@@ -112,7 +117,7 @@ export function TablesTool({ onBack }: { onBack: () => void }) {
     : `${type.toUpperCase()} ${el ? LEVEL_LABEL[level].el : LEVEL_LABEL[level].en}`;
 
   const selectMode = (m: BreathingMode) => {
-    if (MODE_PREMIUM[m] && !pro) {
+    if (MODE_PREMIUM[m] && !canUse) {
       proHint();
       return;
     }
@@ -176,8 +181,9 @@ export function TablesTool({ onBack }: { onBack: () => void }) {
 
   // Saved tables are custom programs — PRO content; loading one into the
   // editor would reveal its rounds, so it teases instead when locked.
+  // Open (and unblurred) once loaded for use during the trial.
   const loadSaved = (t: StaTable) => {
-    if (!pro) {
+    if (!canUse) {
       proHint();
       return;
     }
@@ -374,7 +380,7 @@ export function TablesTool({ onBack }: { onBack: () => void }) {
         {/* 4. custom toggle — custom tables are PRO */}
         <button
           onClick={() => {
-            if (!pro) {
+            if (!canUse) {
               proHint();
               return;
             }
@@ -401,17 +407,23 @@ export function TablesTool({ onBack }: { onBack: () => void }) {
                 }
           }
         >
-          {pro ? <Pencil className="size-3.5" /> : <Lock className="size-3.5" />}
+          {canUse ? <Pencil className="size-3.5" /> : <Lock className="size-3.5" />}
           {custom ? (el ? "Custom — επεξεργασία γύρων" : "Custom — editing rounds") : "Custom"}
           {!pro && <ProBadge />}
         </button>
+
+        {/* free-trial notice — slim, non-blocking, near the teased PRO items */}
+        <ProTrialNotice className="mt-3" />
 
         {/* 5. rounds — a locked level renders as a blurred teaser, not a plan */}
         {rounds.length > 0 && (
           <div className="mt-4">
             {custom ? (
               <RoundsEditor rounds={rounds} onChange={setRounds} el={el} />
-            ) : lockedSel ? (
+            ) : teasedSel ? (
+              // premium feel while browsing: blurred rounds behind the glass;
+              // during the trial the overlay shows the open-lock trial notice
+              // and the Start button below stays fully functional
               <div className="relative">
                 <div className="pro-blur" aria-hidden="true">
                   <TableCard rounds={rounds} lang={lang} />
@@ -515,11 +527,11 @@ export function TablesTool({ onBack }: { onBack: () => void }) {
                     </span>
                   </button>
                   <button
-                    onClick={() => (pro ? startTable(t.rounds, t.breathing_mode) : proHint())}
+                    onClick={() => (canUse ? startTable(t.rounds, t.breathing_mode) : proHint())}
                     className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
                     style={{ background: "rgba(29,158,117,0.15)", color: TEAL_SOFT }}
                   >
-                    {pro ? <Play className="size-4" /> : <Lock className="size-4" />}
+                    {canUse ? <Play className="size-4" /> : <Lock className="size-4" />}
                   </button>
                   <button
                     onClick={() => removeSaved(t)}

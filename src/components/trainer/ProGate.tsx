@@ -1,5 +1,6 @@
-import { Lock, X } from "lucide-react";
+import { Lock, LockOpen, X } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
+import { showTrialNotice } from "@/lib/premium";
 
 // ── PRO gate presentation kit ────────────────────────────────────────────────
 // Shared visuals for the freemium blur-teaser: locked content stays visible in
@@ -20,19 +21,41 @@ export function ProBadge({ className = "" }: { className?: string }) {
   );
 }
 
-/** Centred lock + unlock hint, laid over blurred content (parent: relative). */
+/** Centred lock + unlock hint, laid over blurred content (parent: relative).
+ * During the free trial the lock opens and the copy becomes the "open for a
+ * limited time" notice — the content stays behind glass but is usable. */
 export function ProLockOverlay() {
   const { t } = useI18n();
+  const trial = showTrialNotice();
+  const Icon = trial ? LockOpen : Lock;
   return (
-    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-1.5 px-6 text-center">
+    <div className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-1.5 px-6 text-center">
       <span
         className="flex h-9 w-9 items-center justify-center rounded-full"
         style={{ background: "rgba(239,159,39,0.16)", border: `1px solid ${PRO_AMBER}55` }}
       >
-        <Lock className="size-4" style={{ color: PRO_AMBER }} />
+        <Icon className="size-4" style={{ color: PRO_AMBER }} />
       </span>
       <span className="text-[0.65rem] font-semibold leading-snug text-white/70">
-        {t("pro.unlockHint")}
+        {t(trial ? "pro.trialNotice" : "pro.unlockHint")}
+      </span>
+    </div>
+  );
+}
+
+/** Slim, non-blocking banner shown near teased PRO content while the free
+ * trial is on. Renders nothing once the trial ends or the user is entitled. */
+export function ProTrialNotice({ className = "" }: { className?: string }) {
+  const { t } = useI18n();
+  if (!showTrialNotice()) return null;
+  return (
+    <div
+      className={`flex items-center gap-2 rounded-xl px-3 py-2 ${className}`}
+      style={{ background: "rgba(239,159,39,0.1)", border: "1px solid rgba(239,159,39,0.3)" }}
+    >
+      <LockOpen className="size-3.5 shrink-0" style={{ color: PRO_AMBER }} />
+      <span className="text-[0.68rem] font-semibold leading-snug" style={{ color: "#F3BE6B" }}>
+        {t("pro.trialNotice")}
       </span>
     </div>
   );

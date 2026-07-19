@@ -193,6 +193,7 @@ const en: Dict = {
   // PRO freemium gate
   "pro.unlockHint": "Unlock with Apnos PRO — coming soon.",
   "pro.preview": "Preview — PRO content",
+  "pro.trialNotice": "PRO package open free for a limited time",
 };
 
 const el: Dict = {
@@ -368,6 +369,7 @@ const el: Dict = {
     "Ξηρή προπόνηση: μακριά από νερό, σε ασφαλή χώρο, καθιστός ή ξαπλωμένος ανάσκελα — ποτέ όρθιος, ποτέ μόνος.",
   "pro.unlockHint": "Ξεκλειδώνεται με το Apnos PRO — έρχεται σύντομα.",
   "pro.preview": "Προεπισκόπηση — περιεχόμενο PRO",
+  "pro.trialNotice": "Το πακέτο PRO είναι ανοιχτό δωρεάν για περιορισμένο χρόνο",
 };
 
 const DICTS: Record<Lang, Dict> = { el, en };
