@@ -127,6 +127,15 @@ export const HOLD_MILESTONES: { at: number; key: CueKey }[] = [
   { at: 300, key: "m300" },
 ];
 
+// Recorded voice cues are strictly scoped to the hold phase: the hold-start cue
+// plus the in-hold milestone callouts. Breathe-up and recovery cues are
+// intentionally excluded — voice guidance never speaks over those phases. This
+// is an allowlist so any future non-hold cue stays silent by default.
+export const HOLD_PHASE_CUES: ReadonlySet<CueKey> = new Set<CueKey>([
+  "hold",
+  ...HOLD_MILESTONES.map((m) => m.key),
+]);
+
 // Catalog of every cue, used by the management UI. Milestone rows reuse the
 // timing from HOLD_MILESTONES; phases come first.
 export const CUE_CATALOG: {
