@@ -12,6 +12,7 @@ import {
   beep,
   testHapticPulse,
   HOLD_MILESTONES,
+  HOLD_PHASE_CUES,
   SoundscapeEngine,
   CuePlayer,
 } from "@/lib/trainer-fx";
@@ -67,6 +68,13 @@ export function useSessionFx() {
   }, [reloadCues]);
 
   const cue = useCallback((key: CueKey) => {
+    // Voice cues are strictly scoped to the hold phase. Every guided runner
+    // (free trainer, tables, warm-ups, planner) calls cue() on its phase
+    // transitions, including breathe-up and recovery — drop any non-hold cue
+    // here so recorded guidance never speaks over those phases, regardless of
+    // the call site. (Hold milestones fire via holdTick, which only ticks
+    // during a hold; beep/vibrate/soundscape are unaffected.)
+    if (!HOLD_PHASE_CUES.has(key)) return;
     if (fxRef.current.voice) cueRef.current?.play(key);
   }, []);
 
