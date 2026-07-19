@@ -180,6 +180,14 @@ const en: Dict = {
   // rules
   "rules.title": "Rules quick reference",
   "rules.sub": "CMAS pool — offline reference.",
+  // guided breathing card (premium overlay on the breathwork player)
+  "guided.title": "Guided breathing",
+  "guided.badge": "ADV",
+  "guided.safetyTitle": "Train safe",
+  "guided.safetyCalm": "Slow, calm breathing — no fast or deep over-breathing before a hold.",
+  "guided.safetyBuddy": "Never practise apnea alone, or in/near water without a buddy.",
+  "guided.safetyDry":
+    "Dry training: away from water, in a safe space, seated or lying on your back — never standing, never alone.",
 };
 
 const el: Dict = {
@@ -344,6 +352,15 @@ const el: Dict = {
   "equip.progress": "{done}/{total} έτοιμα",
   "rules.title": "Γρήγορη αναφορά κανόνων",
   "rules.sub": "CMAS πισίνα — αναφορά χωρίς σύνδεση.",
+  "guided.title": "Καθοδηγούμενη αναπνοή",
+  "guided.badge": "ΠΡΟΧ.",
+  "guided.safetyTitle": "Ασφαλής προπόνηση",
+  "guided.safetyCalm":
+    "Αργή, ήρεμη αναπνοή — χωρίς γρήγορες ή βαθιές υπεραναπνοές πριν το κράτημα.",
+  "guided.safetyBuddy":
+    "Ποτέ άπνοια μόνος σου, ούτε μέσα ή κοντά σε νερό χωρίς σύντροφο ασφαλείας.",
+  "guided.safetyDry":
+    "Ξηρή προπόνηση: μακριά από νερό, σε ασφαλή χώρο, καθιστός ή ξαπλωμένος ανάσκελα — ποτέ όρθιος, ποτέ μόνος.",
 };
 
 const DICTS: Record<Lang, Dict> = { el, en };
