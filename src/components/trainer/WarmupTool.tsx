@@ -372,75 +372,82 @@ export function WarmupTool({ onBack }: { onBack: () => void }) {
           <div className="w-10" />
         </div>
 
-        {/* center */}
-        <div
-          className={`relative z-10 flex flex-1 flex-col items-center justify-center ${showGuide ? "gap-3" : "gap-5"}`}
-        >
-          <LogoBreathPacer
-            key={stepIndex}
-            size={playRounds || showGuide ? 170 : 220}
-            color={color}
-            duration={sweepDuration(step)}
-            paused={paused}
-          />
-          <div className="flex flex-col items-center">
-            <span
-              className="mb-1 flex items-center gap-1.5 text-xs font-bold tracking-[0.3em]"
-              style={{ color }}
-            >
-              <StepIcon className="size-3.5" />
-              {stepLabel(step.kind, lang).toUpperCase()}
-            </span>
-            <span
-              className="font-mono text-[2.75rem] font-light leading-none tabular-nums"
-              style={{ color }}
-            >
-              {fmtClock(Math.max(0, remaining))}
-            </span>
-          </div>
-
-          {showGuide && guide && (
-            <GuidedBreathingCard
-              guide={guide}
-              stepIndex={stepIndex}
-              activeIndex={guideIndex}
-              stepKind={step.kind}
-              stepSecs={step.secs}
-              remaining={remaining}
+        {/* center — scrollable so nothing clips on short viewports; m-auto keeps
+            the countdown centred when content fits and scrollable from the top
+            when it doesn't */}
+        <div className="relative z-10 flex min-h-0 flex-1 flex-col overflow-y-auto">
+          <div
+            className={`m-auto flex w-full flex-col items-center ${showGuide ? "gap-3 py-3" : "gap-5 py-3"}`}
+          >
+            <LogoBreathPacer
+              key={stepIndex}
+              size={playRounds || showGuide ? 170 : 220}
+              color={color}
+              duration={sweepDuration(step)}
               paused={paused}
             />
-          )}
-
-          {showDots && (
-            <div className="flex flex-wrap items-center justify-center gap-1.5 px-8">
-              {preset.steps.map((s, i) => (
-                <span
-                  key={i}
-                  className="h-1.5 rounded-full transition-all"
-                  style={{
-                    width: i === stepIndex ? 20 : 6,
-                    background:
-                      i === stepIndex
-                        ? color
-                        : i < stepIndex
-                          ? "rgba(255,255,255,0.35)"
-                          : "rgba(255,255,255,0.12)",
-                  }}
-                />
-              ))}
+            <div className="flex flex-col items-center">
+              <span
+                className="mb-1 flex items-center gap-1.5 text-xs font-bold tracking-[0.3em]"
+                style={{ color }}
+              >
+                <StepIcon className="size-3.5" />
+                {stepLabel(step.kind, lang).toUpperCase()}
+              </span>
+              <span
+                className="font-mono text-[2.75rem] font-light leading-none tabular-nums"
+                style={{ color }}
+              >
+                {fmtClock(Math.max(0, remaining))}
+              </span>
             </div>
-          )}
 
-          {!playRounds && step.kind === "hold" && holdCount(preset) > 0 && (
-            <span className="text-[0.65rem] tracking-widest text-white/30">
-              {lang === "el" ? "Κράτηση" : "Hold"} {holdsBefore + 1}/{holdCount(preset)}
-            </span>
-          )}
-          {paused && (
-            <span className="text-[0.6rem] font-bold tracking-[0.3em]" style={{ color: "#EF9F27" }}>
-              {lang === "el" ? "ΠΑΥΣΗ" : "PAUSED"}
-            </span>
-          )}
+            {showGuide && guide && (
+              <GuidedBreathingCard
+                guide={guide}
+                stepIndex={stepIndex}
+                activeIndex={guideIndex}
+                stepKind={step.kind}
+                stepSecs={step.secs}
+                remaining={remaining}
+                paused={paused}
+              />
+            )}
+
+            {showDots && (
+              <div className="flex flex-wrap items-center justify-center gap-1.5 px-8">
+                {preset.steps.map((s, i) => (
+                  <span
+                    key={i}
+                    className="h-1.5 rounded-full transition-all"
+                    style={{
+                      width: i === stepIndex ? 20 : 6,
+                      background:
+                        i === stepIndex
+                          ? color
+                          : i < stepIndex
+                            ? "rgba(255,255,255,0.35)"
+                            : "rgba(255,255,255,0.12)",
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+
+            {!playRounds && step.kind === "hold" && holdCount(preset) > 0 && (
+              <span className="text-[0.65rem] tracking-widest text-white/30">
+                {lang === "el" ? "Κράτηση" : "Hold"} {holdsBefore + 1}/{holdCount(preset)}
+              </span>
+            )}
+            {paused && (
+              <span
+                className="text-[0.6rem] font-bold tracking-[0.3em]"
+                style={{ color: "#EF9F27" }}
+              >
+                {lang === "el" ? "ΠΑΥΣΗ" : "PAUSED"}
+              </span>
+            )}
+          </div>
         </div>
 
         {/* rounds table — same live card as the CO₂/O₂ tables */}
@@ -456,8 +463,8 @@ export function WarmupTool({ onBack }: { onBack: () => void }) {
           </div>
         )}
 
-        {/* controls */}
-        <div className="relative z-10 flex items-center justify-center gap-4 px-4 py-6">
+        {/* controls — safe-area padding keeps them tappable above home bars */}
+        <div className="relative z-10 flex items-center justify-center gap-4 px-4 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
           <button
             onClick={togglePause}
             className="flex h-16 w-16 items-center justify-center rounded-full"
