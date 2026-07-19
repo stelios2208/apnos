@@ -13,6 +13,7 @@ import {
   AlertTriangle,
   Pencil,
   Check,
+  Lock,
 } from "lucide-react";
 import { toast } from "sonner";
 import { fetchDives, personalBests, logStaHold } from "@/lib/dives";
@@ -31,15 +32,22 @@ import {
   saveStaTable,
   deleteStaTable,
   RV_SCAFFOLD_HOLD,
+  LEVEL_PREMIUM,
+  MODE_PREMIUM,
 } from "@/lib/sta-tables";
 import { fmtClock } from "@/lib/warmups";
+import { STA_TABLE_GUIDE } from "@/lib/breathing-guides";
+import { hasProAccess } from "@/lib/premium";
+import { useI18n } from "@/lib/i18n";
 import { useSessionFx, type SessionFx } from "@/hooks/use-session-fx";
 import { useWakeLock } from "@/hooks/use-wake-lock";
 import { TableCard } from "@/components/TableCard";
 import { UnderwaterScene } from "@/components/UnderwaterScene";
 import { LogoBreathPacer } from "@/components/LogoBreathPacer";
+import { GuidedBreathingCard } from "@/components/trainer/GuidedBreathingCard";
 import { HoldAlertsCard } from "@/components/trainer/HoldAlertsCard";
 import { FxChipsRow } from "@/components/trainer/FxControls";
+import { ProBadge, ProLockOverlay } from "@/components/trainer/ProGate";
 
 const TEAL = "#1D9E75";
 const TEAL_SOFT = "#5DCAA5";
@@ -59,6 +67,8 @@ export function TablesTool({ onBack }: { onBack: () => void }) {
   const sfx = useSessionFx();
   const { lang, user } = sfx;
   const el = lang === "el";
+  const { t } = useI18n();
+  const pro = hasProAccess();
 
   const { data: dives = [] } = useQuery({
     queryKey: ["dives", user?.id],
@@ -86,6 +96,11 @@ export function TablesTool({ onBack }: { onBack: () => void }) {
   const [running, setRunning] = useState<null | { rounds: TableRound[] }>(null);
 
   const rvMode = mode === "rv";
+  // PRO gate (single source of truth in lib/premium.ts): the free tier gets
+  // exactly the easy CO₂ and easy O₂ presets in normal breathing. A locked
+  // selection still renders — as a blurred, unstartable teaser.
+  const lockedSel = !custom && !rvMode && LEVEL_PREMIUM[level] && !pro;
+  const proHint = () => toast.info(t("pro.unlockHint"));
 
   // keep the preview in sync with the selected preset
   useEffect(() => {
@@ -97,6 +112,10 @@ export function TablesTool({ onBack }: { onBack: () => void }) {
     : `${type.toUpperCase()} ${el ? LEVEL_LABEL[level].el : LEVEL_LABEL[level].en}`;
 
   const selectMode = (m: BreathingMode) => {
+    if (MODE_PREMIUM[m] && !pro) {
+      proHint();
+      return;
+    }
     setMode(m);
     if (m === "rv") {
       // RV is custom-only: never offer calculated presets at residual volume
@@ -155,7 +174,13 @@ export function TablesTool({ onBack }: { onBack: () => void }) {
     }
   };
 
+  // Saved tables are custom programs — PRO content; loading one into the
+  // editor would reveal its rounds, so it teases instead when locked.
   const loadSaved = (t: StaTable) => {
+    if (!pro) {
+      proHint();
+      return;
+    }
     setType(t.type);
     setMode(t.breathing_mode);
     setCustom(true);
@@ -263,6 +288,7 @@ export function TablesTool({ onBack }: { onBack: () => void }) {
               >
                 {danger && <AlertTriangle className="size-3" />}
                 {MODE_LABEL[m]}
+                {MODE_PREMIUM[m] && !pro && <ProBadge />}
               </button>
             );
           })}
@@ -307,7 +333,7 @@ export function TablesTool({ onBack }: { onBack: () => void }) {
                           setLevel(lv);
                           setCustom(false);
                         }}
-                        className="flex-1 rounded-lg py-2.5 text-xs font-bold transition-all"
+                        className="flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2.5 text-xs font-bold transition-all"
                         style={
                           active
                             ? {
@@ -323,6 +349,7 @@ export function TablesTool({ onBack }: { onBack: () => void }) {
                         }
                       >
                         {el ? LEVEL_LABEL[lv].el : LEVEL_LABEL[lv].en}
+                        {LEVEL_PREMIUM[lv] && !pro && <ProBadge />}
                       </button>
                     );
                   })}
@@ -344,9 +371,13 @@ export function TablesTool({ onBack }: { onBack: () => void }) {
           </>
         )}
 
-        {/* 4. custom toggle */}
+        {/* 4. custom toggle — custom tables are PRO */}
         <button
           onClick={() => {
+            if (!pro) {
+              proHint();
+              return;
+            }
             const next = rvMode ? true : !custom;
             setCustom(next);
             // no PB yet → start editing from a sensible default table
@@ -370,15 +401,23 @@ export function TablesTool({ onBack }: { onBack: () => void }) {
                 }
           }
         >
-          <Pencil className="size-3.5" />
+          {pro ? <Pencil className="size-3.5" /> : <Lock className="size-3.5" />}
           {custom ? (el ? "Custom — επεξεργασία γύρων" : "Custom — editing rounds") : "Custom"}
+          {!pro && <ProBadge />}
         </button>
 
-        {/* 5. rounds */}
+        {/* 5. rounds — a locked level renders as a blurred teaser, not a plan */}
         {rounds.length > 0 && (
           <div className="mt-4">
             {custom ? (
               <RoundsEditor rounds={rounds} onChange={setRounds} el={el} />
+            ) : lockedSel ? (
+              <div className="relative">
+                <div className="pro-blur" aria-hidden="true">
+                  <TableCard rounds={rounds} lang={lang} />
+                </div>
+                <ProLockOverlay />
+              </div>
             ) : (
               <TableCard rounds={rounds} lang={lang} />
             )}
@@ -389,40 +428,55 @@ export function TablesTool({ onBack }: { onBack: () => void }) {
           </div>
         )}
 
-        {/* 6. save + start */}
-        {rounds.length > 0 && (
-          <>
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder={autoName}
-              className="mt-4 w-full rounded-xl bg-white/5 px-3 py-2.5 text-sm font-semibold text-white outline-none focus:ring-1 focus:ring-[#1D9E75]"
-            />
-            <div className="mt-3 flex gap-2">
-              <button
-                onClick={handleSave}
-                disabled={saving || !user}
-                className="flex flex-1 items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-bold transition-all disabled:opacity-40"
-                style={{
-                  background: "rgba(255,255,255,0.05)",
-                  color: "rgba(255,255,255,0.7)",
-                  border: "1px solid rgba(255,255,255,0.1)",
-                }}
-              >
-                <Save className="size-4" />
-                {el ? "Στη βιβλιοθήκη" : "Save to library"}
-              </button>
-              <button
-                onClick={() => startTable(rounds, mode)}
-                className="flex flex-1 items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-bold"
-                style={{ background: TEAL, color: "#fff" }}
-              >
-                <Play className="size-4" />
-                {el ? "Έναρξη" : "Start"}
-              </button>
-            </div>
-          </>
-        )}
+        {/* 6. save + start (locked selections can do neither — teaser only) */}
+        {rounds.length > 0 &&
+          (lockedSel ? (
+            <button
+              onClick={proHint}
+              className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-bold"
+              style={{
+                background: "rgba(239,159,39,0.14)",
+                color: "#EF9F27",
+                border: "1px solid rgba(239,159,39,0.4)",
+              }}
+            >
+              <Lock className="size-4" />
+              {el ? "Έναρξη" : "Start"}
+              <ProBadge />
+            </button>
+          ) : (
+            <>
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder={autoName}
+                className="mt-4 w-full rounded-xl bg-white/5 px-3 py-2.5 text-sm font-semibold text-white outline-none focus:ring-1 focus:ring-[#1D9E75]"
+              />
+              <div className="mt-3 flex gap-2">
+                <button
+                  onClick={handleSave}
+                  disabled={saving || !user}
+                  className="flex flex-1 items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-bold transition-all disabled:opacity-40"
+                  style={{
+                    background: "rgba(255,255,255,0.05)",
+                    color: "rgba(255,255,255,0.7)",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                  }}
+                >
+                  <Save className="size-4" />
+                  {el ? "Στη βιβλιοθήκη" : "Save to library"}
+                </button>
+                <button
+                  onClick={() => startTable(rounds, mode)}
+                  className="flex flex-1 items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-bold"
+                  style={{ background: TEAL, color: "#fff" }}
+                >
+                  <Play className="size-4" />
+                  {el ? "Έναρξη" : "Start"}
+                </button>
+              </div>
+            </>
+          ))}
 
         {/* 7. alerts + FX — same settings as warm-up & free static */}
         <div className="mt-6">
@@ -450,19 +504,22 @@ export function TablesTool({ onBack }: { onBack: () => void }) {
                   }}
                 >
                   <button onClick={() => loadSaved(t)} className="min-w-0 flex-1 text-left">
-                    <span className="block truncate text-sm font-bold text-white">{t.name}</span>
-                    <span className="text-[0.65rem] text-white/30">
+                    <span className="flex items-center gap-2 text-sm font-bold text-white">
+                      <span className="truncate">{t.name}</span>
+                      {!pro && <ProBadge />}
+                    </span>
+                    <span className={`text-[0.65rem] text-white/30 ${pro ? "" : "pro-blur"}`}>
                       {t.type === "co2" ? "CO₂" : "O₂"} · {MODE_LABEL[t.breathing_mode]} ·{" "}
                       {t.rounds.length} {el ? "γύροι" : "rounds"} ·{" "}
                       {fmtClock(tableTotalSecs(t.rounds))}
                     </span>
                   </button>
                   <button
-                    onClick={() => startTable(t.rounds, t.breathing_mode)}
+                    onClick={() => (pro ? startTable(t.rounds, t.breathing_mode) : proHint())}
                     className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
                     style={{ background: "rgba(29,158,117,0.15)", color: TEAL_SOFT }}
                   >
-                    <Play className="size-4" />
+                    {pro ? <Play className="size-4" /> : <Lock className="size-4" />}
                   </button>
                   <button
                     onClick={() => removeSaved(t)}
@@ -919,38 +976,53 @@ function TableRunner({
         </div>
       ) : (
         <>
-          {/* center */}
-          <div className="relative z-10 flex flex-1 flex-col items-center justify-center gap-4">
-            <LogoBreathPacer
-              key={`${ri}-${phase}`}
-              size={150}
-              color={color}
-              duration={phase === "breathe" ? 8 : 14}
-              paused={paused}
-            />
-            <div className="flex flex-col items-center">
-              <span className="text-xs font-bold tracking-[0.3em]" style={{ color }}>
-                {phase === "breathe" ? (el ? "ΑΝΑΠΝΟΗ" : "BREATHE") : el ? "ΚΡΑΤΑ" : "HOLD"}
-              </span>
-              <span
-                className="font-mono text-[2.6rem] font-light leading-none tabular-nums"
-                style={{ color }}
-              >
-                {fmtClock(Math.max(0, remaining))}
-              </span>
-              {paused && (
-                <span
-                  className="mt-1 text-[0.6rem] font-bold tracking-[0.3em]"
-                  style={{ color: ORANGE }}
-                >
-                  {el ? "ΠΑΥΣΗ" : "PAUSED"}
+          {/* center — scrollable (m-auto centring) so the guided card never
+              clips the countdown or safety text on short viewports */}
+          <div className="relative z-10 flex min-h-0 flex-1 flex-col overflow-y-auto">
+            <div className="m-auto flex w-full flex-col items-center gap-3 py-3">
+              <LogoBreathPacer
+                key={`${ri}-${phase}`}
+                size={120}
+                color={color}
+                duration={phase === "breathe" ? 8 : 14}
+                paused={paused}
+              />
+              <div className="flex flex-col items-center">
+                <span className="text-xs font-bold tracking-[0.3em]" style={{ color }}>
+                  {phase === "breathe" ? (el ? "ΑΝΑΠΝΟΗ" : "BREATHE") : el ? "ΚΡΑΤΑ" : "HOLD"}
                 </span>
-              )}
+                <span
+                  className="font-mono text-[2.6rem] font-light leading-none tabular-nums"
+                  style={{ color }}
+                >
+                  {fmtClock(Math.max(0, remaining))}
+                </span>
+                {paused && (
+                  <span
+                    className="mt-1 text-[0.6rem] font-bold tracking-[0.3em]"
+                    style={{ color: ORANGE }}
+                  >
+                    {el ? "ΠΑΥΣΗ" : "PAUSED"}
+                  </span>
+                )}
+              </div>
+
+              {/* guided breathing card — same phase/remaining state as the
+                  countdown, no second timer */}
+              <GuidedBreathingCard
+                guide={STA_TABLE_GUIDE}
+                stepIndex={ri * 2 + (phase === "hold" ? 1 : 0)}
+                activeIndex={phase === "hold" ? 1 : 0}
+                stepKind={phase}
+                stepSecs={phase === "hold" ? round.holdSecs : round.breatheSecs}
+                remaining={remaining}
+                paused={paused}
+              />
             </div>
           </div>
 
-          {/* table */}
-          <div className="relative z-10 max-h-[38vh] overflow-y-auto px-4">
+          {/* table — trimmed so the guided card keeps room on short screens */}
+          <div className="relative z-10 max-h-[24vh] overflow-y-auto px-4">
             <TableCard
               rounds={rounds}
               activeRoundIndex={ri}
@@ -960,8 +1032,8 @@ function TableRunner({
             />
           </div>
 
-          {/* controls */}
-          <div className="relative z-10 flex items-center justify-center gap-4 px-4 py-5">
+          {/* controls — safe-area padding for home-bar devices */}
+          <div className="relative z-10 flex items-center justify-center gap-4 px-4 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
             <button
               onClick={togglePause}
               className="flex h-16 w-16 items-center justify-center rounded-full"

@@ -25,6 +25,7 @@ import {
   Sparkles,
   ListOrdered,
   SlidersHorizontal,
+  Lock,
 } from "lucide-react";
 import {
   type WarmupPreset,
@@ -46,7 +47,8 @@ import {
   newRound,
 } from "@/lib/warmups";
 import { guideForPreset } from "@/lib/breathing-guides";
-import { isLocked } from "@/lib/premium";
+import { hasProAccess, isLocked } from "@/lib/premium";
+import { ProBadge, ProPreviewModal } from "@/components/trainer/ProGate";
 import { logStaHold } from "@/lib/dives";
 import { useSessionFx } from "@/hooks/use-session-fx";
 import { useWakeLock } from "@/hooks/use-wake-lock";
@@ -131,6 +133,17 @@ export function WarmupTool({ onBack }: { onBack: () => void }) {
 
   const [customs, setCustoms] = useState<WarmupPreset[]>(() => loadCustomWarmups());
   const [builder, setBuilder] = useState<WarmupPreset | null>(null);
+  // Locked preset being teased: tapping a PRO item opens its blurred preview
+  // instead of the usable session.
+  const [lockedPreview, setLockedPreview] = useState<WarmupPreset | null>(null);
+
+  // What the blurred preview shows for a locked preset: the guide's step
+  // instructions when one exists, otherwise the raw step sequence.
+  const previewLines = (p: WarmupPreset): string[] => {
+    const g = guideForPreset(p.id);
+    if (g) return g.steps.map((s) => (lang === "el" ? s.text_el : s.text_en));
+    return p.steps.slice(0, 6).map((s) => `${stepLabel(s.kind, lang)} — ${fmtClock(s.secs)}`);
+  };
 
   const stepIndexRef = useRef(0);
   const remainingRef = useRef(0);
@@ -159,6 +172,10 @@ export function WarmupTool({ onBack }: { onBack: () => void }) {
 
   // ── controls ──────────────────────────────────────────────────────────────
   const startPreset = (p: WarmupPreset) => {
+    if (isLocked(p)) {
+      setLockedPreview(p);
+      return;
+    }
     presetRef.current = p;
     stepIndexRef.current = 0;
     remainingRef.current = p.steps[0]!.secs;
@@ -288,8 +305,27 @@ export function WarmupTool({ onBack }: { onBack: () => void }) {
 
   // Opens the builder pre-filled with a copy of a built-in preset — saving
   // creates the user's own editable variant, the original stays untouched.
+  // Locked presets tease instead: the builder would reveal the step data.
   const handleEditPreset = (p: WarmupPreset) => {
+    if (isLocked(p)) {
+      setLockedPreview(p);
+      return;
+    }
     setBuilder({ ...p, id: crypto.randomUUID(), custom: true });
+  };
+
+  // The custom builder is PRO — tapping it locked previews the default
+  // template rather than opening an editable session.
+  const openBuilder = (p: WarmupPreset) => {
+    if (!hasProAccess()) {
+      setLockedPreview({
+        ...p,
+        name_el: p.name_el || "Δικό σου ζέσταμα",
+        name_en: p.name_en || "Your own warm-up",
+      });
+      return;
+    }
+    setBuilder(p);
   };
 
   // ── custom warm-up builder ──────────────────────────────────────────────────
@@ -610,11 +646,12 @@ export function WarmupTool({ onBack }: { onBack: () => void }) {
                     className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
                     style={{ background: `${p.accent}18`, color: p.accent }}
                   >
-                    <Play className="size-4" />
+                    {isLocked(p) ? <Lock className="size-4" /> : <Play className="size-4" />}
                   </div>
                   <div className="min-w-0">
-                    <span className="block truncate text-sm font-bold text-white">
-                      {p.name_el || p.name_en}
+                    <span className="flex items-center gap-2 text-sm font-bold text-white">
+                      <span className="truncate">{p.name_el || p.name_en}</span>
+                      {p.premium && <ProBadge />}
                     </span>
                     <span className="text-[0.65rem] text-white/30">
                       ⏱ {fmtClock(presetTotalSecs(p))} · {holdCount(p)}{" "}
@@ -623,7 +660,7 @@ export function WarmupTool({ onBack }: { onBack: () => void }) {
                   </div>
                 </button>
                 <button
-                  onClick={() => setBuilder(p)}
+                  onClick={() => openBuilder(p)}
                   className="rounded-lg p-2 text-white/25 hover:text-white/60"
                 >
                   <Pencil className="size-4" />
@@ -638,7 +675,7 @@ export function WarmupTool({ onBack }: { onBack: () => void }) {
             ))}
 
             <button
-              onClick={() => setBuilder(newCustomWarmup())}
+              onClick={() => openBuilder(newCustomWarmup())}
               className="flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-sm font-semibold transition-all"
               style={{
                 background: "rgba(255,255,255,0.015)",
@@ -646,8 +683,9 @@ export function WarmupTool({ onBack }: { onBack: () => void }) {
                 color: "rgba(255,255,255,0.5)",
               }}
             >
-              <Plus className="size-4" />
+              {hasProAccess() ? <Plus className="size-4" /> : <Lock className="size-4" />}
               {lang === "el" ? "Δημιούργησε ζέσταμα" : "Create warm-up"}
+              {!hasProAccess() && <ProBadge />}
             </button>
           </div>
         </div>
@@ -658,6 +696,15 @@ export function WarmupTool({ onBack }: { onBack: () => void }) {
             lang={lang}
             onCancel={() => setBuilder(null)}
             onSave={saveBuilder}
+          />
+        )}
+
+        {lockedPreview && (
+          <ProPreviewModal
+            title={lang === "el" ? lockedPreview.name_el : lockedPreview.name_en}
+            lines={previewLines(lockedPreview)}
+            accent={lockedPreview.accent}
+            onClose={() => setLockedPreview(null)}
           />
         )}
       </div>
@@ -692,6 +739,7 @@ function PresetSection({
             lang === "el"
               ? (p.purpose_el ?? LEVEL_LABEL[p.level].el)
               : (p.purpose_en ?? LEVEL_LABEL[p.level].en);
+          const locked = isLocked(p);
           return (
             <div
               key={p.id}
@@ -719,16 +767,13 @@ function PresetSection({
                     </span>
                     {/* premium-tier badge — not a difficulty level; these
                         guided patterns are beginner content */}
-                    {guideForPreset(p.id)?.premium && (
-                      <span
-                        className="rounded px-1.5 py-0.5 text-[0.5rem] font-bold"
-                        style={{ background: "rgba(239,159,39,0.18)", color: "#EF9F27" }}
-                      >
-                        PRO
-                      </span>
-                    )}
+                    {p.premium && <ProBadge />}
                   </div>
-                  <p className="mt-1 text-[0.72rem] leading-relaxed text-white/40">
+                  {/* locked teaser: the instructional text (which spells out
+                      the pattern timings) is blurred and unselectable */}
+                  <p
+                    className={`mt-1 text-[0.72rem] leading-relaxed text-white/40 ${locked ? "pro-blur" : ""}`}
+                  >
                     {lang === "el" ? p.desc_el : p.desc_en}
                   </p>
                   <div className="mt-2 flex items-center gap-3 text-[0.65rem] text-white/30">
@@ -749,7 +794,7 @@ function PresetSection({
                   className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full"
                   style={{ background: `${p.accent}18`, color: p.accent }}
                 >
-                  <Play className="size-5" />
+                  {locked ? <Lock className="size-5" /> : <Play className="size-5" />}
                 </div>
               </button>
               <button
