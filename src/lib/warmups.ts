@@ -102,7 +102,52 @@ export const WARMUP_PRESETS: WarmupPreset[] = [
     purpose_en: "Deep relaxation",
     cycleLen: 3,
     accent: "#B58BE8",
-    steps: cycle(10, inh(4), h(7), exh(8)),
+    // Canonical 4-7-8 (Weil): four cycles total, after a full clearing exhale.
+    steps: cycle(4, inh(4), h(7), exh(8)),
+  },
+  {
+    id: "diaphragm",
+    name_el: "Διαφραγματικό Breathe-Up",
+    name_en: "Diaphragmatic Breathe-Up",
+    desc_el:
+      "Εισπνοή 5″ / μικρή παύση 2″ / εκπνοή 6″ — αργή αναπνοή με την κοιλιά, το βασικό breathe-up πριν από κάθε κράτημα.",
+    desc_en:
+      "Inhale 5s / small pause 2s / exhale 6s — slow belly breathing, the core breathe-up before any hold.",
+    level: "beginner",
+    purpose_el: "Πριν το κράτημα",
+    purpose_en: "Core pre-hold",
+    cycleLen: 3,
+    accent: "#4FA8E0",
+    steps: cycle(10, inh(5), h(2), exh(6)),
+  },
+  {
+    id: "last-breath",
+    name_el: "Τελευταία Αναπνοή",
+    name_en: "Last Breath",
+    desc_el:
+      "Ήρεμο breathe-up και μετά ΜΙΑ αργή βαθιά εισπνοή — κοιλιά, μετά στήθος — στο 100% χωρίς packing. Ξεκίνα το κράτημα ήρεμα.",
+    desc_en:
+      "Calm breathe-up, then ONE slow deep inhale — belly, then chest — to 100% without packing. Begin the hold calm.",
+    level: "beginner",
+    purpose_el: "Πριν τη στατική",
+    purpose_en: "Before a static",
+    accent: "#1D9E75",
+    steps: [b(120), inh(10)],
+  },
+  {
+    id: "recovery",
+    name_el: "Αναπνοές Αποκατάστασης",
+    name_en: "Recovery Breathing",
+    desc_el:
+      "Γρήγορη εισπνοή / κράτημα 1–2″ / παθητική εκπνοή — 4 αναπνοές αποκατάστασης, όπως μετά από κάθε ανάδυση.",
+    desc_en:
+      "Quick inhale / hold 1–2s / passive exhale — 4 recovery breaths, as after every surfacing.",
+    level: "beginner",
+    purpose_el: "Ασφάλεια μετά την ανάδυση",
+    purpose_en: "After surfacing — safety",
+    cycleLen: 3,
+    accent: "#EF6B5E",
+    steps: cycle(4, inh(2), h(2), exh(3)),
   },
   {
     id: "freediving-prep",
