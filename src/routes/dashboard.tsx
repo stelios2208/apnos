@@ -7,9 +7,11 @@ import { fetchDives, personalBests } from "@/lib/dives";
 import { disciplineName, formatResult, type DisciplineCode } from "@/lib/diving";
 import { fetchProfile } from "@/lib/profile";
 import { TIPS, categoryColor, categoryLabel } from "@/lib/tips";
+import { fetchTips } from "@/lib/admin-content";
 import { useI18n } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { ShareCardModal } from "@/components/ShareCard";
+import { TipModal } from "@/components/TipModal";
 import { useEffect, useRef, useState } from "react";
 
 export const Route = createFileRoute("/dashboard")({
@@ -119,14 +121,24 @@ function Dashboard() {
     enabled: !!user,
   });
 
+  const { data: dbTips = [] } = useQuery({
+    queryKey: ["tips"],
+    queryFn: fetchTips,
+  });
+
   const [showShare, setShowShare] = useState(false);
+  const [tipOpen, setTipOpen] = useState(false);
 
   const bests = personalBests(dives);
   const bestCount = Object.keys(bests).length;
   const bestDive = dives.length > 0 ? dives.reduce((a, b) => (a.result > b.result ? a : b)) : null;
 
-  // rotating tip of the day (stable within a calendar day)
-  const tipOfDay = TIPS[Math.floor(Date.now() / 86400000) % TIPS.length]!;
+  // rotating tip of the day (stable within a calendar day), preferring the
+  // Supabase-managed tips so newly created admin cards appear, with a safe
+  // fallback to the hardcoded TIPS array.
+  const activeDbTips = dbTips.filter((t) => t.is_active !== false);
+  const tipPool = activeDbTips.length > 0 ? activeDbTips : TIPS;
+  const tipOfDay = tipPool[Math.floor(Date.now() / 86400000) % tipPool.length]!;
 
   // weekly stats
   const weekStart = startOfWeek();
@@ -266,8 +278,9 @@ function Dashboard() {
       )}
 
       {/* TIP OF THE DAY */}
-      <Link
-        to="/tips"
+      <button
+        type="button"
+        onClick={() => setTipOpen(true)}
         className="block rounded-2xl p-4 transition-all active:scale-[0.99]"
         style={{
           background: "var(--card)",
@@ -299,7 +312,7 @@ function Dashboard() {
           </div>
           <ChevronRight className="size-4 shrink-0 text-foreground/20" />
         </div>
-      </Link>
+      </button>
 
       {/* LOG NEW */}
       <Button
@@ -330,6 +343,8 @@ function Dashboard() {
           onClose={() => setShowShare(false)}
         />
       )}
+
+      {tipOpen && <TipModal tip={tipOfDay} lang={lang} onClose={() => setTipOpen(false)} />}
     </div>
   );
 }
