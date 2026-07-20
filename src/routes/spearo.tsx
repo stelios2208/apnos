@@ -1,7 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useRef, useState } from "react";
-import { Fish, Ruler, Weight, ArrowDownToLine, Anchor, Camera, X, Loader2 } from "lucide-react";
+import {
+  Fish,
+  Ruler,
+  Weight,
+  ArrowDownToLine,
+  Anchor,
+  Camera,
+  X,
+  Loader2,
+  MapPin,
+  Lock,
+} from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { AppLayout } from "@/components/AppLayout";
@@ -23,6 +34,7 @@ import {
   type NewSpearoCatchInput,
 } from "@/lib/spearo-catches";
 import { uploadCatchPhoto } from "@/lib/spearo-photos";
+import { getCurrentSpot, mapsLink, SpotError } from "@/lib/spot";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -90,6 +102,47 @@ function Spearo() {
   const [photoUploading, setPhotoUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // ── spot state ────────────────────────────────────────────────────────────
+  // The spot is OPTIONAL and PRIVATE (owner-only). `spot` holds the captured
+  // coordinates (or null when none); `spotName` is an optional human label
+  // mapped to spot.name; `spotCapturing` drives the subtle "getting location"
+  // state on the button; `spotError` is a friendly inline message shown when
+  // geolocation is denied/unavailable (the form stays fully usable either way).
+  const [spot, setSpot] = useState<{ lat: number; lng: number } | null>(null);
+  const [spotName, setSpotName] = useState("");
+  const [spotCapturing, setSpotCapturing] = useState(false);
+  const [spotError, setSpotError] = useState<string | null>(null);
+
+  // Forget the captured spot, its name, and any error message.
+  const clearSpot = () => {
+    setSpot(null);
+    setSpotName("");
+    setSpotError(null);
+  };
+
+  // Capture the device location (high-accuracy). On denial/failure we map the
+  // typed SpotError reason to a friendly localized message and leave the form
+  // untouched — a catch with no spot saves exactly as before.
+  const handleCaptureSpot = async () => {
+    setSpotError(null);
+    setSpotCapturing(true);
+    try {
+      const coords = await getCurrentSpot();
+      setSpot(coords);
+    } catch (err) {
+      const reason = err instanceof SpotError ? err.reason : "unavailable";
+      setSpotError(
+        reason === "denied"
+          ? t("spearo.spotDenied")
+          : reason === "unsupported"
+            ? t("spearo.spotUnsupported")
+            : t("spearo.spotUnavailable"),
+      );
+    } finally {
+      setSpotCapturing(false);
+    }
+  };
+
   // Revoke a local preview object URL (if any) so we don't leak it, then forget
   // both the preview and the uploaded URL.
   const clearPhoto = () => {
@@ -155,6 +208,7 @@ function Spearo() {
     setCaughtTime(nowTime());
     setNotes("");
     clearPhoto();
+    clearSpot();
   };
 
   const mutation = useMutation({
@@ -200,6 +254,18 @@ function Spearo() {
       // Optional: only sent when a photo finished uploading. A catch with no
       // photo saves fine (the field is simply omitted).
       ...(photoUrl ? { photo_url: photoUrl } : {}),
+      // Optional + PRIVATE: only sent when the owner captured a spot. Omitted
+      // entirely otherwise, so a catch with no spot saves exactly as before.
+      // The name is only attached when non-empty.
+      ...(spot
+        ? {
+            spot: {
+              lat: spot.lat,
+              lng: spot.lng,
+              ...(spotName.trim() ? { name: spotName.trim() } : {}),
+            },
+          }
+        : {}),
     };
 
     mutation.mutate(input);
@@ -441,6 +507,97 @@ function Spearo() {
               </button>
             )}
           </div>
+
+          {/* spot — OPTIONAL and PRIVATE (owner-only). Captures the device GPS
+              for the owner's eyes only. See the privacy note at the display
+              site (CatchCard): a spot must NEVER leak into any shared, public,
+              or exported surface. There is deliberately NO "share spot"
+              affordance anywhere. */}
+          <div className="space-y-1.5">
+            <Label className="flex items-center gap-1.5">
+              {t("spearo.spotLabel")}
+              <Lock className="size-3 text-foreground/30" />
+            </Label>
+
+            {spot ? (
+              // captured state: confirmation + optional free-text name + clear.
+              <div
+                className="space-y-3 rounded-xl p-3"
+                style={{
+                  border: "1px solid rgba(93,202,165,0.25)",
+                  background: "rgba(29,158,117,0.06)",
+                }}
+              >
+                <div className="flex items-center gap-2">
+                  <span
+                    className="inline-flex items-center gap-1.5 text-sm font-semibold"
+                    style={{ color: GREEN_LIGHT }}
+                  >
+                    <MapPin className="size-4" />
+                    {t("spearo.spotCaptured")}
+                  </span>
+                  {/* clear the captured spot */}
+                  <button
+                    type="button"
+                    onClick={clearSpot}
+                    aria-label={t("spearo.spotClear")}
+                    className="ml-auto flex size-7 items-center justify-center rounded-full text-foreground/50 transition-colors hover:text-foreground"
+                    style={{ background: "rgba(var(--ink),0.05)" }}
+                  >
+                    <X className="size-3.5" />
+                  </button>
+                </div>
+
+                {/* optional human-readable name → spot.name (e.g. "Κάβος, ρηχά") */}
+                <Input
+                  type="text"
+                  value={spotName}
+                  onChange={(e) => setSpotName(e.target.value)}
+                  placeholder={t("spearo.spotNamePlaceholder")}
+                  aria-label={t("spearo.spotName")}
+                />
+
+                <p className="flex items-center gap-1.5 text-[0.7rem] leading-snug text-foreground/40">
+                  <Lock className="size-3 shrink-0" />
+                  {t("spearo.spotPrivateHint")}
+                </p>
+              </div>
+            ) : (
+              // empty state: on-brand capture control + inline error/hint. The
+              // form stays fully usable whether or not a spot is captured.
+              <>
+                <button
+                  type="button"
+                  onClick={handleCaptureSpot}
+                  disabled={spotCapturing}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold transition-colors disabled:opacity-60"
+                  style={{
+                    border: "1px dashed rgba(93,202,165,0.35)",
+                    background: "rgba(29,158,117,0.06)",
+                    color: GREEN_LIGHT,
+                  }}
+                >
+                  {spotCapturing ? (
+                    <>
+                      <Loader2 className="size-4 animate-spin" />
+                      {t("spearo.spotCapturing")}
+                    </>
+                  ) : (
+                    <>📍 {t("spearo.useLocation")}</>
+                  )}
+                </button>
+
+                {spotError ? (
+                  <p className="text-[0.7rem] leading-snug text-amber-400/80">{spotError}</p>
+                ) : (
+                  <p className="flex items-center gap-1.5 text-[0.7rem] leading-snug text-foreground/40">
+                    <Lock className="size-3 shrink-0" />
+                    {t("spearo.spotPrivateHint")}
+                  </p>
+                )}
+              </>
+            )}
+          </div>
         </div>
 
         <Button
@@ -590,6 +747,37 @@ function CatchCard({
                 {value}
               </span>
             ))}
+          </div>
+        )}
+
+        {/* PRIVATE spot chip — OWNER-ONLY.
+            ⚠️ PRIVACY (the whole point of this feature): these coordinates are
+            for the owner's eyes ONLY. This chip is the ONLY place a spot is ever
+            surfaced, and tapping it hands off to the device's own maps app — no
+            raw coordinates are shown and nothing is transmitted. The spot
+            (lat/lng/name) must NEVER be included in any future share card,
+            public feed, CSV export, or any cross-user payload. Coordinates are
+            private, full stop. Do NOT add a "share spot" / "make public"
+            affordance here or anywhere. */}
+        {c.spot && (
+          <div>
+            <a
+              href={mapsLink(c.spot.lat, c.spot.lng)}
+              target="_blank"
+              rel="noreferrer"
+              aria-label={t("spearo.spotOpenMaps")}
+              className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-[filter] hover:brightness-110"
+              style={{
+                background: "rgba(29,158,117,0.1)",
+                border: "1px solid rgba(93,202,165,0.25)",
+                color: GREEN_LIGHT,
+              }}
+            >
+              <MapPin className="size-3.5" />
+              <span className="max-w-[10rem] truncate">{c.spot.name || t("spearo.spot")}</span>
+              {/* lock hint makes it visually clear this is private */}
+              <Lock className="size-3 opacity-60" />
+            </a>
           </div>
         )}
 

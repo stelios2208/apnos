@@ -229,6 +229,20 @@ const en: Dict = {
   "spearo.photoUploading": "Uploading…",
   "spearo.photoRemove": "Remove photo",
   "spearo.photoError": "Could not upload photo",
+  // spot — OPTIONAL, private/owner-only catch location
+  "spearo.spot": "Spot",
+  "spearo.spotLabel": "Spot (private)",
+  "spearo.useLocation": "Use current location",
+  "spearo.spotCapturing": "Getting your location…",
+  "spearo.spotCaptured": "Location saved ✓",
+  "spearo.spotName": "Spot name (optional)",
+  "spearo.spotNamePlaceholder": "e.g. Kavos, shallows",
+  "spearo.spotClear": "Remove location",
+  "spearo.spotPrivateHint": "Private — only you ever see this. Never shared or exported.",
+  "spearo.spotDenied": "Location permission denied — the catch still saves without a spot.",
+  "spearo.spotUnavailable": "Couldn't get your location — try again.",
+  "spearo.spotUnsupported": "Location isn't available on this device.",
+  "spearo.spotOpenMaps": "Open private spot in maps",
 };
 
 const el: Dict = {
@@ -441,6 +455,21 @@ const el: Dict = {
   "spearo.photoUploading": "Μεταφόρτωση…",
   "spearo.photoRemove": "Αφαίρεση φωτογραφίας",
   "spearo.photoError": "Αδυναμία μεταφόρτωσης φωτογραφίας",
+  // spot — ΠΡΟΑΙΡΕΤΙΚΟ, ιδιωτικό σημείο αλιεύματος (μόνο για τον κάτοχο)
+  "spearo.spot": "Σημείο",
+  "spearo.spotLabel": "Σημείο (ιδιωτικό)",
+  "spearo.useLocation": "Χρήση τρέχουσας τοποθεσίας",
+  "spearo.spotCapturing": "Λήψη τοποθεσίας…",
+  "spearo.spotCaptured": "Η τοποθεσία καταχωρήθηκε ✓",
+  "spearo.spotName": "Όνομα σημείου (προαιρετικό)",
+  "spearo.spotNamePlaceholder": "π.χ. Κάβος, ρηχά",
+  "spearo.spotClear": "Αφαίρεση τοποθεσίας",
+  "spearo.spotPrivateHint": "Ιδιωτικό — μόνο εσύ το βλέπεις. Δεν κοινοποιείται ούτε εξάγεται ποτέ.",
+  "spearo.spotDenied":
+    "Δεν δόθηκε άδεια τοποθεσίας — το αλίευμα αποθηκεύεται κανονικά χωρίς σημείο.",
+  "spearo.spotUnavailable": "Αδυναμία λήψης τοποθεσίας — δοκίμασε ξανά.",
+  "spearo.spotUnsupported": "Η τοποθεσία δεν είναι διαθέσιμη σε αυτή τη συσκευή.",
+  "spearo.spotOpenMaps": "Άνοιγμα ιδιωτικού σημείου στους χάρτες",
 };
 
 const DICTS: Record<Lang, Dict> = { el, en };
