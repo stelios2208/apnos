@@ -16,6 +16,7 @@ import { Route as TipsRouteImport } from './routes/tips'
 import { Route as StopwatchRouteImport } from './routes/stopwatch'
 import { Route as StaTrainerRouteImport } from './routes/sta-trainer'
 import { Route as StaTablesRouteImport } from './routes/sta-tables'
+import { Route as SpearoRouteImport } from './routes/spearo'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as RulesRouteImport } from './routes/rules'
@@ -72,6 +73,11 @@ const StaTrainerRoute = StaTrainerRouteImport.update({
 const StaTablesRoute = StaTablesRouteImport.update({
   id: '/sta-tables',
   path: '/sta-tables',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SpearoRoute = SpearoRouteImport.update({
+  id: '/spearo',
+  path: '/spearo',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
@@ -203,6 +209,7 @@ export interface FileRoutesByFullPath {
   '/rules': typeof RulesRoute
   '/settings': typeof SettingsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/spearo': typeof SpearoRoute
   '/sta-tables': typeof StaTablesRoute
   '/sta-trainer': typeof StaTrainerRoute
   '/stopwatch': typeof StopwatchRoute
@@ -233,6 +240,7 @@ export interface FileRoutesByTo {
   '/rules': typeof RulesRoute
   '/settings': typeof SettingsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/spearo': typeof SpearoRoute
   '/sta-tables': typeof StaTablesRoute
   '/sta-trainer': typeof StaTrainerRoute
   '/stopwatch': typeof StopwatchRoute
@@ -265,6 +273,7 @@ export interface FileRoutesById {
   '/rules': typeof RulesRoute
   '/settings': typeof SettingsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/spearo': typeof SpearoRoute
   '/sta-tables': typeof StaTablesRoute
   '/sta-trainer': typeof StaTrainerRoute
   '/stopwatch': typeof StopwatchRoute
@@ -298,6 +307,7 @@ export interface FileRouteTypes {
     | '/rules'
     | '/settings'
     | '/sitemap.xml'
+    | '/spearo'
     | '/sta-tables'
     | '/sta-trainer'
     | '/stopwatch'
@@ -328,6 +338,7 @@ export interface FileRouteTypes {
     | '/rules'
     | '/settings'
     | '/sitemap.xml'
+    | '/spearo'
     | '/sta-tables'
     | '/sta-trainer'
     | '/stopwatch'
@@ -359,6 +370,7 @@ export interface FileRouteTypes {
     | '/rules'
     | '/settings'
     | '/sitemap.xml'
+    | '/spearo'
     | '/sta-tables'
     | '/sta-trainer'
     | '/stopwatch'
@@ -391,6 +403,7 @@ export interface RootRouteChildren {
   RulesRoute: typeof RulesRoute
   SettingsRoute: typeof SettingsRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  SpearoRoute: typeof SpearoRoute
   StaTablesRoute: typeof StaTablesRoute
   StaTrainerRoute: typeof StaTrainerRoute
   StopwatchRoute: typeof StopwatchRoute
@@ -452,6 +465,13 @@ declare module '@tanstack/react-router' {
       path: '/sta-tables'
       fullPath: '/sta-tables'
       preLoaderRoute: typeof StaTablesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/spearo': {
+      id: '/spearo'
+      path: '/spearo'
+      fullPath: '/spearo'
+      preLoaderRoute: typeof SpearoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sitemap.xml': {
@@ -641,6 +661,7 @@ const rootRouteChildren: RootRouteChildren = {
   RulesRoute: RulesRoute,
   SettingsRoute: SettingsRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  SpearoRoute: SpearoRoute,
   StaTablesRoute: StaTablesRoute,
   StaTrainerRoute: StaTrainerRoute,
   StopwatchRoute: StopwatchRoute,
