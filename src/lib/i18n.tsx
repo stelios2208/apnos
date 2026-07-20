@@ -223,6 +223,12 @@ const en: Dict = {
   "spearo.errorTitle": "Couldn't load your catches",
   "spearo.pb": "PB",
   "spearo.depth": "depth",
+  "spearo.photo": "Photo",
+  "spearo.addPhoto": "Add a photo",
+  "spearo.photoHint": "Location data is stripped before upload — your spot stays private.",
+  "spearo.photoUploading": "Uploading…",
+  "spearo.photoRemove": "Remove photo",
+  "spearo.photoError": "Could not upload photo",
 };
 
 const el: Dict = {
@@ -428,6 +434,13 @@ const el: Dict = {
   "spearo.errorTitle": "Αδυναμία φόρτωσης αλιευμάτων",
   "spearo.pb": "PB",
   "spearo.depth": "βάθος",
+  "spearo.photo": "Φωτογραφία",
+  "spearo.addPhoto": "Πρόσθεσε φωτογραφία",
+  "spearo.photoHint":
+    "Τα δεδομένα τοποθεσίας αφαιρούνται πριν τη μεταφόρτωση — το σημείο σου παραμένει κρυφό.",
+  "spearo.photoUploading": "Μεταφόρτωση…",
+  "spearo.photoRemove": "Αφαίρεση φωτογραφίας",
+  "spearo.photoError": "Αδυναμία μεταφόρτωσης φωτογραφίας",
 };
 
 const DICTS: Record<Lang, Dict> = { el, en };

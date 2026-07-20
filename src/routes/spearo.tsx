@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
-import { Fish, Ruler, Weight, ArrowDownToLine, Anchor } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
+import { Fish, Ruler, Weight, ArrowDownToLine, Anchor, Camera, X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { AppLayout } from "@/components/AppLayout";
@@ -22,6 +22,7 @@ import {
   personalBestsSpearo,
   type NewSpearoCatchInput,
 } from "@/lib/spearo-catches";
+import { uploadCatchPhoto } from "@/lib/spearo-photos";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -78,6 +79,51 @@ function Spearo() {
   const [caughtTime, setCaughtTime] = useState(nowTime());
   const [notes, setNotes] = useState("");
 
+  // ── photo state ─────────────────────────────────────────────────────────────
+  // The photo is OPTIONAL. `photoPreview` is a local object URL shown instantly
+  // on select (before the upload finishes); `photoUrl` is the public Storage URL
+  // returned by uploadCatchPhoto (the value actually persisted on the catch);
+  // `photoUploading` drives the subtle uploading state on the tile. The hidden
+  // <input type="file"> is triggered by the on-brand picker tile below.
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Revoke a local preview object URL (if any) so we don't leak it, then forget
+  // both the preview and the uploaded URL.
+  const clearPhoto = () => {
+    if (photoPreview) URL.revokeObjectURL(photoPreview);
+    setPhotoPreview(null);
+    setPhotoUrl(null);
+    setPhotoUploading(false);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  // On select: show a local preview immediately, then re-encode + upload (which
+  // strips GPS/EXIF — see spearo-photos.ts) and hold the returned public URL.
+  const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Replace any previously chosen photo (revoke its preview first).
+    if (photoPreview) URL.revokeObjectURL(photoPreview);
+    const preview = URL.createObjectURL(file);
+    setPhotoPreview(preview);
+    setPhotoUrl(null);
+    setPhotoUploading(true);
+
+    try {
+      const url = await uploadCatchPhoto(file, user!.id);
+      setPhotoUrl(url);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("spearo.photoError"));
+      clearPhoto();
+    } finally {
+      setPhotoUploading(false);
+    }
+  };
+
   // ── catch list ────────────────────────────────────────────────────────────
   // Keyed on the authenticated user id, exactly like fetchDives in the other
   // routes. `enabled: !!user` mirrors log.tsx / history.tsx.
@@ -108,6 +154,7 @@ function Spearo() {
     setCaughtDate(today());
     setCaughtTime(nowTime());
     setNotes("");
+    clearPhoto();
   };
 
   const mutation = useMutation({
@@ -150,6 +197,9 @@ function Spearo() {
       ...(weightKg ? { weight_kg: Number(weightKg) } : {}),
       ...(maxDepthM ? { max_depth_m: Number(maxDepthM) } : {}),
       ...(notes.trim() ? { notes: notes.trim() } : {}),
+      // Optional: only sent when a photo finished uploading. A catch with no
+      // photo saves fine (the field is simply omitted).
+      ...(photoUrl ? { photo_url: photoUrl } : {}),
     };
 
     mutation.mutate(input);
@@ -313,6 +363,84 @@ function Spearo() {
               rows={3}
             />
           </div>
+
+          {/* photo — OPTIONAL, one per catch. This is the shareable "my catch"
+              object, so the picker is styled to match the app's premium glass
+              language. The <input> is hidden; the tile below triggers it. */}
+          <div className="space-y-1.5">
+            <Label>{t("spearo.photo")}</Label>
+            {/* accept only images; `capture` hints mobile browsers toward the
+                camera for a native "snap the catch" feel. */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={handlePhotoSelect}
+            />
+
+            {photoPreview ? (
+              // chosen state: preview thumbnail with an uploading overlay + a
+              // remove control (allowed any time before submit).
+              <div
+                className="relative overflow-hidden rounded-xl"
+                style={{ border: "1px solid rgba(93,202,165,0.25)" }}
+              >
+                <img
+                  src={photoPreview}
+                  alt={t("spearo.photo")}
+                  className="h-44 w-full object-cover"
+                />
+
+                {/* subtle uploading state while the re-encode + upload runs */}
+                {photoUploading && (
+                  <div
+                    className="absolute inset-0 flex items-center justify-center gap-2 text-xs font-semibold text-white"
+                    style={{ background: "rgba(4,26,46,0.55)", backdropFilter: "blur(2px)" }}
+                  >
+                    <Loader2 className="size-4 animate-spin" />
+                    {t("spearo.photoUploading")}
+                  </div>
+                )}
+
+                {/* remove chosen photo */}
+                <button
+                  type="button"
+                  onClick={clearPhoto}
+                  aria-label={t("spearo.photoRemove")}
+                  className="absolute right-2 top-2 flex size-8 items-center justify-center rounded-full text-white transition-opacity hover:opacity-80"
+                  style={{ background: "rgba(4,26,46,0.6)", backdropFilter: "blur(2px)" }}
+                >
+                  <X className="size-4" />
+                </button>
+              </div>
+            ) : (
+              // empty state: on-brand dashed tile inviting a photo.
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="flex w-full flex-col items-center gap-2 rounded-xl px-4 py-6 text-center transition-colors"
+                style={{
+                  border: "1px dashed rgba(93,202,165,0.35)",
+                  background: "rgba(29,158,117,0.06)",
+                }}
+              >
+                <span
+                  className="flex size-11 items-center justify-center rounded-full"
+                  style={{ background: "rgba(29,158,117,0.14)" }}
+                >
+                  <Camera className="size-5" style={{ color: GREEN_LIGHT }} />
+                </span>
+                <span className="text-sm font-semibold" style={{ color: GREEN_LIGHT }}>
+                  {t("spearo.addPhoto")}
+                </span>
+                <span className="max-w-[16rem] text-[0.7rem] leading-snug text-foreground/40">
+                  {t("spearo.photoHint")}
+                </span>
+              </button>
+            )}
+          </div>
         </div>
 
         <Button
@@ -320,7 +448,7 @@ function Spearo() {
           variant="hero"
           size="lg"
           className="w-full"
-          disabled={mutation.isPending}
+          disabled={mutation.isPending || photoUploading}
         >
           {mutation.isPending ? t("common.saving") : t("spearo.save")}
         </Button>
@@ -431,6 +559,19 @@ function CatchCard({
         >
           {name}
         </p>
+
+        {/* photo thumbnail — only when the catch has one; the card stays clean
+            without it. Never renders the spot; the stored image is metadata-free
+            (see spearo-photos.ts). */}
+        {c.photo_url && (
+          <img
+            src={c.photo_url}
+            alt={name}
+            loading="lazy"
+            className="h-40 w-full rounded-xl object-cover"
+            style={{ border: "1px solid rgba(var(--ink),0.06)" }}
+          />
+        )}
 
         {/* measurement chips */}
         {chips.length > 0 && (
