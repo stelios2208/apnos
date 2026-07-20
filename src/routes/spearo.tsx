@@ -156,7 +156,9 @@ function Spearo() {
   };
 
   return (
-    <div className="space-y-6 pb-4">
+    // pb-24 mirrors history.tsx: keeps the save button + last catch card clear
+    // of the fixed bottom navigation bar (AppLayout renders it `fixed bottom-0`).
+    <div className="space-y-6 pb-24">
       {/* ── premium hero header ── */}
       <div
         className="relative overflow-hidden rounded-2xl p-6"
