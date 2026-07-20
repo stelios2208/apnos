@@ -277,27 +277,29 @@ function Spearo() {
             />
           </div>
 
-          {/* date | time — identical inputs to log.tsx, default to now */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="caught-date">{t("log.date")}</Label>
-              <Input
-                id="caught-date"
-                type="date"
-                value={caughtDate}
-                onChange={(e) => setCaughtDate(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="caught-time">{t("log.time")}</Label>
-              <Input
-                id="caught-time"
-                type="time"
-                value={caughtTime}
-                onChange={(e) => setCaughtTime(e.target.value)}
-              />
-            </div>
+          {/* date + time, stacked full-width — same native inputs as log.tsx,
+              default to now. Stacked (not a 2-col split) so the browser's
+              calendar/clock picker glyph always has room: in a narrow ~390px
+              column the split squeezed the date value against the indicator and
+              clipped the calendar icon off the right edge. */}
+          <div className="space-y-1.5">
+            <Label htmlFor="caught-date">{t("log.date")}</Label>
+            <Input
+              id="caught-date"
+              type="date"
+              value={caughtDate}
+              onChange={(e) => setCaughtDate(e.target.value)}
+              required
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="caught-time">{t("log.time")}</Label>
+            <Input
+              id="caught-time"
+              type="time"
+              value={caughtTime}
+              onChange={(e) => setCaughtTime(e.target.value)}
+            />
           </div>
 
           {/* notes */}
