@@ -55,16 +55,20 @@ function decodeImage(file: File): Promise<HTMLImageElement> {
  * Re-encode an image File into a fresh, metadata-free JPEG Blob.
  *
  * Draws the decoded pixels onto a canvas scaled so the longest side is at most
- * `MAX_EDGE`, then exports as JPEG. Because the output is painted pixel-by-pixel
+ * `maxEdge`, then exports as JPEG. Because the output is painted pixel-by-pixel
  * onto a new canvas, it carries NONE of the original file's metadata — this is
  * what strips any embedded GPS/EXIF (and therefore the catch's spot).
+ *
+ * Exported so other uploads with the same privacy requirement (e.g. profile
+ * avatars in `profiles.ts`) reuse this exact strip-and-compress path instead of
+ * uploading raw camera files.
  */
-async function reencodeToJpeg(file: File): Promise<Blob> {
+export async function reencodeToJpeg(file: File, maxEdge: number = MAX_EDGE): Promise<Blob> {
   const img = await decodeImage(file);
 
-  // Scale so the longest edge is <= MAX_EDGE; never upscale small images.
+  // Scale so the longest edge is <= maxEdge; never upscale small images.
   const longest = Math.max(img.naturalWidth, img.naturalHeight) || 1;
-  const scale = Math.min(1, MAX_EDGE / longest);
+  const scale = Math.min(1, maxEdge / longest);
   const width = Math.max(1, Math.round(img.naturalWidth * scale));
   const height = Math.max(1, Math.round(img.naturalHeight * scale));
 
