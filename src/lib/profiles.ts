@@ -258,3 +258,41 @@ export async function listFeedCatches(opts?: {
   }
   return (data ?? []) as FeedCatch[];
 }
+
+/**
+ * A row of the `feed_dives` view — the ONLY cross-user surface over dives
+ * (see supabase/migrations/20260721_apnos_feed.sql). By construction it has no
+ * notes, no wellness fields, no gear/conditions; do not widen this type
+ * without widening the view's security review first.
+ */
+export interface FeedDive {
+  id: string;
+  user_id: string;
+  discipline: string;
+  result: number;
+  dive_date: string;
+  is_personal_best: boolean;
+  created_at: string;
+}
+
+/**
+ * Shared dives, newest first. Optionally scoped to one user (public athlete
+ * page). Missing view (migration not applied) → empty feed, not a crash.
+ */
+export async function listFeedDives(opts?: {
+  userId?: string;
+  limit?: number;
+}): Promise<FeedDive[]> {
+  let query = supabase
+    .from("feed_dives")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(opts?.limit ?? 30);
+  if (opts?.userId) query = query.eq("user_id", opts.userId);
+  const { data, error } = await query;
+  if (error) {
+    if (isMissingTable(error)) return [];
+    throw error;
+  }
+  return (data ?? []) as FeedDive[];
+}

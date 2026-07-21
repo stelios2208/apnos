@@ -3,7 +3,7 @@ import { zodValidator, fallback } from "@tanstack/zod-adapter";
 import { z } from "zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, Flame, HeartPulse, Backpack, Waves } from "lucide-react";
+import { ChevronDown, Flame, HeartPulse, Backpack, Waves, Users, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { AppLayout } from "@/components/AppLayout";
 import { useAuth } from "@/hooks/use-auth";
@@ -78,6 +78,9 @@ function LogDive() {
   const [foodNotes, setFoodNotes] = useState("");
   const [mentalState, setMentalState] = useState(3);
   const [notes, setNotes] = useState("");
+  // Community opt-in — DEFAULT OFF, always. The feed only ever reads the
+  // sanitized feed_dives view (result data only — never notes/wellness/gear).
+  const [sharedToFeed, setSharedToFeed] = useState(false);
   const [gearOpen, setGearOpen] = useState(false);
   const [neckWeight, setNeckWeight] = useState("");
   const [beltWeight, setBeltWeight] = useState("");
@@ -122,6 +125,7 @@ function LogDive() {
     setFoodNotes(editing.food_notes ?? "");
     setMentalState(editing.mental_state ?? 3);
     setNotes(editing.notes ?? "");
+    setSharedToFeed(editing.shared_to_feed ?? false);
     setNeckWeight(editing.neck_weight != null ? String(editing.neck_weight) : "");
     setBeltWeight(editing.belt_weight != null ? String(editing.belt_weight) : "");
     setWetsuitMm(editing.wetsuit_mm != null ? String(editing.wetsuit_mm) : "");
@@ -149,6 +153,7 @@ function LogDive() {
       editId ? updateDive(user!.id, editId, input) : createDive(user!.id, input),
     onSuccess: (dive) => {
       queryClient.invalidateQueries({ queryKey: ["dives", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["feed-dives"] });
       if (editId) {
         toast.success(t("log.updated"));
       } else if (dive.is_personal_best) {
@@ -214,6 +219,9 @@ function LogDive() {
       water_temp: waterTemp ? Number(waterTemp) : null,
       foot_pocket: footPocket || null,
       conditions: hasConditions ? conditions : null,
+      // written with the PGRST204 drop-and-retry in dives.ts, so a lagging DB
+      // (migration not applied) degrades gracefully
+      shared_to_feed: sharedToFeed,
     });
   };
 
@@ -767,6 +775,51 @@ function LogDive() {
             </div>
           </div>
         )}
+
+        {/* share-to-feed — per-dive community opt-in, DEFAULT OFF. The feed
+            serves the sanitized feed_dives view only (result data, never
+            notes/wellness/gear/conditions). Same control as the Spearo one. */}
+        <button
+          type="button"
+          onClick={() => setSharedToFeed((v) => !v)}
+          className="pressable flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-left"
+          style={{
+            background: sharedToFeed ? "rgba(29,158,117,0.08)" : "rgba(var(--ink),0.03)",
+            border: sharedToFeed
+              ? "1px solid rgba(93,202,165,0.3)"
+              : "1px solid rgba(var(--ink),0.08)",
+          }}
+        >
+          <span
+            className="flex size-9 shrink-0 items-center justify-center rounded-full"
+            style={{
+              background: sharedToFeed ? "rgba(29,158,117,0.16)" : "rgba(var(--ink),0.05)",
+            }}
+          >
+            <Users
+              className="size-4"
+              style={{ color: sharedToFeed ? "#5DCAA5" : "rgba(var(--ink),0.4)" }}
+            />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-semibold text-foreground">
+              {t("dive.shareToFeed")}
+            </span>
+            <span className="mt-0.5 flex items-center gap-1 text-[0.7rem] leading-snug text-foreground/40">
+              <Lock className="size-3 shrink-0" />
+              {t("dive.shareToFeedHint")}
+            </span>
+          </span>
+          <span
+            className="relative h-6 w-11 shrink-0 rounded-full transition-colors"
+            style={{ background: sharedToFeed ? "#1D9E75" : "rgba(var(--ink),0.12)" }}
+          >
+            <span
+              className="absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all"
+              style={{ left: sharedToFeed ? 22 : 2 }}
+            />
+          </span>
+        </button>
 
         <Button
           type="submit"

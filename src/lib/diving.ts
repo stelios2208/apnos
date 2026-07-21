@@ -125,6 +125,13 @@ export interface Dive {
   conditions: StaConditions | null;
   is_personal_best: boolean;
   created_at: string;
+  /**
+   * Per-dive community opt-in, default OFF (false/undefined = private).
+   * When true the dive appears in the community feed — but ONLY through the
+   * sanitized `feed_dives` view (result data only; never notes, wellness,
+   * gear or conditions).
+   */
+  shared_to_feed?: boolean;
 }
 
 export function isTimeDiscipline(code: DisciplineCode): boolean {
