@@ -247,6 +247,15 @@ const en: Dict = {
   "spearo.share": "Share catch",
   "spearo.shareSaved": "Image saved",
   "spearo.shareError": "Could not create image",
+  // edit + delete a catch
+  "spearo.editTitle": "Edit catch",
+  "spearo.editSub": "Update this catch.",
+  "spearo.update": "Update catch",
+  "spearo.updated": "Catch updated",
+  "spearo.deleteTitle": "Delete catch?",
+  "spearo.deleteDesc": "This permanently removes the catch and its photo. This can't be undone.",
+  "spearo.deleted": "Catch deleted",
+  "spearo.deleteError": "Could not delete catch",
 };
 
 const el: Dict = {
@@ -478,6 +487,15 @@ const el: Dict = {
   "spearo.share": "Κοινοποίηση αλιεύματος",
   "spearo.shareSaved": "Η εικόνα αποθηκεύτηκε",
   "spearo.shareError": "Σφάλμα δημιουργίας εικόνας",
+  // επεξεργασία + διαγραφή αλιεύματος
+  "spearo.editTitle": "Επεξεργασία αλιεύματος",
+  "spearo.editSub": "Ενημέρωσε αυτό το αλίευμα.",
+  "spearo.update": "Ενημέρωση αλιεύματος",
+  "spearo.updated": "Το αλίευμα ενημερώθηκε",
+  "spearo.deleteTitle": "Διαγραφή αλιεύματος;",
+  "spearo.deleteDesc": "Διαγράφει οριστικά το αλίευμα και τη φωτογραφία του. Δεν αναιρείται.",
+  "spearo.deleted": "Το αλίευμα διαγράφηκε",
+  "spearo.deleteError": "Αδυναμία διαγραφής αλιεύματος",
 };
 
 const DICTS: Record<Lang, Dict> = { el, en };
