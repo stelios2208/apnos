@@ -1,9 +1,10 @@
 import React, { useEffect, type ReactNode } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { LayoutDashboard, Plus, History, LogOut, Waves, UserRound } from "lucide-react";
+import { LayoutDashboard, Plus, History, LogOut, Waves, UserRound, Home } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { useAuth } from "@/hooks/use-auth";
 import { useI18n } from "@/lib/i18n";
+import { useMode, useModeAutoDefault } from "@/hooks/use-mode";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -22,6 +23,11 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const { t, lang } = useI18n();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+
+  // App mode drives ONLY which bottom-nav tab set renders (below). `mode` is
+  // always a concrete value; the smart default resolves once for new users.
+  const { mode } = useMode();
+  useModeAutoDefault();
 
   useEffect(() => {
     if (!loading && !user) {
@@ -53,6 +59,8 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const logActive = matches(["/log"]);
   const progressActive = matches(["/history"]);
   const youActive = matches(["/you", "/profile", "/equipment", "/rules", "/settings"]);
+  // Spearo mode: the catch feed + log both live at /spearo.
+  const spearoActive = matches(["/spearo"]);
 
   const sideItems = [
     {
@@ -123,33 +131,71 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-background/80 backdrop-blur-lg">
         <div className="mx-auto flex max-w-2xl items-center justify-around px-2">
-          {sideItems.map((item) => (
-            <NavLink key={item.to} {...item} />
-          ))}
+          {/* Mode switches ONLY the tab set inside this shared <nav> shell.
+              DEFENSIVE: only an exact "spearo" renders the Spearo tabs; any other
+              value — undefined, unresolved, a future/unknown mode — falls through
+              to the existing Apnos nav, so a bug degrades to today's behaviour,
+              never a blank shell. The Apnos branch below is byte-for-byte the
+              original nav, only relocated inside this conditional. */}
+          {mode === "spearo" ? (
+            <>
+              {/* Spearo: Αρχική (feed) · (+) Log · Εσύ — same structure, 3 tabs.
+                  "Εσύ" points to the SAME /you route the Apnos nav uses. */}
+              <NavLink to="/spearo" label={t("nav.spearoHome")} icon={Home} active={spearoActive} />
 
-          {/* central record / log button */}
-          <Link
-            to="/log"
-            aria-label={lang === "el" ? "Καταγραφή" : "Log"}
-            className="flex flex-1 items-center justify-center"
-            style={{ height: 56 }}
-          >
-            <span
-              className="flex h-12 w-12 items-center justify-center rounded-full transition-transform active:scale-95"
-              style={{
-                background: "#1D9E75",
-                boxShadow: logActive
-                  ? "0 0 0 4px rgba(29,158,117,0.25), 0 4px 16px rgba(29,158,117,0.5)"
-                  : "0 4px 16px rgba(29,158,117,0.45)",
-              }}
-            >
-              <Plus className="size-6 text-white" />
-            </span>
-          </Link>
+              {/* central log button — identical treatment to the Apnos "+" */}
+              <Link
+                to="/spearo"
+                aria-label={t("nav.spearoLog")}
+                className="flex flex-1 items-center justify-center"
+                style={{ height: 56 }}
+              >
+                <span
+                  className="flex h-12 w-12 items-center justify-center rounded-full transition-transform active:scale-95"
+                  style={{
+                    background: "#1D9E75",
+                    boxShadow: spearoActive
+                      ? "0 0 0 4px rgba(29,158,117,0.25), 0 4px 16px rgba(29,158,117,0.5)"
+                      : "0 4px 16px rgba(29,158,117,0.45)",
+                  }}
+                >
+                  <Plus className="size-6 text-white" />
+                </span>
+              </Link>
 
-          {endItems.map((item) => (
-            <NavLink key={item.to} {...item} />
-          ))}
+              <NavLink to="/you" label={t("nav.spearoYou")} icon={UserRound} active={youActive} />
+            </>
+          ) : (
+            <>
+              {sideItems.map((item) => (
+                <NavLink key={item.to} {...item} />
+              ))}
+
+              {/* central record / log button */}
+              <Link
+                to="/log"
+                aria-label={lang === "el" ? "Καταγραφή" : "Log"}
+                className="flex flex-1 items-center justify-center"
+                style={{ height: 56 }}
+              >
+                <span
+                  className="flex h-12 w-12 items-center justify-center rounded-full transition-transform active:scale-95"
+                  style={{
+                    background: "#1D9E75",
+                    boxShadow: logActive
+                      ? "0 0 0 4px rgba(29,158,117,0.25), 0 4px 16px rgba(29,158,117,0.5)"
+                      : "0 4px 16px rgba(29,158,117,0.45)",
+                  }}
+                >
+                  <Plus className="size-6 text-white" />
+                </span>
+              </Link>
+
+              {endItems.map((item) => (
+                <NavLink key={item.to} {...item} />
+              ))}
+            </>
+          )}
         </div>
       </nav>
     </div>

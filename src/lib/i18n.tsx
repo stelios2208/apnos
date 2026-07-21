@@ -21,6 +21,15 @@ const en: Dict = {
   "nav.settings": "Settings",
   "nav.equipment": "Equipment",
   "nav.rules": "Rules",
+  // Apnos Spearo bottom-nav tab labels (mode-aware nav)
+  "nav.spearoHome": "Home",
+  "nav.spearoLog": "Log",
+  "nav.spearoYou": "You",
+  // App mode toggle (Apnos ⇄ Spearo)
+  "mode.title": "App mode",
+  "mode.subtitle": "Switch between your freediving log and spearfishing.",
+  "mode.apnosDesc": "Freediving",
+  "mode.spearoDesc": "Spearfishing",
   "common.signOut": "Sign out",
   "common.save": "Save",
   "common.saving": "Saving…",
@@ -271,6 +280,15 @@ const el: Dict = {
   "nav.settings": "Ρυθμίσεις",
   "nav.equipment": "Εξοπλισμός",
   "nav.rules": "Κανόνες",
+  // Apnos Spearo bottom-nav tab labels (mode-aware nav)
+  "nav.spearoHome": "Αρχική",
+  "nav.spearoLog": "Καταγραφή",
+  "nav.spearoYou": "Εσύ",
+  // App mode toggle (Apnos ⇄ Spearo)
+  "mode.title": "Λειτουργία",
+  "mode.subtitle": "Εναλλαγή ανάμεσα στο ημερολόγιο κατάδυσης και το ψαροντούφεκο.",
+  "mode.apnosDesc": "Ελεύθερη κατάδυση",
+  "mode.spearoDesc": "Ψαροντούφεκο",
   "common.signOut": "Αποσύνδεση",
   "common.save": "Αποθήκευση",
   "common.saving": "Αποθήκευση…",
