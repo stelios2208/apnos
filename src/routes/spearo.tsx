@@ -12,6 +12,7 @@ import {
   Loader2,
   MapPin,
   Lock,
+  Share2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -35,6 +36,7 @@ import {
 } from "@/lib/spearo-catches";
 import { uploadCatchPhoto } from "@/lib/spearo-photos";
 import { getCurrentSpot, mapsLink, SpotError } from "@/lib/spot";
+import { shareCatchCard } from "@/lib/catch-share-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -676,6 +678,27 @@ function CatchCard({
 
   const dateStr = format(new Date(c.caught_at), "d MMM yyyy · HH:mm");
 
+  // ── share ("my catch" card) ─────────────────────────────────────────────────
+  // Generates a branded, Instagram-ready image for THIS catch and hands it to
+  // the native share sheet (mobile) or a download (desktop) via the reused
+  // SVG→PNG pipeline. The card is a PUBLIC artifact and carries NO location data
+  // (see catch-share-card.ts). `sharing` drives the subtle generating state.
+  const [sharing, setSharing] = useState(false);
+  const handleShare = async () => {
+    setSharing(true);
+    try {
+      const res = await shareCatchCard(c, lang);
+      // Only the download path needs a confirmation; the native share sheet is
+      // its own feedback.
+      if (res === "downloaded") toast.success(t("spearo.shareSaved"));
+    } catch (err) {
+      console.error(err);
+      toast.error(t("spearo.shareError"));
+    } finally {
+      setSharing(false);
+    }
+  };
+
   // Measurement chips — only rendered when the value is present.
   const chips: { icon: typeof Ruler; value: string }[] = [];
   if (c.size_cm != null) chips.push({ icon: Ruler, value: formatCatchSize(c.size_cm) });
@@ -706,7 +729,29 @@ function CatchCard({
               🏆 {t("spearo.pb")}
             </span>
           )}
-          <span className="ml-auto text-[0.65rem] text-foreground/35">{dateStr}</span>
+          <div className="ml-auto flex items-center gap-2">
+            <span className="text-[0.65rem] text-foreground/35">{dateStr}</span>
+            {/* discreet, on-brand share affordance — builds the "my catch" card */}
+            <button
+              type="button"
+              onClick={handleShare}
+              disabled={sharing}
+              aria-label={t("spearo.share")}
+              title={t("spearo.share")}
+              className="flex size-7 items-center justify-center rounded-full transition-colors hover:brightness-110 disabled:opacity-60"
+              style={{
+                background: "rgba(29,158,117,0.12)",
+                border: "1px solid rgba(93,202,165,0.25)",
+                color: GREEN_LIGHT,
+              }}
+            >
+              {sharing ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : (
+                <Share2 className="size-3.5" />
+              )}
+            </button>
+          </div>
         </div>
 
         {/* species name — display font, capitalized */}
