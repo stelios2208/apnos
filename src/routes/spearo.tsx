@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -1297,8 +1297,8 @@ function SpearoFeed() {
   );
 }
 
-// One public athlete in the horizontal row. (Tapping through to the public
-// athlete page arrives together with the /athlete/$id route.)
+// One public athlete in the horizontal row — taps through to their public
+// athlete page (/athlete/$id).
 function AvatarBubble({
   profile: p,
   fallbackName,
@@ -1309,7 +1309,12 @@ function AvatarBubble({
   const name = p.display_name || fallbackName;
   const color = athleteColor(p.user_id);
   return (
-    <div className="flex w-16 shrink-0 flex-col items-center gap-1.5">
+    <Link
+      to="/athlete/$id"
+      params={{ id: p.user_id }}
+      onClick={() => nativeVibrate(10)}
+      className="pressable flex w-16 shrink-0 flex-col items-center gap-1.5"
+    >
       {p.avatar_url ? (
         <img
           src={p.avatar_url}
@@ -1328,7 +1333,7 @@ function AvatarBubble({
       <span className="w-full truncate text-center text-[0.65rem] font-medium text-foreground/60">
         {name.split(" ")[0]}
       </span>
-    </div>
+    </Link>
   );
 }
 
@@ -1361,63 +1366,70 @@ function FeedCard({
   const dateStr = format(new Date(c.caught_at ?? c.created_at), "d MMM yyyy");
 
   return (
-    <li className="surface-2 relative overflow-hidden rounded-2xl">
-      {c.photo_url ? (
-        <img
-          src={c.photo_url}
-          alt={species}
-          loading="lazy"
-          className="absolute inset-0 h-full w-full object-cover"
-        />
-      ) : (
-        <div className="absolute inset-0" style={{ background: UNDERWATER_GRADIENT }} />
-      )}
-      <div
-        className="absolute inset-0"
-        style={{
-          background:
-            "linear-gradient(180deg, rgba(2,10,19,0.3) 0%, rgba(2,10,19,0.12) 35%, rgba(2,10,19,0.6) 65%, rgba(2,10,19,0.9) 100%)",
-        }}
-      />
-
-      <div className="relative flex min-h-[13rem] flex-col justify-end p-4">
-        <p className="text-sm font-semibold capitalize text-white/85">{species}</p>
-        {primary && (
-          <p
-            className="mt-0.5 text-4xl font-black tabular-nums text-white"
-            style={{
-              fontFamily: "'Outfit', sans-serif",
-              textShadow: "0 2px 12px rgba(2,10,19,0.6)",
-            }}
-          >
-            {primary}
-          </p>
+    <li className="surface-2 pressable relative block overflow-hidden rounded-2xl">
+      <Link
+        to="/athlete/$id"
+        params={{ id: c.user_id }}
+        onClick={() => nativeVibrate(10)}
+        className="block"
+      >
+        {c.photo_url ? (
+          <img
+            src={c.photo_url}
+            alt={species}
+            loading="lazy"
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+        ) : (
+          <div className="absolute inset-0" style={{ background: UNDERWATER_GRADIENT }} />
         )}
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              "linear-gradient(180deg, rgba(2,10,19,0.3) 0%, rgba(2,10,19,0.12) 35%, rgba(2,10,19,0.6) 65%, rgba(2,10,19,0.9) 100%)",
+          }}
+        />
 
-        {/* author + date row */}
-        <div className="mt-3 flex items-center gap-2">
-          {author?.avatar_url ? (
-            <img
-              src={author.avatar_url}
-              alt=""
-              className="size-7 shrink-0 rounded-full object-cover"
-              style={{ border: `1px solid ${color}66` }}
-            />
-          ) : (
-            <span
-              className="flex size-7 shrink-0 items-center justify-center rounded-full text-[0.6rem] font-bold"
-              style={{ background: `${color}33`, color: "#fff", border: `1px solid ${color}66` }}
+        <div className="relative flex min-h-[13rem] flex-col justify-end p-4">
+          <p className="text-sm font-semibold capitalize text-white/85">{species}</p>
+          {primary && (
+            <p
+              className="mt-0.5 text-4xl font-black tabular-nums text-white"
+              style={{
+                fontFamily: "'Outfit', sans-serif",
+                textShadow: "0 2px 12px rgba(2,10,19,0.6)",
+              }}
             >
-              {athleteInitials(name)}
-            </span>
+              {primary}
+            </p>
           )}
-          <span className="min-w-0 truncate text-xs font-semibold text-white/85">{name}</span>
-          <span className="ml-auto shrink-0 text-[0.65rem] text-white/50">
-            {secondary && <span className="tabular-nums">{secondary} · </span>}
-            {dateStr}
-          </span>
+
+          {/* author + date row */}
+          <div className="mt-3 flex items-center gap-2">
+            {author?.avatar_url ? (
+              <img
+                src={author.avatar_url}
+                alt=""
+                className="size-7 shrink-0 rounded-full object-cover"
+                style={{ border: `1px solid ${color}66` }}
+              />
+            ) : (
+              <span
+                className="flex size-7 shrink-0 items-center justify-center rounded-full text-[0.6rem] font-bold"
+                style={{ background: `${color}33`, color: "#fff", border: `1px solid ${color}66` }}
+              >
+                {athleteInitials(name)}
+              </span>
+            )}
+            <span className="min-w-0 truncate text-xs font-semibold text-white/85">{name}</span>
+            <span className="ml-auto shrink-0 text-[0.65rem] text-white/50">
+              {secondary && <span className="tabular-nums">{secondary} · </span>}
+              {dateStr}
+            </span>
+          </div>
         </div>
-      </div>
+      </Link>
     </li>
   );
 }
