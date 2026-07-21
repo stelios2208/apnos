@@ -437,13 +437,15 @@ function Spearo() {
               language. The <input> is hidden; the tile below triggers it. */}
           <div className="space-y-1.5">
             <Label>{t("spearo.photo")}</Label>
-            {/* accept only images; `capture` hints mobile browsers toward the
-                camera for a native "snap the catch" feel. */}
+            {/* accept only images; deliberately NO `capture` attribute so the OS
+                shows its normal picker sheet (Camera + Gallery/Files). Spearos
+                usually shoot the fish on the boat and log later, so choosing an
+                existing photo from the gallery must be possible — forcing the
+                camera would block that. */}
             <input
               ref={fileInputRef}
               type="file"
               accept="image/*"
-              capture="environment"
               className="hidden"
               onChange={handlePhotoSelect}
             />
@@ -729,8 +731,11 @@ function CatchCard({
               🏆 {t("spearo.pb")}
             </span>
           )}
-          <div className="ml-auto flex items-center gap-2">
-            <span className="text-[0.65rem] text-foreground/35">{dateStr}</span>
+          {/* right group is shrink-0 so the share button is ALWAYS rendered and
+              tappable — it can never be pushed off-edge or overlapped by a long
+              date (the date truncates instead). */}
+          <div className="ml-auto flex shrink-0 items-center gap-2">
+            <span className="truncate text-[0.65rem] text-foreground/35">{dateStr}</span>
             {/* discreet, on-brand share affordance — builds the "my catch" card */}
             <button
               type="button"
@@ -738,7 +743,7 @@ function CatchCard({
               disabled={sharing}
               aria-label={t("spearo.share")}
               title={t("spearo.share")}
-              className="flex size-7 items-center justify-center rounded-full transition-colors hover:brightness-110 disabled:opacity-60"
+              className="flex size-8 shrink-0 items-center justify-center rounded-full transition-colors hover:brightness-110 disabled:opacity-60"
               style={{
                 background: "rgba(29,158,117,0.12)",
                 border: "1px solid rgba(93,202,165,0.25)",
@@ -746,9 +751,9 @@ function CatchCard({
               }}
             >
               {sharing ? (
-                <Loader2 className="size-3.5 animate-spin" />
+                <Loader2 className="size-4 animate-spin" />
               ) : (
-                <Share2 className="size-3.5" />
+                <Share2 className="size-4" />
               )}
             </button>
           </div>

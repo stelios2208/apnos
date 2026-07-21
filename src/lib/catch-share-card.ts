@@ -152,6 +152,10 @@ export function buildCatchShareSvg(c: SpearoCatch, lang: "el" | "en", photoHref?
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
   <defs>
+    <linearGradient id="csc-base" x1="0" y1="0" x2="0.3" y2="1">
+      <stop offset="0" stop-color="#0d2438"/>
+      <stop offset="1" stop-color="#050a10"/>
+    </linearGradient>
     <linearGradient id="csc-bg" x1="0" y1="0" x2="0.3" y2="1">
       <stop offset="0" stop-color="#1a3a5c"/>
       <stop offset="0.45" stop-color="#10293f"/>
@@ -177,6 +181,13 @@ export function buildCatchShareSvg(c: SpearoCatch, lang: "el" | "en", photoHref?
       <stop offset="0" stop-color="#7BD9B8"/><stop offset="1" stop-color="#1D9E75"/>
     </radialGradient>
   </defs>
+
+  <!-- opaque base fill covering the FULL 1080×1350 canvas. This guarantees no
+       white/transparent gap at any edge (fixes the bottom white strip) for BOTH
+       variants: it sits behind the photo (in case slice-cropping leaves a sub-
+       pixel sliver) and behind the fallback gradient. Must be the first painted
+       element and span the entire canvas. -->
+  <rect x="0" y="0" width="${W}" height="${H}" fill="url(#csc-base)"/>
 
   <!-- hero background -->
   ${hero}
@@ -211,14 +222,29 @@ export function buildCatchShareSvg(c: SpearoCatch, lang: "el" | "en", photoHref?
  * NOT tainted and PNG export later works. Downscaled to a bounded width to keep
  * the embedded data URL reasonable while staying crisp on the hero.
  *
- * Returns `null` on any failure (missing/blocked/CORS-tainted) so the caller
- * falls back to the branded no-photo card instead of throwing. SSR-guarded:
- * returns `null` when `document`/`Image` are unavailable.
+ * Returns `null` on any failure (missing/blocked/CORS-tainted/timeout) so the
+ * caller falls back to the branded no-photo card instead of throwing. It ALWAYS
+ * settles — a bounded timeout guarantees the promise never hangs if the image
+ * load stalls on device (a stalled load would otherwise leave the share button
+ * spinning forever with no share, download, or error). SSR-guarded: returns
+ * `null` when `document`/`Image` are unavailable.
  */
 export async function loadCatchPhotoDataUrl(url: string): Promise<string | null> {
   if (typeof document === "undefined" || typeof Image === "undefined") return null;
 
   return new Promise((resolve) => {
+    let settled = false;
+    const finish = (result: string | null) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve(result);
+    };
+
+    // Never hang: if the load neither succeeds nor errors within the window
+    // (slow network, stalled CORS request), give up and use the fallback card.
+    const timer = setTimeout(() => finish(null), 8000);
+
     const img = new Image();
     img.crossOrigin = "anonymous";
     img.onload = () => {
@@ -232,18 +258,18 @@ export async function loadCatchPhotoDataUrl(url: string): Promise<string | null>
         canvas.height = h;
         const ctx = canvas.getContext("2d");
         if (!ctx) {
-          resolve(null);
+          finish(null);
           return;
         }
         ctx.drawImage(img, 0, 0, w, h);
         // toDataURL throws (SecurityError) if the canvas was tainted — treated
         // as a failure so we degrade to the branded fallback.
-        resolve(canvas.toDataURL("image/jpeg", 0.9));
+        finish(canvas.toDataURL("image/jpeg", 0.9));
       } catch {
-        resolve(null);
+        finish(null);
       }
     };
-    img.onerror = () => resolve(null);
+    img.onerror = () => finish(null);
     img.src = url;
   });
 }
@@ -251,17 +277,26 @@ export async function loadCatchPhotoDataUrl(url: string): Promise<string | null>
 /**
  * Generate the catch card and share/download it, composing the pieces:
  * load photo (if any) → build SVG → reuse `svgToPngBlob` → reuse
- * `shareOrDownload` (native share sheet on mobile, download on desktop).
+ * `shareOrDownload`.
+ *
+ * `shareOrDownload` (share-card.ts) is the robust, never-silent handoff we want:
+ * it wraps the PNG as a File, feature-detects `navigator.canShare({ files })`,
+ * calls `navigator.share({ files, … })` when supported (quietly ignoring the
+ * user's AbortError cancel), and on ANY other failure OR when share is
+ * unsupported it FALLS BACK to downloading the PNG. So tapping share always does
+ * something visible on every device.
  *
  * Never includes any location data (see the privacy note at the top). Throws
- * only if rasterisation itself fails, so the caller can show a friendly toast.
+ * only if photo rasterisation itself fails (`svgToPngBlob`), so the caller shows
+ * a friendly toast + logs the reason. `loadCatchPhotoDataUrl` never throws (it
+ * degrades to the branded fallback), so a bad photo can't break the share.
  */
 export async function shareCatchCard(
   c: SpearoCatch,
   lang: "el" | "en",
 ): Promise<"shared" | "downloaded"> {
-  // Only attempt a photo when one exists; a failed/blocked load returns null
-  // and we render the branded fallback instead.
+  // Only attempt a photo when one exists; a failed/blocked/slow load returns
+  // null and we render the branded fallback instead (never blocks the share).
   const photoHref = c.photo_url ? await loadCatchPhotoDataUrl(c.photo_url) : null;
   const svg = buildCatchShareSvg(c, lang, photoHref ?? undefined);
   const png = await svgToPngBlob(svg);
