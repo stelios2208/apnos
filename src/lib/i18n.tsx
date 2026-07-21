@@ -265,6 +265,10 @@ const en: Dict = {
   "spearo.deleteDesc": "This permanently removes the catch and its photo. This can't be undone.",
   "spearo.deleted": "Catch deleted",
   "spearo.deleteError": "Could not delete catch",
+  // share-to-feed — per-catch opt-in (default OFF); the feed payload never
+  // carries the spot or notes (see the feed_catches view)
+  "spearo.shareToFeed": "Share with the community",
+  "spearo.shareToFeedHint": "No location — your spot stays yours.",
 };
 
 const el: Dict = {
@@ -514,6 +518,10 @@ const el: Dict = {
   "spearo.deleteDesc": "Διαγράφει οριστικά το αλίευμα και τη φωτογραφία του. Δεν αναιρείται.",
   "spearo.deleted": "Το αλίευμα διαγράφηκε",
   "spearo.deleteError": "Αδυναμία διαγραφής αλιεύματος",
+  // κοινοποίηση στο feed — opt-in ανά αλίευμα (default OFF)· το payload του feed
+  // δεν περιέχει ποτέ το spot ή τις σημειώσεις (βλ. feed_catches view)
+  "spearo.shareToFeed": "Κοινοποίηση στην κοινότητα",
+  "spearo.shareToFeedHint": "Χωρίς τοποθεσία — το spot μένει δικό σου.",
 };
 
 const DICTS: Record<Lang, Dict> = { el, en };

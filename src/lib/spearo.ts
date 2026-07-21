@@ -176,6 +176,14 @@ export interface SpearoCatch {
   is_personal_best?: boolean; // computed client-side later, mirroring dives
 
   /**
+   * Per-catch community opt-in, default OFF (false/undefined = private).
+   *
+   * When true the catch appears in the community feed — but ONLY through the
+   * sanitized `feed_catches` view, which never exposes `spot` or `notes`.
+   */
+  shared_to_feed?: boolean;
+
+  /**
    * Catch location.
    *
    * PRIVATE / OWNER-ONLY. Spot coordinates must NEVER be exposed to other

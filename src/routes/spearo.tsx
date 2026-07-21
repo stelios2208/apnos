@@ -16,6 +16,7 @@ import {
   Pencil,
   Trash2,
   Trophy,
+  Users,
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -148,6 +149,12 @@ function Spearo() {
   const [spotCapturing, setSpotCapturing] = useState(false);
   const [spotError, setSpotError] = useState<string | null>(null);
 
+  // ── share-to-feed state ───────────────────────────────────────────────────
+  // Per-catch community opt-in — DEFAULT OFF, always. The feed only ever sees
+  // the sanitized feed_catches view (no spot, no notes), so this toggle can
+  // never leak location; still, sharing stays a deliberate per-catch choice.
+  const [sharedToFeed, setSharedToFeed] = useState(false);
+
   // Forget the captured spot, its name, and any error message.
   const clearSpot = () => {
     setSpot(null);
@@ -274,6 +281,9 @@ function Spearo() {
       setSpotName("");
     }
     setSpotError(null);
+    // Share-to-feed: reflect the catch's current opt-in (missing column /
+    // legacy rows read as false = private, the safe default).
+    setSharedToFeed(editing.shared_to_feed ?? false);
   }, [editing]);
 
   const resetForm = () => {
@@ -287,6 +297,7 @@ function Spearo() {
     setNotes("");
     clearPhoto();
     clearSpot();
+    setSharedToFeed(false);
   };
 
   const mutation = useMutation({
@@ -390,6 +401,9 @@ function Spearo() {
         spot: spot
           ? { lat: spot.lat, lng: spot.lng, ...(spotName.trim() ? { name: spotName.trim() } : {}) }
           : null,
+        // per-catch community opt-in; written with the same PGRST204
+        // drop-and-retry as every column (see spearo-catches.ts)
+        shared_to_feed: sharedToFeed,
       } as unknown as Partial<NewSpearoCatchInput>;
       updateMutation.mutate({ id: editingId, patch });
       return;
@@ -422,6 +436,10 @@ function Spearo() {
             },
           }
         : {}),
+      // Community opt-in — only sent when the owner actively turned it ON
+      // (omitting keeps the column's safe default of false, and the write
+      // degrades gracefully if the column doesn't exist yet).
+      ...(sharedToFeed ? { shared_to_feed: true } : {}),
     };
 
     mutation.mutate(input);
@@ -761,6 +779,55 @@ function Spearo() {
               </>
             )}
           </div>
+
+          {/* share-to-feed — per-catch community opt-in, DEFAULT OFF. The feed
+              serves the sanitized feed_catches view only, so even a shared
+              catch never exposes its spot or notes. */}
+          <button
+            type="button"
+            onClick={() => {
+              nativeVibrate(10);
+              setSharedToFeed((v) => !v);
+            }}
+            className="pressable flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-left"
+            style={{
+              background: sharedToFeed ? "rgba(29,158,117,0.08)" : "rgba(var(--ink),0.03)",
+              border: sharedToFeed
+                ? "1px solid rgba(93,202,165,0.3)"
+                : "1px solid rgba(var(--ink),0.08)",
+            }}
+          >
+            <span
+              className="flex size-9 shrink-0 items-center justify-center rounded-full"
+              style={{
+                background: sharedToFeed ? "rgba(29,158,117,0.16)" : "rgba(var(--ink),0.05)",
+              }}
+            >
+              <Users
+                className="size-4"
+                style={{ color: sharedToFeed ? GREEN_LIGHT : "rgba(var(--ink),0.4)" }}
+              />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-semibold text-foreground">
+                {t("spearo.shareToFeed")}
+              </span>
+              <span className="mt-0.5 flex items-center gap-1 text-[0.7rem] leading-snug text-foreground/40">
+                <Lock className="size-3 shrink-0" />
+                {t("spearo.shareToFeedHint")}
+              </span>
+            </span>
+            {/* switch track — same control language as the profile toggle */}
+            <span
+              className="relative h-6 w-11 shrink-0 rounded-full transition-colors"
+              style={{ background: sharedToFeed ? GREEN : "rgba(var(--ink),0.12)" }}
+            >
+              <span
+                className="absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all"
+                style={{ left: sharedToFeed ? 22 : 2 }}
+              />
+            </span>
+          </button>
         </div>
 
         <div className="space-y-3">
