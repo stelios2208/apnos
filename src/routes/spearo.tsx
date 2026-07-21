@@ -12,6 +12,7 @@ import {
   Loader2,
   MapPin,
   Lock,
+  Share2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -35,6 +36,7 @@ import {
 } from "@/lib/spearo-catches";
 import { uploadCatchPhoto } from "@/lib/spearo-photos";
 import { getCurrentSpot, mapsLink, SpotError } from "@/lib/spot";
+import { shareCatchCard } from "@/lib/catch-share-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -435,13 +437,15 @@ function Spearo() {
               language. The <input> is hidden; the tile below triggers it. */}
           <div className="space-y-1.5">
             <Label>{t("spearo.photo")}</Label>
-            {/* accept only images; `capture` hints mobile browsers toward the
-                camera for a native "snap the catch" feel. */}
+            {/* accept only images; deliberately NO `capture` attribute so the OS
+                shows its normal picker sheet (Camera + Gallery/Files). Spearos
+                usually shoot the fish on the boat and log later, so choosing an
+                existing photo from the gallery must be possible — forcing the
+                camera would block that. */}
             <input
               ref={fileInputRef}
               type="file"
               accept="image/*"
-              capture="environment"
               className="hidden"
               onChange={handlePhotoSelect}
             />
@@ -676,6 +680,27 @@ function CatchCard({
 
   const dateStr = format(new Date(c.caught_at), "d MMM yyyy · HH:mm");
 
+  // ── share ("my catch" card) ─────────────────────────────────────────────────
+  // Generates a branded, Instagram-ready image for THIS catch and hands it to
+  // the native share sheet (mobile) or a download (desktop) via the reused
+  // SVG→PNG pipeline. The card is a PUBLIC artifact and carries NO location data
+  // (see catch-share-card.ts). `sharing` drives the subtle generating state.
+  const [sharing, setSharing] = useState(false);
+  const handleShare = async () => {
+    setSharing(true);
+    try {
+      const res = await shareCatchCard(c, lang);
+      // Only the download path needs a confirmation; the native share sheet is
+      // its own feedback.
+      if (res === "downloaded") toast.success(t("spearo.shareSaved"));
+    } catch (err) {
+      console.error(err);
+      toast.error(t("spearo.shareError"));
+    } finally {
+      setSharing(false);
+    }
+  };
+
   // Measurement chips — only rendered when the value is present.
   const chips: { icon: typeof Ruler; value: string }[] = [];
   if (c.size_cm != null) chips.push({ icon: Ruler, value: formatCatchSize(c.size_cm) });
@@ -706,7 +731,32 @@ function CatchCard({
               🏆 {t("spearo.pb")}
             </span>
           )}
-          <span className="ml-auto text-[0.65rem] text-foreground/35">{dateStr}</span>
+          {/* right group is shrink-0 so the share button is ALWAYS rendered and
+              tappable — it can never be pushed off-edge or overlapped by a long
+              date (the date truncates instead). */}
+          <div className="ml-auto flex shrink-0 items-center gap-2">
+            <span className="truncate text-[0.65rem] text-foreground/35">{dateStr}</span>
+            {/* discreet, on-brand share affordance — builds the "my catch" card */}
+            <button
+              type="button"
+              onClick={handleShare}
+              disabled={sharing}
+              aria-label={t("spearo.share")}
+              title={t("spearo.share")}
+              className="flex size-8 shrink-0 items-center justify-center rounded-full transition-colors hover:brightness-110 disabled:opacity-60"
+              style={{
+                background: "rgba(29,158,117,0.12)",
+                border: "1px solid rgba(93,202,165,0.25)",
+                color: GREEN_LIGHT,
+              }}
+            >
+              {sharing ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Share2 className="size-4" />
+              )}
+            </button>
+          </div>
         </div>
 
         {/* species name — display font, capitalized */}

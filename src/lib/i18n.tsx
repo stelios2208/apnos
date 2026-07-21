@@ -243,6 +243,10 @@ const en: Dict = {
   "spearo.spotUnavailable": "Couldn't get your location — try again.",
   "spearo.spotUnsupported": "Location isn't available on this device.",
   "spearo.spotOpenMaps": "Open private spot in maps",
+  // share ("my catch" card) — public artifact, never contains location
+  "spearo.share": "Share catch",
+  "spearo.shareSaved": "Image saved",
+  "spearo.shareError": "Could not create image",
 };
 
 const el: Dict = {
@@ -470,6 +474,10 @@ const el: Dict = {
   "spearo.spotUnavailable": "Αδυναμία λήψης τοποθεσίας — δοκίμασε ξανά.",
   "spearo.spotUnsupported": "Η τοποθεσία δεν είναι διαθέσιμη σε αυτή τη συσκευή.",
   "spearo.spotOpenMaps": "Άνοιγμα ιδιωτικού σημείου στους χάρτες",
+  // share (κάρτα «το αλίευμά μου») — δημόσιο, δεν περιέχει ποτέ τοποθεσία
+  "spearo.share": "Κοινοποίηση αλιεύματος",
+  "spearo.shareSaved": "Η εικόνα αποθηκεύτηκε",
+  "spearo.shareError": "Σφάλμα δημιουργίας εικόνας",
 };
 
 const DICTS: Record<Lang, Dict> = { el, en };
