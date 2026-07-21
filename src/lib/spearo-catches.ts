@@ -170,3 +170,72 @@ export function personalBestsSpearo(catches: SpearoCatch[]): Record<string, Spea
   }
   return best;
 }
+
+/**
+ * One personal-best row per species, ready for a "records" list.
+ *
+ * `species` is the grouping key — a `species_code` (resolve display names via
+ * `speciesLabel()`), or the raw `species_custom` text when the catch isn't in
+ * the reference set (`isCustomSpecies` tells the two apart).
+ */
+export interface SpeciesPersonalBest {
+  species: string;
+  isCustomSpecies: boolean;
+  weight?: number; // kg — undefined when the record catch has no weight
+  size?: number; // cm — undefined when the record catch has no size
+  date: string; // ISO `caught_at` of the record catch
+  photoUrl?: string;
+  /** The full record catch, for anything the summary fields don't cover. */
+  record: SpearoCatch;
+}
+
+/**
+ * Weight-first personal bests per species — the "records" view's counterpart
+ * to `personalBestsSpearo()` (which is size-first for the dashboard). Pure:
+ * no DB call; feed it the already-fetched `["spearo-catches", userId]` data.
+ *
+ * Grouping matches `personalBestsSpearo`: by `species_code`, falling back to
+ * `species_custom`; catches with neither are skipped. Within a species, the
+ * record is the catch with the largest `weight_kg`; if NO catch of that
+ * species has a weight, it falls back to the largest `size_cm`. Species where
+ * every catch lacks both measurements are dropped rather than shown empty.
+ *
+ * Returned sorted by weight desc (weightless fallback rows last, by size
+ * desc), so the heaviest record leads the list.
+ */
+export function personalBestsBySpecies(catches: SpearoCatch[]): SpeciesPersonalBest[] {
+  // Pick each species' record: any weighted catch beats every weightless one;
+  // among weighted catches the heavier wins; among weightless, the longer wins.
+  const best: Record<string, SpearoCatch> = {};
+  for (const c of catches) {
+    const key = c.species_code ?? c.species_custom;
+    if (!key) continue;
+    if (c.weight_kg == null && c.size_cm == null) continue; // nothing to rank by
+    const current = best[key];
+    if (!current) {
+      best[key] = c;
+      continue;
+    }
+    let better: boolean;
+    if (c.weight_kg != null || current.weight_kg != null) {
+      better = (c.weight_kg ?? 0) > (current.weight_kg ?? 0);
+    } else {
+      better = (c.size_cm ?? 0) > (current.size_cm ?? 0);
+    }
+    if (better) best[key] = c;
+  }
+
+  return Object.entries(best)
+    .map(
+      ([species, record]): SpeciesPersonalBest => ({
+        species,
+        isCustomSpecies: record.species_code == null,
+        weight: record.weight_kg,
+        size: record.size_cm,
+        date: record.caught_at,
+        photoUrl: record.photo_url,
+        record,
+      }),
+    )
+    .sort((a, b) => (b.weight ?? 0) - (a.weight ?? 0) || (b.size ?? 0) - (a.size ?? 0));
+}

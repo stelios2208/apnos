@@ -16,11 +16,15 @@ import {
   Check,
   Ban,
   CalendarPlus,
+  Fish,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AppLayout } from "@/components/AppLayout";
 import { useAuth } from "@/hooks/use-auth";
+import { useMode } from "@/hooks/use-mode";
 import { useI18n } from "@/lib/i18n";
+import { listCatches, personalBestsBySpecies } from "@/lib/spearo-catches";
+import { speciesLabel, formatCatchSize, formatCatchWeight } from "@/lib/spearo";
 import {
   DISCIPLINES,
   FEDERATIONS,
@@ -55,10 +59,115 @@ export const Route = createFileRoute("/performances")({
   head: () => ({ meta: [{ title: "Επιδόσεις & Verified — Apnos" }] }),
   component: () => (
     <AppLayout>
-      <PerformancesPage />
+      <RecordsPage />
     </AppLayout>
   ),
 });
+
+// ── mode branch ──────────────────────────────────────────────────────────────
+// In Spearo mode this route shows PRIVATE personal bests per species instead of
+// the freediving verified-performances flow. There is deliberately no spearo
+// leaderboard: catches carry secret spot data and there is no verification
+// authority for recreational spearfishing, so records stay owner-only. The
+// Apnos path (<PerformancesPage />) is untouched.
+function RecordsPage() {
+  const { mode } = useMode();
+  return mode === "spearo" ? <SpearoRecordsPage /> : <PerformancesPage />;
+}
+
+// ── Spearo records (private PBs per species) ────────────────────────────────
+
+function SpearoRecordsPage() {
+  const { user } = useAuth();
+  const { lang } = useI18n();
+  const el = lang === "el";
+
+  // Same query key + fn as the spearo dashboard (src/routes/spearo.tsx), so
+  // React Query shares one cache entry — no separate data path or refetch.
+  const { data: catches = [], isLoading } = useQuery({
+    queryKey: ["spearo-catches", user?.id],
+    queryFn: () => listCatches(user!.id),
+    enabled: !!user,
+  });
+
+  const records = personalBestsBySpecies(catches);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <Trophy className="size-6" style={{ color: "#EF9F27" }} />
+        <h1 className="text-2xl font-bold">{el ? "Τα ρεκόρ μου" : "My records"}</h1>
+      </div>
+      <p className="text-xs text-foreground/35">
+        {el
+          ? "Η καλύτερη ψαριά σου ανά είδος — ιδιωτικά, μόνο για σένα."
+          : "Your best catch per species — private, just for you."}
+      </p>
+
+      {isLoading ? (
+        <Spinner />
+      ) : records.length === 0 ? (
+        <Empty
+          text={
+            el
+              ? "Ακόμα κανένα ρεκόρ — λόγκαρε την πρώτη σου ψαριά."
+              : "No records yet — log your first catch."
+          }
+        />
+      ) : (
+        <div className="space-y-2">
+          {records.map((r, i) => {
+            // Weightless fallback records lead with size instead; when both
+            // measurements exist the size rides along next to the weight.
+            const primary =
+              r.weight != null ? formatCatchWeight(r.weight) : formatCatchSize(r.size);
+            const secondary = r.weight != null && r.size != null ? formatCatchSize(r.size) : null;
+            return (
+              <div
+                key={r.species}
+                className="flex items-center gap-3 rounded-xl px-4 py-3"
+                style={{
+                  background: "var(--card)",
+                  border: "1px solid rgba(var(--ink),0.05)",
+                  borderLeft: `3px solid ${i === 0 ? "#EF9F27" : "rgba(var(--ink),0.1)"}`,
+                }}
+              >
+                {r.photoUrl ? (
+                  <img
+                    src={r.photoUrl}
+                    alt=""
+                    className="h-10 w-10 shrink-0 rounded-lg object-cover"
+                  />
+                ) : (
+                  <span
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg"
+                    style={{ background: "rgba(29,158,117,0.12)" }}
+                  >
+                    <Fish className="size-5" style={{ color: "#5DCAA5" }} />
+                  </span>
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold capitalize text-foreground">
+                    {r.isCustomSpecies ? r.species : speciesLabel(r.species, el ? "el" : "en")}
+                  </p>
+                  <p className="mt-0.5 text-[0.65rem] text-foreground/40">
+                    {new Date(r.date).toLocaleDateString()}
+                  </p>
+                </div>
+                <div className="shrink-0 text-right">
+                  <p className="font-mono text-base font-bold text-foreground">{primary}</p>
+                  {secondary && (
+                    <p className="font-mono text-[0.65rem] text-foreground/45">{secondary}</p>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
 type Tab = "leaderboard" | "mine" | "verify" | "events";
 
