@@ -41,6 +41,13 @@ import {
   type NewSpearoCatchInput,
 } from "@/lib/spearo-catches";
 import { uploadCatchPhoto, deleteCatchPhoto } from "@/lib/spearo-photos";
+import {
+  listPublicProfiles,
+  listFeedCatches,
+  type SocialProfile,
+  type FeedCatch,
+} from "@/lib/profiles";
+import { athleteInitials, athleteColor } from "@/lib/athletes";
 import { getCurrentSpot, mapsLink, SpotError } from "@/lib/spot";
 import { nativeVibrate } from "@/lib/native";
 import { shareCatchCard } from "@/lib/catch-share-card";
@@ -68,19 +75,30 @@ import {
 } from "@/components/ui/alert-dialog";
 
 // ── Route ──────────────────────────────────────────────────────────────────────
-// The first user-facing Apnos Spearo screen: log a spearfishing catch and see the
-// catch list. Wrapped in <AppLayout> like every other route so it inherits the
-// app chrome + the auth gate (AppLayout redirects to /auth when signed out — we
-// deliberately do NOT invent a separate auth pattern here). Not yet linked from
-// the global nav; reachable by URL only until the screen is approved.
+// The Spearo home. Two views on one route, switched by the `log` search param:
+//   /spearo           → the COMMUNITY FEED (public profiles row + shared catches)
+//   /spearo?log=true  → the catch log (form + own catch list) — what the bottom
+//                       nav "+" opens.
+// Wrapped in <AppLayout> like every other route so it inherits the app chrome +
+// the auth gate (AppLayout redirects to /auth when signed out) — the feed is
+// therefore authenticated-only, matching the REVOKE-from-anon on feed_catches.
 export const Route = createFileRoute("/spearo")({
-  head: () => ({ meta: [{ title: "Catch log — Apnos Spearo" }] }),
+  validateSearch: (search: Record<string, unknown>): { log?: boolean } => ({
+    log: search.log === true || search.log === "true" ? true : undefined,
+  }),
+  head: () => ({ meta: [{ title: "Apnos Spearo" }] }),
   component: () => (
     <AppLayout>
       <Spearo />
     </AppLayout>
   ),
 });
+
+// Dispatcher: the community feed is the home; the log view opens via the "+".
+function Spearo() {
+  const { log } = Route.useSearch();
+  return log ? <SpearoLog /> : <SpearoFeed />;
+}
 
 // Sentinel value for the "Other…" option in the species <Select> — kept distinct
 // from any real species slug so it can never collide with MED_SPECIES codes.
@@ -103,7 +121,7 @@ const UNDERWATER_GRADIENT =
 // Gold medal chip surface, identical to the records page PB medal.
 const MEDAL_GOLD = "linear-gradient(135deg, #F7CE73 0%, #EF9F27 55%, #C97F16 100%)";
 
-function Spearo() {
+function SpearoLog() {
   const { user } = useAuth();
   const { t, lang } = useI18n();
   const queryClient = useQueryClient();
@@ -1167,6 +1185,237 @@ function CatchCard({
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
+        </div>
+      </div>
+    </li>
+  );
+}
+
+// ── community feed (the Spearo home) ─────────────────────────────────────────
+// Public profiles row + the shared-catch feed. Reads ONLY the social surfaces:
+// `profiles` (opt-in public rows) and the sanitized `feed_catches` view — by
+// construction there is no spot and no notes in anything rendered here. The
+// author identity is stitched CLIENT-SIDE from the profiles list (two queries +
+// a map), deliberately not a PostgREST embed on the view.
+function SpearoFeed() {
+  const { user } = useAuth();
+  const { t, lang } = useI18n();
+
+  const { data: profiles = [], isLoading: profilesLoading } = useQuery({
+    queryKey: ["public-profiles"],
+    queryFn: () => listPublicProfiles(50),
+    enabled: !!user,
+  });
+
+  const { data: feed = [], isLoading: feedLoading } = useQuery({
+    queryKey: ["feed-catches"],
+    queryFn: () => listFeedCatches({ limit: 30 }),
+    enabled: !!user,
+  });
+
+  // client-side stitch: author profile by user_id (sharers without a public
+  // profile fall back to a neutral identity in <FeedCard>)
+  const profileByUser = useMemo(() => new Map(profiles.map((p) => [p.user_id, p])), [profiles]);
+
+  const isLoading = profilesLoading || feedLoading;
+
+  return (
+    <div className="space-y-6 pb-24">
+      {/* ── hero header — same underwater treatment as the log view ── */}
+      <div
+        className="relative overflow-hidden rounded-2xl p-6"
+        style={{
+          background: "linear-gradient(160deg, #0d4a63 0%, #072a42 55%, #041a2e 100%)",
+          border: "1px solid rgba(93,202,165,0.18)",
+          boxShadow: "0 8px 32px rgba(4,26,46,0.45)",
+        }}
+      >
+        <Bubbles />
+        <div className="relative z-10">
+          <span
+            className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[0.6rem] font-bold tracking-[0.18em]"
+            style={{ background: "rgba(93,202,165,0.15)", color: GREEN_LIGHT }}
+          >
+            <Users className="size-3" />
+            {t("spearo.badge")}
+          </span>
+          <h1
+            className="mt-3 text-2xl font-bold text-white"
+            style={{ fontFamily: "'Outfit', sans-serif" }}
+          >
+            {t("spearo.feedTitle")}
+          </h1>
+          <p className="mt-1 max-w-sm text-sm text-white/55">{t("spearo.feedSub")}</p>
+        </div>
+      </div>
+
+      {/* ── public athletes row — horizontal scroll of opted-in profiles ── */}
+      {profiles.length > 0 && (
+        <div className="-mx-4 flex gap-4 overflow-x-auto px-4 pb-1">
+          {profiles.map((p) => (
+            <AvatarBubble key={p.user_id} profile={p} fallbackName={t("spearo.feedAthlete")} />
+          ))}
+        </div>
+      )}
+
+      {/* ── shared-catch feed ── */}
+      {isLoading ? (
+        <div className="flex min-h-[30vh] items-center justify-center">
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+        </div>
+      ) : feed.length === 0 ? (
+        // community empty state — same underwater language as the log's
+        <div
+          className="surface-2 relative overflow-hidden rounded-2xl p-10 text-center"
+          style={{ background: UNDERWATER_GRADIENT }}
+        >
+          <Bubbles />
+          <div className="relative z-10 flex flex-col items-center">
+            <div
+              className="surface-1 flex size-16 items-center justify-center rounded-full"
+              style={{ background: "rgba(29,158,117,0.18)" }}
+            >
+              <Users className="size-8" style={{ color: GREEN_LIGHT }} />
+            </div>
+            <p className="mt-4 max-w-xs font-semibold text-white">{t("spearo.feedEmpty")}</p>
+          </div>
+        </div>
+      ) : (
+        <ul className="space-y-3">
+          {feed.map((c) => (
+            <FeedCard
+              key={c.id}
+              catch={c}
+              author={profileByUser.get(c.user_id)}
+              fallbackName={t("spearo.feedAthlete")}
+              lang={lang}
+            />
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+// One public athlete in the horizontal row. (Tapping through to the public
+// athlete page arrives together with the /athlete/$id route.)
+function AvatarBubble({
+  profile: p,
+  fallbackName,
+}: {
+  profile: SocialProfile;
+  fallbackName: string;
+}) {
+  const name = p.display_name || fallbackName;
+  const color = athleteColor(p.user_id);
+  return (
+    <div className="flex w-16 shrink-0 flex-col items-center gap-1.5">
+      {p.avatar_url ? (
+        <img
+          src={p.avatar_url}
+          alt={name}
+          className="size-14 rounded-full object-cover"
+          style={{ border: `2px solid ${color}55` }}
+        />
+      ) : (
+        <span
+          className="flex size-14 items-center justify-center rounded-full text-sm font-bold"
+          style={{ background: `${color}22`, color, border: `2px solid ${color}55` }}
+        >
+          {athleteInitials(name)}
+        </span>
+      )}
+      <span className="w-full truncate text-center text-[0.65rem] font-medium text-foreground/60">
+        {name.split(" ")[0]}
+      </span>
+    </div>
+  );
+}
+
+// One shared catch in the community feed — the photo-card treatment of the
+// records Trophy Wall / catch gallery: full-bleed photo (or underwater
+// gradient), dark readability overlay, species in the current language, the
+// weight BIG, and the author identity + date below. Renders ONLY sanitized
+// feed_catches columns — there is no spot/notes in the payload at all.
+function FeedCard({
+  catch: c,
+  author,
+  fallbackName,
+  lang,
+}: {
+  catch: FeedCatch;
+  author?: SocialProfile;
+  fallbackName: string;
+  lang: "el" | "en";
+}) {
+  const species = c.species_code ? speciesLabel(c.species_code, lang) : (c.species_custom ?? "—");
+  const primary =
+    c.weight_kg != null
+      ? formatCatchWeight(c.weight_kg)
+      : c.size_cm != null
+        ? formatCatchSize(c.size_cm)
+        : null;
+  const secondary = c.weight_kg != null && c.size_cm != null ? formatCatchSize(c.size_cm) : null;
+  const name = author?.display_name || fallbackName;
+  const color = athleteColor(c.user_id);
+  const dateStr = format(new Date(c.caught_at ?? c.created_at), "d MMM yyyy");
+
+  return (
+    <li className="surface-2 relative overflow-hidden rounded-2xl">
+      {c.photo_url ? (
+        <img
+          src={c.photo_url}
+          alt={species}
+          loading="lazy"
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+      ) : (
+        <div className="absolute inset-0" style={{ background: UNDERWATER_GRADIENT }} />
+      )}
+      <div
+        className="absolute inset-0"
+        style={{
+          background:
+            "linear-gradient(180deg, rgba(2,10,19,0.3) 0%, rgba(2,10,19,0.12) 35%, rgba(2,10,19,0.6) 65%, rgba(2,10,19,0.9) 100%)",
+        }}
+      />
+
+      <div className="relative flex min-h-[13rem] flex-col justify-end p-4">
+        <p className="text-sm font-semibold capitalize text-white/85">{species}</p>
+        {primary && (
+          <p
+            className="mt-0.5 text-4xl font-black tabular-nums text-white"
+            style={{
+              fontFamily: "'Outfit', sans-serif",
+              textShadow: "0 2px 12px rgba(2,10,19,0.6)",
+            }}
+          >
+            {primary}
+          </p>
+        )}
+
+        {/* author + date row */}
+        <div className="mt-3 flex items-center gap-2">
+          {author?.avatar_url ? (
+            <img
+              src={author.avatar_url}
+              alt=""
+              className="size-7 shrink-0 rounded-full object-cover"
+              style={{ border: `1px solid ${color}66` }}
+            />
+          ) : (
+            <span
+              className="flex size-7 shrink-0 items-center justify-center rounded-full text-[0.6rem] font-bold"
+              style={{ background: `${color}33`, color: "#fff", border: `1px solid ${color}66` }}
+            >
+              {athleteInitials(name)}
+            </span>
+          )}
+          <span className="min-w-0 truncate text-xs font-semibold text-white/85">{name}</span>
+          <span className="ml-auto shrink-0 text-[0.65rem] text-white/50">
+            {secondary && <span className="tabular-nums">{secondary} · </span>}
+            {dateStr}
+          </span>
         </div>
       </div>
     </li>

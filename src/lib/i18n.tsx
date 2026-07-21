@@ -269,6 +269,11 @@ const en: Dict = {
   // carries the spot or notes (see the feed_catches view)
   "spearo.shareToFeed": "Share with the community",
   "spearo.shareToFeedHint": "No location — your spot stays yours.",
+  // community feed (Spearo home) — sanitized shared catches, never spots
+  "spearo.feedTitle": "Community",
+  "spearo.feedSub": "What the crew is sharing — never the spots.",
+  "spearo.feedEmpty": "The community starts here — share your first catch.",
+  "spearo.feedAthlete": "Athlete",
 };
 
 const el: Dict = {
@@ -522,6 +527,11 @@ const el: Dict = {
   // δεν περιέχει ποτέ το spot ή τις σημειώσεις (βλ. feed_catches view)
   "spearo.shareToFeed": "Κοινοποίηση στην κοινότητα",
   "spearo.shareToFeedHint": "Χωρίς τοποθεσία — το spot μένει δικό σου.",
+  // feed κοινότητας (αρχική Spearo) — μόνο εξυγιασμένες κοινοποιήσεις, ποτέ spots
+  "spearo.feedTitle": "Κοινότητα",
+  "spearo.feedSub": "Ό,τι μοιράζεται η παρέα — ποτέ τα spots.",
+  "spearo.feedEmpty": "Η κοινότητα ξεκινάει εδώ — μοιράσου την πρώτη σου ψαριά.",
+  "spearo.feedAthlete": "Αθλητής",
 };
 
 const DICTS: Record<Lang, Dict> = { el, en };
