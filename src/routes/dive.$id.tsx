@@ -1,12 +1,21 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ChevronLeft, ChevronRight, Pencil, Share2, Trash2 } from "lucide-react";
+import {
+  ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
+  Lock,
+  Pencil,
+  Share2,
+  Trash2,
+  Users,
+} from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { AppLayout } from "@/components/AppLayout";
 import { useAuth } from "@/hooks/use-auth";
-import { deleteDive, fetchDives } from "@/lib/dives";
+import { deleteDive, fetchDives, setDiveShared } from "@/lib/dives";
 import { disciplineName, formatResult } from "@/lib/diving";
 import { fetchProfile } from "@/lib/profile";
 import { useI18n } from "@/lib/i18n";
@@ -260,10 +269,24 @@ function DiveDetail() {
     mutationFn: () => deleteDive(id, user!.id, dive!.discipline),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["dives", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["feed-dives"] });
       toast.success(lang === "el" ? "Η βουτιά διαγράφηκε" : "Dive deleted");
       navigate({ to: "/history" });
     },
     onError: () => toast.error(lang === "el" ? "Σφάλμα διαγραφής" : "Could not delete"),
+  });
+
+  // Community opt-in toggle — flips ONLY shared_to_feed on this dive (RLS
+  // enforces ownership). The feed reads the sanitized feed_dives view, so a
+  // shared dive exposes result data only, never notes/wellness/gear.
+  const shareToFeed = useMutation({
+    mutationFn: (shared: boolean) => setDiveShared(id, shared),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["dives", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["feed-dives"] });
+    },
+    onError: (err) =>
+      toast.error(err instanceof Error ? err.message : lang === "el" ? "Σφάλμα" : "Error"),
   });
 
   if (isLoading) {
@@ -552,6 +575,51 @@ function DiveDetail() {
         ))}
 
       {/* share */}
+      {/* share-to-feed — per-dive community opt-in (default OFF), same control
+          as the log form's. Only sanitized result data can ever reach the feed. */}
+      <button
+        type="button"
+        onClick={() => shareToFeed.mutate(!(dive.shared_to_feed ?? false))}
+        disabled={shareToFeed.isPending}
+        className="pressable flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-left disabled:opacity-60"
+        style={{
+          background: dive.shared_to_feed ? "rgba(29,158,117,0.08)" : "rgba(var(--ink),0.03)",
+          border: dive.shared_to_feed
+            ? "1px solid rgba(93,202,165,0.3)"
+            : "1px solid rgba(var(--ink),0.08)",
+        }}
+      >
+        <span
+          className="flex size-9 shrink-0 items-center justify-center rounded-full"
+          style={{
+            background: dive.shared_to_feed ? "rgba(29,158,117,0.16)" : "rgba(var(--ink),0.05)",
+          }}
+        >
+          <Users
+            className="size-4"
+            style={{ color: dive.shared_to_feed ? "#5DCAA5" : "rgba(var(--ink),0.4)" }}
+          />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-semibold text-foreground">
+            {t("dive.shareToFeed")}
+          </span>
+          <span className="mt-0.5 flex items-center gap-1 text-[0.7rem] leading-snug text-foreground/40">
+            <Lock className="size-3 shrink-0" />
+            {t("dive.shareToFeedHint")}
+          </span>
+        </span>
+        <span
+          className="relative h-6 w-11 shrink-0 rounded-full transition-colors"
+          style={{ background: dive.shared_to_feed ? "#1D9E75" : "rgba(var(--ink),0.12)" }}
+        >
+          <span
+            className="absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all"
+            style={{ left: dive.shared_to_feed ? 22 : 2 }}
+          />
+        </span>
+      </button>
+
       <button
         onClick={() => setShowShare(true)}
         className="flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-bold transition-all active:scale-[0.99]"

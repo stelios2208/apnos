@@ -274,13 +274,18 @@ const en: Dict = {
   "spearo.feedSub": "What the crew is sharing — never the spots.",
   "spearo.feedEmpty": "The community starts here — share your first catch.",
   "spearo.feedAthlete": "Athlete",
+  // dive share-to-feed — per-dive opt-in (default OFF); the feed payload never
+  // carries notes, wellness, gear or conditions (see the feed_dives view)
+  "dive.shareToFeed": "Share with the community",
+  "dive.shareToFeedHint": "Only the result is shared — never notes or wellness.",
   // public athlete page (/athlete/$id) — shared between both modes
   "athlete.private": "Private profile",
   "athlete.privateSub": "This profile is private or doesn't exist.",
   "athlete.recordWall": "Record Wall",
   "athlete.recordWallSub": "Best shared catch per species.",
-  "athlete.compResults": "Competition results",
-  "athlete.compResultsSub": "Best public result per discipline.",
+  "athlete.compResults": "Freediving records",
+  "athlete.compResultsSub": "Best shared or competition result per discipline.",
+  "athlete.compBadge": "Competition",
 };
 
 const el: Dict = {
@@ -539,13 +544,18 @@ const el: Dict = {
   "spearo.feedSub": "Ό,τι μοιράζεται η παρέα — ποτέ τα spots.",
   "spearo.feedEmpty": "Η κοινότητα ξεκινάει εδώ — μοιράσου την πρώτη σου ψαριά.",
   "spearo.feedAthlete": "Αθλητής",
+  // κοινοποίηση βουτιάς στο feed — opt-in ανά κατάδυση (default OFF)· το payload
+  // του feed δεν περιέχει ποτέ σημειώσεις, wellness, εξοπλισμό ή συνθήκες
+  "dive.shareToFeed": "Κοινοποίηση στην κοινότητα",
+  "dive.shareToFeedHint": "Κοινοποιείται μόνο το αποτέλεσμα — ποτέ σημειώσεις και wellness.",
   // δημόσια σελίδα αθλητή (/athlete/$id) — κοινή και για τα δύο modes
   "athlete.private": "Ιδιωτικό προφίλ",
   "athlete.privateSub": "Αυτό το προφίλ είναι ιδιωτικό ή δεν υπάρχει.",
   "athlete.recordWall": "Τοίχος ρεκόρ",
   "athlete.recordWallSub": "Η καλύτερη κοινοποιημένη ψαριά ανά είδος.",
-  "athlete.compResults": "Αγωνιστικές επιδόσεις",
-  "athlete.compResultsSub": "Η καλύτερη δημόσια επίδοση ανά αγώνισμα.",
+  "athlete.compResults": "Ρεκόρ ελεύθερης κατάδυσης",
+  "athlete.compResultsSub": "Η καλύτερη κοινοποιημένη ή αγωνιστική επίδοση ανά αγώνισμα.",
+  "athlete.compBadge": "Αγώνας",
 };
 
 const DICTS: Record<Lang, Dict> = { el, en };

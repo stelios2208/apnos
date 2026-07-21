@@ -23,14 +23,18 @@ export interface NewDiveInput {
   foot_pocket: string | null;
   water_temp: number | null;
   conditions?: StaConditions | null;
+  /** Community opt-in (default false). See Dive.shared_to_feed. */
+  shared_to_feed?: boolean;
 }
 
-// PostgREST reports an unknown column with code PGRST204; before the
-// dives.conditions migration is applied we drop that field and retry so
-// logging never breaks.
-function isMissingConditionsColumn(err: { code?: string; message?: string } | null): boolean {
-  if (!err) return false;
-  return err.code === "PGRST204" && /conditions/i.test(err.message ?? "");
+// PostgREST reports an unknown column with code PGRST204. The deployed DB may
+// lag behind the code (conditions and shared_to_feed each shipped ahead of
+// their migrations), so writes drop the offending column and retry — the same
+// generalized pattern as spearo-catches.ts.
+function missingColumn(err: { code?: string; message?: string } | null): string | null {
+  if (!err || err.code !== "PGRST204") return null;
+  const m = /'([^']+)' column/.exec(err.message ?? "");
+  return m ? m[1] : null;
 }
 
 export async function fetchDives(userId: string): Promise<Dive[]> {
@@ -106,11 +110,13 @@ async function recomputePersonalBest(userId: string, discipline: DisciplineCode)
 }
 
 export async function createDive(userId: string, input: NewDiveInput): Promise<Dive> {
-  const payload = { ...input, user_id: userId, is_personal_best: false };
+  const payload: Record<string, unknown> = { ...input, user_id: userId, is_personal_best: false };
   let { data, error } = await supabase.from("dives").insert(payload).select("*").single();
-  if (error && isMissingConditionsColumn(error)) {
-    const { conditions: _drop, ...rest } = payload;
-    ({ data, error } = await supabase.from("dives").insert(rest).select("*").single());
+  // Drop-and-retry any column the deployed schema doesn't know yet (bounded:
+  // one column removed per attempt).
+  for (let col = missingColumn(error); error && col && col in payload; col = missingColumn(error)) {
+    delete payload[col];
+    ({ data, error } = await supabase.from("dives").insert(payload).select("*").single());
   }
   if (error) throw error;
 
@@ -127,19 +133,43 @@ export async function createDive(userId: string, input: NewDiveInput): Promise<D
 }
 
 export async function updateDive(userId: string, id: string, input: NewDiveInput): Promise<Dive> {
+  const payload: Record<string, unknown> = { ...input };
   let { data, error } = await supabase
     .from("dives")
-    .update(input)
+    .update(payload)
     .eq("id", id)
     .select("*")
     .single();
-  if (error && isMissingConditionsColumn(error)) {
-    const { conditions: _drop, ...rest } = input;
-    ({ data, error } = await supabase.from("dives").update(rest).eq("id", id).select("*").single());
+  for (let col = missingColumn(error); error && col && col in payload; col = missingColumn(error)) {
+    delete payload[col];
+    ({ data, error } = await supabase
+      .from("dives")
+      .update(payload)
+      .eq("id", id)
+      .select("*")
+      .single());
   }
   if (error) throw error;
   await recomputePersonalBest(userId, input.discipline);
   return data as Dive;
+}
+
+/**
+ * Flip a single dive's community opt-in (owner enforced by RLS) — used by the
+ * dive-detail share toggle without resending the whole record. A missing
+ * column means the migration hasn't been applied; surface that actionably.
+ */
+export async function setDiveShared(id: string, shared: boolean): Promise<void> {
+  const { error } = await supabase.from("dives").update({ shared_to_feed: shared }).eq("id", id);
+  if (error) {
+    if (missingColumn(error) === "shared_to_feed") {
+      throw new Error(
+        "dives.shared_to_feed is missing — apply " +
+          "supabase/migrations/20260721_apnos_feed.sql in the Supabase SQL editor.",
+      );
+    }
+    throw error;
+  }
 }
 
 export async function deleteDive(
