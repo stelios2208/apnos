@@ -15,6 +15,7 @@ import {
   Share2,
   Pencil,
   Trash2,
+  Trophy,
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -92,6 +93,14 @@ const nowTime = () => new Date().toTimeString().slice(0, 5);
 const GREEN = "#1D9E75";
 const GREEN_LIGHT = "#5DCAA5";
 const AMBER = "#EF9F27";
+
+// Deep-water gradient shared with the records Trophy Wall — the photo stand-in
+// and empty-state backdrop (same palette as .uw-depth, no new assets).
+const UNDERWATER_GRADIENT =
+  "linear-gradient(180deg, #0d4a63 0%, #0a3852 30%, #072a42 55%, #041a2e 80%, #02101d 100%)";
+
+// Gold medal chip surface, identical to the records page PB medal.
+const MEDAL_GOLD = "linear-gradient(135deg, #F7CE73 0%, #EF9F27 55%, #C97F16 100%)";
 
 function Spearo() {
   const { user } = useAuth();
@@ -734,7 +743,10 @@ function Spearo() {
                       {t("spearo.spotCapturing")}
                     </>
                   ) : (
-                    <>📍 {t("spearo.useLocation")}</>
+                    <>
+                      <MapPin className="size-4" />
+                      {t("spearo.useLocation")}
+                    </>
                   )}
                 </button>
 
@@ -895,12 +907,63 @@ function CatchCard({
       className="glass-card overflow-hidden rounded-2xl transition-shadow"
       style={{
         borderLeft: `3px solid ${border}`,
-        // subtle ring while this catch is the one being edited in the form above
-        boxShadow: isEditing ? "0 0 0 2px rgba(93,202,165,0.55)" : undefined,
+        // surface-2 depth; the editing ring stacks on top of it (inline style
+        // so it reliably wins over glass-card's own box-shadow)
+        boxShadow: isEditing
+          ? "0 0 0 2px rgba(93,202,165,0.55), var(--shadow-surface-2)"
+          : "var(--shadow-surface-2)",
       }}
     >
+      {/* photo header — the catch photo full-bleed under a dark readability
+          gradient (same treatment as the records Trophy Wall); catches with
+          no photo get a slim underwater-gradient band so the gallery keeps
+          one visual language. Never renders the spot; the stored image is
+          metadata-free (see spearo-photos.ts). */}
+      <div
+        className="relative w-full overflow-hidden"
+        style={{ height: c.photo_url ? "12rem" : "5rem" }}
+      >
+        {c.photo_url ? (
+          <img
+            src={c.photo_url}
+            alt={name}
+            loading="lazy"
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+        ) : (
+          <div className="absolute inset-0" style={{ background: UNDERWATER_GRADIENT }} />
+        )}
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              "linear-gradient(180deg, rgba(2,10,19,0.25) 0%, rgba(2,10,19,0.1) 40%, rgba(2,10,19,0.75) 100%)",
+          }}
+        />
+        {/* gold PB medal — same chip as the records page */}
+        {isPB && (
+          <span
+            className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[0.6rem] font-black tracking-[0.14em]"
+            style={{
+              background: MEDAL_GOLD,
+              color: "#3A2503",
+              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.5), 0 2px 10px rgba(239,159,39,0.45)",
+            }}
+          >
+            <Trophy className="size-3" /> {t("spearo.pb")}
+          </span>
+        )}
+        {/* species name — display font, overlaid on the photo */}
+        <p
+          className="absolute bottom-2.5 left-4 right-4 truncate text-xl font-bold capitalize text-white"
+          style={{ fontFamily: "'Outfit', sans-serif", textShadow: "0 2px 10px rgba(2,10,19,0.6)" }}
+        >
+          {name}
+        </p>
+      </div>
+
       <div className="space-y-3 p-4">
-        {/* top row: species pill + PB badge + date */}
+        {/* top row: species pill + date + share */}
         <div className="flex flex-wrap items-center gap-2">
           <span
             className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[0.6rem] font-bold tracking-wider"
@@ -909,14 +972,6 @@ function CatchCard({
             <Fish className="size-3" />
             {t("spearo.species").toUpperCase()}
           </span>
-          {isPB && (
-            <span
-              className="rounded-md px-1.5 py-0.5 text-[0.6rem] font-bold"
-              style={{ background: "rgba(239,159,39,0.15)", color: AMBER }}
-            >
-              🏆 {t("spearo.pb")}
-            </span>
-          )}
           {/* right group is shrink-0 so the share button is ALWAYS rendered and
               tappable — it can never be pushed off-edge or overlapped by a long
               date (the date truncates instead). */}
@@ -929,7 +984,7 @@ function CatchCard({
               disabled={sharing}
               aria-label={t("spearo.share")}
               title={t("spearo.share")}
-              className="flex size-8 shrink-0 items-center justify-center rounded-full transition-colors hover:brightness-110 disabled:opacity-60"
+              className="pressable surface-1 flex size-8 shrink-0 items-center justify-center rounded-full disabled:opacity-60"
               style={{
                 background: "rgba(29,158,117,0.12)",
                 border: "1px solid rgba(93,202,165,0.25)",
@@ -945,41 +1000,26 @@ function CatchCard({
           </div>
         </div>
 
-        {/* species name — display font, capitalized */}
-        <p
-          className="text-xl font-bold capitalize text-foreground"
-          style={{ fontFamily: "'Outfit', sans-serif", lineHeight: 1.1 }}
-        >
-          {name}
-        </p>
-
-        {/* photo thumbnail — only when the catch has one; the card stays clean
-            without it. Never renders the spot; the stored image is metadata-free
-            (see spearo-photos.ts). */}
-        {c.photo_url && (
-          <img
-            src={c.photo_url}
-            alt={name}
-            loading="lazy"
-            className="h-40 w-full rounded-xl object-cover"
-            style={{ border: "1px solid rgba(var(--ink),0.06)" }}
-          />
-        )}
-
-        {/* measurement chips */}
+        {/* measurement chips — unified lucide icons in tinted containers,
+            mirroring the You-hub icon language */}
         {chips.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {chips.map(({ icon: Icon, value }, i) => (
               <span
                 key={i}
-                className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold tabular-nums"
+                className="inline-flex items-center gap-1.5 rounded-lg py-1 pl-1 pr-2.5 text-xs font-semibold tabular-nums"
                 style={{
                   background: "rgba(var(--ink),0.04)",
                   border: "1px solid rgba(var(--ink),0.06)",
                   color: "rgba(var(--ink),0.7)",
                 }}
               >
-                <Icon className="size-3.5" style={{ color: GREEN_LIGHT }} />
+                <span
+                  className="surface-1 flex size-6 items-center justify-center rounded-full"
+                  style={{ background: "rgba(29,158,117,0.14)" }}
+                >
+                  <Icon className="size-3.5" style={{ color: GREEN_LIGHT }} />
+                </span>
                 {value}
               </span>
             ))}
@@ -1067,21 +1107,26 @@ function CatchCard({
 }
 
 // ── empty state ──────────────────────────────────────────────────────────────
-// Inviting, on-brand empty state (not a bare "no data") for a fresh log.
+// Inviting, on-brand empty state (not a bare "no data") for a fresh log: the
+// deep underwater gradient + drifting bubbles instead of a flat card. Bubbles
+// are already prefers-reduced-motion guarded in styles.css.
 function SpearoEmpty({ t }: { t: (k: string) => string }) {
   return (
     <div
-      className="flex flex-col items-center rounded-2xl border border-foreground/08 p-10 text-center"
-      style={{ background: "var(--card)" }}
+      className="surface-2 relative overflow-hidden rounded-2xl p-10 text-center"
+      style={{ background: UNDERWATER_GRADIENT }}
     >
-      <div
-        className="flex size-16 items-center justify-center rounded-full"
-        style={{ background: "rgba(29,158,117,0.1)" }}
-      >
-        <Fish className="size-8" style={{ color: GREEN_LIGHT }} />
+      <Bubbles />
+      <div className="relative z-10 flex flex-col items-center">
+        <div
+          className="surface-1 flex size-16 items-center justify-center rounded-full"
+          style={{ background: "rgba(29,158,117,0.18)" }}
+        >
+          <Fish className="size-8" style={{ color: GREEN_LIGHT }} />
+        </div>
+        <p className="mt-4 font-semibold text-white">{t("spearo.empty")}</p>
+        <p className="mt-1 max-w-xs text-sm text-white/55">{t("spearo.emptySub")}</p>
       </div>
-      <p className="mt-4 font-semibold text-foreground">{t("spearo.empty")}</p>
-      <p className="mt-1 max-w-xs text-sm text-foreground/40">{t("spearo.emptySub")}</p>
     </div>
   );
 }

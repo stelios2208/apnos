@@ -139,13 +139,27 @@ function SpearoRecordsPage() {
       {isLoading ? (
         <Spinner />
       ) : records.length === 0 ? (
-        <Empty
-          text={
-            el
-              ? "Ακόμα κανένα ρεκόρ — λόγκαρε την πρώτη σου ψαριά."
-              : "No records yet — log your first catch."
-          }
-        />
+        // Spearo-only underwater empty state — the shared <Empty> stays as-is
+        // for the freediving tabs.
+        <div
+          className="surface-2 relative overflow-hidden rounded-2xl p-10 text-center"
+          style={{ background: UNDERWATER_GRADIENT }}
+        >
+          <Bubbles />
+          <div className="relative z-10 flex flex-col items-center">
+            <div
+              className="surface-1 flex size-14 items-center justify-center rounded-full"
+              style={{ background: "rgba(239,159,39,0.2)" }}
+            >
+              <Trophy className="size-7" style={{ color: "#F7CE73" }} />
+            </div>
+            <p className="mt-4 text-sm font-semibold text-white/85">
+              {el
+                ? "Ακόμα κανένα ρεκόρ — λόγκαρε την πρώτη σου ψαριά."
+                : "No records yet — log your first catch."}
+            </p>
+          </div>
+        </div>
       ) : (
         <div className="space-y-3">
           {records.map((r) => {
