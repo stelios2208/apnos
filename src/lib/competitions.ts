@@ -86,6 +86,28 @@ export async function deleteResult(id: string): Promise<void> {
   if (error) throw error;
 }
 
+// ── public athlete page ──────────────────────────────────────────────────────
+
+/**
+ * One athlete's PUBLIC competition results, newest first — the freediving
+ * section of the shared /athlete/$id page. Reads only `is_public = true` rows
+ * (competition_results' existing cross-user read surface, public by design).
+ * Missing table degrades to an empty list instead of crashing.
+ */
+export async function fetchPublicResultsByUser(userId: string): Promise<CompResult[]> {
+  const { data, error } = await supabase
+    .from("competition_results")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("is_public", true)
+    .order("competition_date", { ascending: false, nullsFirst: false });
+  if (error) {
+    if (isMissingTable(error)) return [];
+    throw error;
+  }
+  return (data ?? []) as CompResult[];
+}
+
 // ── rankings (best public result per athlete) ────────────────────────────────
 
 export async function fetchRanking(

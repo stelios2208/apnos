@@ -28,6 +28,11 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const { t, lang } = useI18n();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  // Only /spearo consumes a search param (log: true = the catch-log view); read
+  // it here so the Spearo "+" can glow exactly when the log view is open.
+  const spearoLogOpen = useRouterState({
+    select: (s) => (s.location.search as { log?: boolean }).log === true,
+  });
 
   // App mode drives ONLY which bottom-nav tab set renders (below). `mode` is
   // always a concrete value; the smart default resolves once for new users.
@@ -146,11 +151,19 @@ export function AppLayout({ children }: { children: ReactNode }) {
             <>
               {/* Spearo: Αρχική (feed) · (+) Log · Εσύ — same structure, 3 tabs.
                   "Εσύ" points to the SAME /you route the Apnos nav uses. */}
-              <NavLink to="/spearo" label={t("nav.spearoHome")} icon={Home} active={spearoActive} />
+              <NavLink
+                to="/spearo"
+                label={t("nav.spearoHome")}
+                icon={Home}
+                active={spearoActive && !spearoLogOpen}
+              />
 
-              {/* central log button — identical treatment to the Apnos "+" */}
+              {/* central log button — identical treatment to the Apnos "+".
+                  Opens the catch-log view (/spearo?log=true); the bare /spearo
+                  home is the community feed. */}
               <Link
                 to="/spearo"
+                search={{ log: true }}
                 aria-label={t("nav.spearoLog")}
                 className="flex flex-1 items-center justify-center"
                 style={{ height: 56 }}
@@ -161,7 +174,10 @@ export function AppLayout({ children }: { children: ReactNode }) {
                   style={
                     {
                       background: "#1D9E75",
-                      "--glow-ring": spearoActive ? "0 0 0 4px rgba(29,158,117,0.25)" : undefined,
+                      "--glow-ring":
+                        spearoActive && spearoLogOpen
+                          ? "0 0 0 4px rgba(29,158,117,0.25)"
+                          : undefined,
                     } as React.CSSProperties
                   }
                 >

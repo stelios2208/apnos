@@ -13,8 +13,8 @@ import {
   saveProfile,
   emptyProfile,
   ageFromBirthdate,
-  uploadAvatar,
 } from "@/lib/profile";
+import { upsertMyProfile, uploadAvatar } from "@/lib/profiles";
 import { athleteInitials, athleteColor } from "@/lib/athletes";
 import { Flag } from "@/components/Flag";
 
@@ -97,9 +97,31 @@ function ProfilePage() {
   }, [profile]);
 
   const save = useMutation({
-    mutationFn: () => saveProfile(toProfile(form)),
+    // DUAL-WRITE: user_metadata stays the source of truth for the freediving
+    // side (written first, exactly as before — zero risk there), and the same
+    // fields are mirrored into the `profiles` table, which is the ONLY thing
+    // the social features (feed avatars, public athlete pages) read. A profiles
+    // failure (e.g. migration not applied yet) must never fail the save, so it
+    // only logs — the social layer just degrades until the table exists.
+    mutationFn: async () => {
+      const p = toProfile(form);
+      await saveProfile(p);
+      try {
+        await upsertMyProfile(user!.id, {
+          display_name: p.displayName || null,
+          avatar_url: p.avatarUrl || null,
+          bio: p.bio || null,
+          country: p.country || null,
+          is_public: p.isPublic,
+        });
+      } catch (err) {
+        console.error("profiles dual-write failed (ignored):", err);
+      }
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["profile", user?.id] });
+      qc.invalidateQueries({ queryKey: ["public-profiles"] });
+      qc.invalidateQueries({ queryKey: ["public-profile"] });
       toast.success(lang === "el" ? "Το προφίλ αποθηκεύτηκε" : "Profile saved");
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Error"),
@@ -391,8 +413,8 @@ function ProfilePage() {
           <p className="mt-0.5 text-[0.72rem] text-foreground/40">
             {form.isPublic
               ? lang === "el"
-                ? "Ορατό σε άλλους αθλητές & κατατάξεις"
-                : "Visible to other athletes & rankings"
+                ? "Δημόσιο = φαίνεται το προφίλ σου και ό,τι κοινοποιείς — ποτέ τα spots σου."
+                : "Public = your profile and what you share are visible — never your spots."
               : lang === "el"
                 ? "Μόνο εσύ βλέπεις το προφίλ σου"
                 : "Only you can see your profile"}

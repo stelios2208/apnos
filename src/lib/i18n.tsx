@@ -265,6 +265,22 @@ const en: Dict = {
   "spearo.deleteDesc": "This permanently removes the catch and its photo. This can't be undone.",
   "spearo.deleted": "Catch deleted",
   "spearo.deleteError": "Could not delete catch",
+  // share-to-feed — per-catch opt-in (default OFF); the feed payload never
+  // carries the spot or notes (see the feed_catches view)
+  "spearo.shareToFeed": "Share with the community",
+  "spearo.shareToFeedHint": "No location — your spot stays yours.",
+  // community feed (Spearo home) — sanitized shared catches, never spots
+  "spearo.feedTitle": "Community",
+  "spearo.feedSub": "What the crew is sharing — never the spots.",
+  "spearo.feedEmpty": "The community starts here — share your first catch.",
+  "spearo.feedAthlete": "Athlete",
+  // public athlete page (/athlete/$id) — shared between both modes
+  "athlete.private": "Private profile",
+  "athlete.privateSub": "This profile is private or doesn't exist.",
+  "athlete.recordWall": "Record Wall",
+  "athlete.recordWallSub": "Best shared catch per species.",
+  "athlete.compResults": "Competition results",
+  "athlete.compResultsSub": "Best public result per discipline.",
 };
 
 const el: Dict = {
@@ -514,6 +530,22 @@ const el: Dict = {
   "spearo.deleteDesc": "Διαγράφει οριστικά το αλίευμα και τη φωτογραφία του. Δεν αναιρείται.",
   "spearo.deleted": "Το αλίευμα διαγράφηκε",
   "spearo.deleteError": "Αδυναμία διαγραφής αλιεύματος",
+  // κοινοποίηση στο feed — opt-in ανά αλίευμα (default OFF)· το payload του feed
+  // δεν περιέχει ποτέ το spot ή τις σημειώσεις (βλ. feed_catches view)
+  "spearo.shareToFeed": "Κοινοποίηση στην κοινότητα",
+  "spearo.shareToFeedHint": "Χωρίς τοποθεσία — το spot μένει δικό σου.",
+  // feed κοινότητας (αρχική Spearo) — μόνο εξυγιασμένες κοινοποιήσεις, ποτέ spots
+  "spearo.feedTitle": "Κοινότητα",
+  "spearo.feedSub": "Ό,τι μοιράζεται η παρέα — ποτέ τα spots.",
+  "spearo.feedEmpty": "Η κοινότητα ξεκινάει εδώ — μοιράσου την πρώτη σου ψαριά.",
+  "spearo.feedAthlete": "Αθλητής",
+  // δημόσια σελίδα αθλητή (/athlete/$id) — κοινή και για τα δύο modes
+  "athlete.private": "Ιδιωτικό προφίλ",
+  "athlete.privateSub": "Αυτό το προφίλ είναι ιδιωτικό ή δεν υπάρχει.",
+  "athlete.recordWall": "Τοίχος ρεκόρ",
+  "athlete.recordWallSub": "Η καλύτερη κοινοποιημένη ψαριά ανά είδος.",
+  "athlete.compResults": "Αγωνιστικές επιδόσεις",
+  "athlete.compResultsSub": "Η καλύτερη δημόσια επίδοση ανά αγώνισμα.",
 };
 
 const DICTS: Record<Lang, Dict> = { el, en };

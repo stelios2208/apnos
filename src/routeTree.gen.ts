@@ -38,6 +38,7 @@ import { Route as CoachIndexRouteImport } from './routes/coach.index'
 import { Route as ToolsCo2O2TablesRouteImport } from './routes/tools.co2-o2-tables'
 import { Route as DiveIdRouteImport } from './routes/dive.$id'
 import { Route as DisciplineCodeRouteImport } from './routes/discipline.$code'
+import { Route as AthleteIdRouteImport } from './routes/athlete.$id'
 import { Route as CoachAthleteIdRouteImport } from './routes/coach.athlete.$id'
 
 const YouRoute = YouRouteImport.update({
@@ -185,6 +186,11 @@ const DisciplineCodeRoute = DisciplineCodeRouteImport.update({
   path: '/discipline/$code',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AthleteIdRoute = AthleteIdRouteImport.update({
+  id: '/athlete/$id',
+  path: '/athlete/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CoachAthleteIdRoute = CoachAthleteIdRouteImport.update({
   id: '/athlete/$id',
   path: '/athlete/$id',
@@ -217,6 +223,7 @@ export interface FileRoutesByFullPath {
   '/train': typeof TrainRoute
   '/warmup': typeof WarmupRoute
   '/you': typeof YouRoute
+  '/athlete/$id': typeof AthleteIdRoute
   '/discipline/$code': typeof DisciplineCodeRoute
   '/dive/$id': typeof DiveIdRoute
   '/tools/co2-o2-tables': typeof ToolsCo2O2TablesRoute
@@ -248,6 +255,7 @@ export interface FileRoutesByTo {
   '/train': typeof TrainRoute
   '/warmup': typeof WarmupRoute
   '/you': typeof YouRoute
+  '/athlete/$id': typeof AthleteIdRoute
   '/discipline/$code': typeof DisciplineCodeRoute
   '/dive/$id': typeof DiveIdRoute
   '/tools/co2-o2-tables': typeof ToolsCo2O2TablesRoute
@@ -281,6 +289,7 @@ export interface FileRoutesById {
   '/train': typeof TrainRoute
   '/warmup': typeof WarmupRoute
   '/you': typeof YouRoute
+  '/athlete/$id': typeof AthleteIdRoute
   '/discipline/$code': typeof DisciplineCodeRoute
   '/dive/$id': typeof DiveIdRoute
   '/tools/co2-o2-tables': typeof ToolsCo2O2TablesRoute
@@ -315,6 +324,7 @@ export interface FileRouteTypes {
     | '/train'
     | '/warmup'
     | '/you'
+    | '/athlete/$id'
     | '/discipline/$code'
     | '/dive/$id'
     | '/tools/co2-o2-tables'
@@ -346,6 +356,7 @@ export interface FileRouteTypes {
     | '/train'
     | '/warmup'
     | '/you'
+    | '/athlete/$id'
     | '/discipline/$code'
     | '/dive/$id'
     | '/tools/co2-o2-tables'
@@ -378,6 +389,7 @@ export interface FileRouteTypes {
     | '/train'
     | '/warmup'
     | '/you'
+    | '/athlete/$id'
     | '/discipline/$code'
     | '/dive/$id'
     | '/tools/co2-o2-tables'
@@ -411,6 +423,7 @@ export interface RootRouteChildren {
   TrainRoute: typeof TrainRoute
   WarmupRoute: typeof WarmupRoute
   YouRoute: typeof YouRoute
+  AthleteIdRoute: typeof AthleteIdRoute
   DisciplineCodeRoute: typeof DisciplineCodeRoute
   DiveIdRoute: typeof DiveIdRoute
   ToolsCo2O2TablesRoute: typeof ToolsCo2O2TablesRoute
@@ -621,6 +634,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DisciplineCodeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/athlete/$id': {
+      id: '/athlete/$id'
+      path: '/athlete/$id'
+      fullPath: '/athlete/$id'
+      preLoaderRoute: typeof AthleteIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/coach/athlete/$id': {
       id: '/coach/athlete/$id'
       path: '/athlete/$id'
@@ -669,6 +689,7 @@ const rootRouteChildren: RootRouteChildren = {
   TrainRoute: TrainRoute,
   WarmupRoute: WarmupRoute,
   YouRoute: YouRoute,
+  AthleteIdRoute: AthleteIdRoute,
   DisciplineCodeRoute: DisciplineCodeRoute,
   DiveIdRoute: DiveIdRoute,
   ToolsCo2O2TablesRoute: ToolsCo2O2TablesRoute,
