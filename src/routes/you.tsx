@@ -12,6 +12,7 @@ import type { LucideIcon } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { ModeToggle } from "@/components/ModeToggle";
 import { useI18n } from "@/lib/i18n";
+import { nativeVibrate } from "@/lib/native";
 
 export const Route = createFileRoute("/you")({
   head: () => ({ meta: [{ title: "You — Apnos" }] }),
@@ -120,15 +121,16 @@ function YouHub() {
           <Link
             key={to}
             to={to}
-            className="flex items-center gap-4 rounded-2xl px-4 py-4 transition-all active:scale-[0.99]"
+            className="pressable surface-2 flex items-center gap-4 rounded-2xl px-4 py-4"
             style={{
               background: "var(--card)",
               border: "1px solid rgba(var(--ink),0.06)",
               borderLeft: `3px solid ${accent}`,
             }}
+            onClick={() => nativeVibrate(10)}
           >
             <div
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full"
+              className="surface-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-full"
               style={{ background: `${accent}18`, color: accent }}
             >
               <Icon className="size-5" />

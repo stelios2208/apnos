@@ -16,15 +16,23 @@ import {
   Check,
   Ban,
   CalendarPlus,
-  Fish,
+  Ruler,
+  Weight,
+  ArrowDownToLine,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AppLayout } from "@/components/AppLayout";
+import { Bubbles } from "@/components/Bubbles";
 import { useAuth } from "@/hooks/use-auth";
 import { useMode } from "@/hooks/use-mode";
 import { useI18n } from "@/lib/i18n";
-import { listCatches, personalBestsBySpecies } from "@/lib/spearo-catches";
-import { speciesLabel, formatCatchSize, formatCatchWeight } from "@/lib/spearo";
+import { nativeVibrate } from "@/lib/native";
+import {
+  listCatches,
+  personalBestsBySpecies,
+  type SpeciesPersonalBest,
+} from "@/lib/spearo-catches";
+import { speciesLabel, formatCatchSize, formatCatchWeight, formatDepth } from "@/lib/spearo";
 import {
   DISCIPLINES,
   FEDERATIONS,
@@ -77,10 +85,21 @@ function RecordsPage() {
 
 // ── Spearo records (private PBs per species) ────────────────────────────────
 
+// The deep-water gradient used as the photo stand-in on records without a
+// photo — same palette as the underwater scene (.uw-depth), no new assets.
+const UNDERWATER_GRADIENT =
+  "linear-gradient(180deg, #0d4a63 0%, #0a3852 30%, #072a42 55%, #041a2e 80%, #02101d 100%)";
+
+// Gold medal chip surface — warm metallic gradient with an inner highlight so
+// the "PB" reads like a Best Efforts medal, not a flat tag.
+const MEDAL_GOLD = "linear-gradient(135deg, #F7CE73 0%, #EF9F27 55%, #C97F16 100%)";
+
 function SpearoRecordsPage() {
   const { user } = useAuth();
   const { lang } = useI18n();
   const el = lang === "el";
+  // The record catch currently open in the detail sheet (null = closed).
+  const [detail, setDetail] = useState<SpeciesPersonalBest | null>(null);
 
   // Same query key + fn as the spearo dashboard (src/routes/spearo.tsx), so
   // React Query shares one cache entry — no separate data path or refetch.
@@ -91,80 +110,260 @@ function SpearoRecordsPage() {
   });
 
   const records = personalBestsBySpecies(catches);
+  const speciesName = (r: SpeciesPersonalBest) =>
+    r.isCustomSpecies ? r.species : speciesLabel(r.species, el ? "el" : "en");
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <Trophy className="size-6" style={{ color: "#EF9F27" }} />
-        <h1 className="text-2xl font-bold">{el ? "Τα ρεκόρ μου" : "My records"}</h1>
+      {/* header with a subtle underwater flourish behind it — low-opacity
+          gradient + the existing Bubbles (already prefers-reduced-motion
+          guarded in styles.css), zero new assets */}
+      <div className="relative overflow-hidden rounded-2xl p-4">
+        <div className="pointer-events-none absolute inset-0 opacity-35" aria-hidden="true">
+          <div className="absolute inset-0" style={{ background: UNDERWATER_GRADIENT }} />
+          <Bubbles />
+        </div>
+        <div className="relative z-10">
+          <div className="flex items-center gap-2">
+            <Trophy className="size-6" style={{ color: "#EF9F27" }} />
+            <h1 className="text-2xl font-bold">{el ? "Τα ρεκόρ μου" : "My records"}</h1>
+          </div>
+          <p className="mt-1 text-xs text-foreground/45">
+            {el
+              ? "Η καλύτερη ψαριά σου ανά είδος — ιδιωτικά, μόνο για σένα."
+              : "Your best catch per species — private, just for you."}
+          </p>
+        </div>
       </div>
-      <p className="text-xs text-foreground/35">
-        {el
-          ? "Η καλύτερη ψαριά σου ανά είδος — ιδιωτικά, μόνο για σένα."
-          : "Your best catch per species — private, just for you."}
-      </p>
 
       {isLoading ? (
         <Spinner />
       ) : records.length === 0 ? (
-        <Empty
-          text={
-            el
-              ? "Ακόμα κανένα ρεκόρ — λόγκαρε την πρώτη σου ψαριά."
-              : "No records yet — log your first catch."
-          }
-        />
+        // Spearo-only underwater empty state — the shared <Empty> stays as-is
+        // for the freediving tabs.
+        <div
+          className="surface-2 relative overflow-hidden rounded-2xl p-10 text-center"
+          style={{ background: UNDERWATER_GRADIENT }}
+        >
+          <Bubbles />
+          <div className="relative z-10 flex flex-col items-center">
+            <div
+              className="surface-1 flex size-14 items-center justify-center rounded-full"
+              style={{ background: "rgba(239,159,39,0.2)" }}
+            >
+              <Trophy className="size-7" style={{ color: "#F7CE73" }} />
+            </div>
+            <p className="mt-4 text-sm font-semibold text-white/85">
+              {el
+                ? "Ακόμα κανένα ρεκόρ — λόγκαρε την πρώτη σου ψαριά."
+                : "No records yet — log your first catch."}
+            </p>
+          </div>
+        </div>
       ) : (
-        <div className="space-y-2">
-          {records.map((r, i) => {
+        <div className="space-y-3">
+          {records.map((r) => {
             // Weightless fallback records lead with size instead; when both
-            // measurements exist the size rides along next to the weight.
+            // measurements exist the size rides along as secondary info.
             const primary =
               r.weight != null ? formatCatchWeight(r.weight) : formatCatchSize(r.size);
             const secondary = r.weight != null && r.size != null ? formatCatchSize(r.size) : null;
             return (
-              <div
+              <button
                 key={r.species}
-                className="flex items-center gap-3 rounded-xl px-4 py-3"
-                style={{
-                  background: "var(--card)",
-                  border: "1px solid rgba(var(--ink),0.05)",
-                  borderLeft: `3px solid ${i === 0 ? "#EF9F27" : "rgba(var(--ink),0.1)"}`,
+                type="button"
+                onClick={() => {
+                  nativeVibrate(10);
+                  setDetail(r);
                 }}
+                className="pressable surface-2 relative block w-full overflow-hidden rounded-2xl text-left"
               >
+                {/* trophy-wall backdrop: the record catch photo full-bleed, or
+                    the deep underwater gradient when the catch has no photo */}
                 {r.photoUrl ? (
                   <img
                     src={r.photoUrl}
                     alt=""
-                    className="h-10 w-10 shrink-0 rounded-lg object-cover"
+                    loading="lazy"
+                    className="absolute inset-0 h-full w-full object-cover"
                   />
                 ) : (
-                  <span
-                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg"
-                    style={{ background: "rgba(29,158,117,0.12)" }}
-                  >
-                    <Fish className="size-5" style={{ color: "#5DCAA5" }} />
-                  </span>
+                  <div className="absolute inset-0" style={{ background: UNDERWATER_GRADIENT }} />
                 )}
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold capitalize text-foreground">
-                    {r.isCustomSpecies ? r.species : speciesLabel(r.species, el ? "el" : "en")}
-                  </p>
-                  <p className="mt-0.5 text-[0.65rem] text-foreground/40">
-                    {new Date(r.date).toLocaleDateString()}
-                  </p>
+                {/* dark gradient overlay keeps the text readable on any photo */}
+                <div
+                  className="absolute inset-0"
+                  style={{
+                    background:
+                      "linear-gradient(180deg, rgba(2,10,19,0.3) 0%, rgba(2,10,19,0.15) 35%, rgba(2,10,19,0.55) 65%, rgba(2,10,19,0.88) 100%)",
+                  }}
+                />
+
+                <div className="relative flex min-h-[10rem] flex-col justify-between p-4">
+                  {/* gold PB medal chip */}
+                  <span
+                    className="inline-flex w-fit items-center gap-1 rounded-full px-2.5 py-1 text-[0.6rem] font-black tracking-[0.14em]"
+                    style={{
+                      background: MEDAL_GOLD,
+                      color: "#3A2503",
+                      boxShadow:
+                        "inset 0 1px 0 rgba(255,255,255,0.5), 0 2px 10px rgba(239,159,39,0.45)",
+                    }}
+                  >
+                    <Trophy className="size-3" /> PB
+                  </span>
+
+                  <div>
+                    <p className="text-sm font-semibold capitalize text-white/85">
+                      {speciesName(r)}
+                    </p>
+                    {/* the record itself is the hero: big, heavy, tabular */}
+                    <p
+                      className="mt-0.5 text-4xl font-black tabular-nums text-white"
+                      style={{
+                        fontFamily: "'Outfit', sans-serif",
+                        textShadow: "0 2px 12px rgba(2,10,19,0.6)",
+                      }}
+                    >
+                      {primary}
+                    </p>
+                    <p className="mt-1 text-xs text-white/55">
+                      {secondary && <span className="tabular-nums">{secondary} · </span>}
+                      {new Date(r.date).toLocaleDateString()}
+                    </p>
+                  </div>
                 </div>
-                <div className="shrink-0 text-right">
-                  <p className="font-mono text-base font-bold text-foreground">{primary}</p>
-                  {secondary && (
-                    <p className="font-mono text-[0.65rem] text-foreground/45">{secondary}</p>
-                  )}
-                </div>
-              </div>
+              </button>
             );
           })}
         </div>
       )}
+
+      {detail && (
+        <RecordDetailSheet
+          record={detail}
+          name={speciesName(detail)}
+          el={el}
+          onClose={() => setDetail(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+// ── record detail sheet ──────────────────────────────────────────────────────
+// Bottom sheet with the full record catch — same overlay pattern as
+// DeclareModal below. Pure presentation over data already on the client; the
+// private spot is deliberately NOT shown here (it stays on the catch card).
+function RecordDetailSheet({
+  record: r,
+  name,
+  el,
+  onClose,
+}: {
+  record: SpeciesPersonalBest;
+  name: string;
+  el: boolean;
+  onClose: () => void;
+}) {
+  const c = r.record;
+  const chips: { icon: typeof Ruler; label: string; value: string }[] = [];
+  if (c.weight_kg != null)
+    chips.push({
+      icon: Weight,
+      label: el ? "Βάρος" : "Weight",
+      value: formatCatchWeight(c.weight_kg),
+    });
+  if (c.size_cm != null)
+    chips.push({ icon: Ruler, label: el ? "Μέγεθος" : "Size", value: formatCatchSize(c.size_cm) });
+  if (c.max_depth_m != null)
+    chips.push({
+      icon: ArrowDownToLine,
+      label: el ? "Βάθος" : "Depth",
+      value: formatDepth(c.max_depth_m),
+    });
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex flex-col justify-end"
+      style={{ background: "rgba(0,0,0,0.6)" }}
+      onClick={onClose}
+    >
+      <div
+        className="surface-3 max-h-[92vh] overflow-y-auto rounded-t-3xl"
+        style={{ background: "var(--popover)" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* photo header — full-bleed with the same readability overlay */}
+        <div className="relative h-56 w-full overflow-hidden">
+          {r.photoUrl ? (
+            <img
+              src={r.photoUrl}
+              alt={name}
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+          ) : (
+            <div className="absolute inset-0" style={{ background: UNDERWATER_GRADIENT }} />
+          )}
+          <div
+            className="absolute inset-0"
+            style={{
+              background:
+                "linear-gradient(180deg, rgba(2,10,19,0.35) 0%, rgba(2,10,19,0.05) 40%, rgba(2,10,19,0.8) 100%)",
+            }}
+          />
+          <span
+            className="absolute left-4 top-4 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[0.6rem] font-black tracking-[0.14em]"
+            style={{
+              background: MEDAL_GOLD,
+              color: "#3A2503",
+              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.5), 0 2px 10px rgba(239,159,39,0.45)",
+            }}
+          >
+            <Trophy className="size-3" /> PB
+          </span>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label={el ? "Κλείσιμο" : "Close"}
+            className="pressable absolute right-3 top-3 flex size-8 items-center justify-center rounded-full text-white"
+            style={{ background: "rgba(4,26,46,0.6)", backdropFilter: "blur(2px)" }}
+          >
+            <X className="size-4" />
+          </button>
+          <div className="absolute bottom-3 left-4 right-4">
+            <p className="text-lg font-bold capitalize text-white" style={{ lineHeight: 1.1 }}>
+              {name}
+            </p>
+            <p className="mt-0.5 text-[0.65rem] text-white/55">
+              {new Date(c.caught_at).toLocaleDateString()}
+            </p>
+          </div>
+        </div>
+
+        <div className="space-y-4 p-5">
+          {chips.length > 0 && (
+            <div className="grid grid-cols-3 gap-2">
+              {chips.map(({ icon: Icon, label, value }, i) => (
+                <div
+                  key={i}
+                  className="surface-1 rounded-xl px-3 py-2.5 text-center"
+                  style={{
+                    background: "rgba(29,158,117,0.08)",
+                    border: "1px solid rgba(93,202,165,0.18)",
+                  }}
+                >
+                  <Icon className="mx-auto size-4" style={{ color: "#5DCAA5" }} />
+                  <p className="mt-1 text-sm font-bold tabular-nums text-foreground">{value}</p>
+                  <p className="text-[0.6rem] text-foreground/40">{label}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {c.notes && <p className="text-xs leading-relaxed text-foreground/50">{c.notes}</p>}
+        </div>
+      </div>
     </div>
   );
 }

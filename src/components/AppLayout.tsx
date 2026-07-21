@@ -5,8 +5,13 @@ import { Logo } from "@/components/Logo";
 import { useAuth } from "@/hooks/use-auth";
 import { useI18n } from "@/lib/i18n";
 import { useMode, useModeAutoDefault } from "@/hooks/use-mode";
+import { nativeVibrate } from "@/lib/native";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+
+// Short haptic tick for primary taps — nativeVibrate carries all the SSR /
+// no-native guards, so this is safe to call from any click handler.
+const hapticTick = () => nativeVibrate(10);
 
 const NAV_ITEM_STYLE: React.CSSProperties = {
   height: 56,
@@ -149,15 +154,16 @@ export function AppLayout({ children }: { children: ReactNode }) {
                 aria-label={t("nav.spearoLog")}
                 className="flex flex-1 items-center justify-center"
                 style={{ height: 56 }}
+                onClick={hapticTick}
               >
                 <span
-                  className="flex h-12 w-12 items-center justify-center rounded-full transition-transform active:scale-95"
-                  style={{
-                    background: "#1D9E75",
-                    boxShadow: spearoActive
-                      ? "0 0 0 4px rgba(29,158,117,0.25), 0 4px 16px rgba(29,158,117,0.5)"
-                      : "0 4px 16px rgba(29,158,117,0.45)",
-                  }}
+                  className="pressable glow-brand flex h-12 w-12 items-center justify-center rounded-full"
+                  style={
+                    {
+                      background: "#1D9E75",
+                      "--glow-ring": spearoActive ? "0 0 0 4px rgba(29,158,117,0.25)" : undefined,
+                    } as React.CSSProperties
+                  }
                 >
                   <Plus className="size-6 text-white" />
                 </span>
@@ -177,15 +183,16 @@ export function AppLayout({ children }: { children: ReactNode }) {
                 aria-label={lang === "el" ? "Καταγραφή" : "Log"}
                 className="flex flex-1 items-center justify-center"
                 style={{ height: 56 }}
+                onClick={hapticTick}
               >
                 <span
-                  className="flex h-12 w-12 items-center justify-center rounded-full transition-transform active:scale-95"
-                  style={{
-                    background: "#1D9E75",
-                    boxShadow: logActive
-                      ? "0 0 0 4px rgba(29,158,117,0.25), 0 4px 16px rgba(29,158,117,0.5)"
-                      : "0 4px 16px rgba(29,158,117,0.45)",
-                  }}
+                  className="pressable glow-brand flex h-12 w-12 items-center justify-center rounded-full"
+                  style={
+                    {
+                      background: "#1D9E75",
+                      "--glow-ring": logActive ? "0 0 0 4px rgba(29,158,117,0.25)" : undefined,
+                    } as React.CSSProperties
+                  }
                 >
                   <Plus className="size-6 text-white" />
                 </span>

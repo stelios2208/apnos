@@ -97,6 +97,24 @@
   --gradient-primary: linear-gradient(135deg, oklch(0.66 0.115 168), oklch(0.66 0.115 168));
   --shadow-glow: 0 0 40px -8px oklch(0.66 0.115 168 / 0.45);
   --shadow-card: 0 12px 40px -16px oklch(0.05 0.02 255 / 0.7);
+
+  /* ── elevation system ──────────────────────────────────────────────────────
+     Three surface levels, each a layered shadow: a drop shadow below + a 1px
+     inner top highlight (the "lit from above" cue that sells depth on dark UI).
+     `--shadow-pressed` is the collapsed shadow a pressable drops to while
+     active. `--glow-brand` is the brand-green halo (same mood as the bottom-nav
+     "+"); `--glow-ring` lets a caller stack an active ring under the glow. */
+  --elev-highlight: inset 0 1px 0 0 rgba(255, 255, 255, 0.07);
+  --shadow-surface-1:
+    0 1px 2px rgba(2, 8, 15, 0.35), 0 2px 8px -2px rgba(2, 8, 15, 0.3), var(--elev-highlight);
+  --shadow-surface-2:
+    0 2px 4px rgba(2, 8, 15, 0.4), 0 10px 24px -8px rgba(2, 8, 15, 0.5), var(--elev-highlight);
+  --shadow-surface-3:
+    0 4px 8px rgba(2, 8, 15, 0.45), 0 20px 48px -12px rgba(2, 8, 15, 0.65), var(--elev-highlight);
+  --shadow-pressed: 0 1px 3px rgba(2, 8, 15, 0.4), inset 0 1px 0 0 rgba(255, 255, 255, 0.04);
+  --glow-brand:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.25), 0 4px 16px rgba(29, 158, 117, 0.45),
+    0 0 32px -6px rgba(93, 202, 165, 0.55);
 }
 
 .dark {
@@ -164,6 +182,22 @@
   --shadow-glow: 0 0 40px -8px oklch(0.52 0.11 168 / 0.25);
   --shadow-card: 0 10px 30px -18px oklch(0.35 0.04 250 / 0.3);
 
+  /* elevation on white surfaces: softer drops, near-white top highlight */
+  --elev-highlight: inset 0 1px 0 0 rgba(255, 255, 255, 0.9);
+  --shadow-surface-1:
+    0 1px 2px rgba(20, 40, 60, 0.08), 0 2px 8px -2px rgba(20, 40, 60, 0.08),
+    var(--elev-highlight);
+  --shadow-surface-2:
+    0 2px 4px rgba(20, 40, 60, 0.08), 0 10px 24px -8px rgba(20, 40, 60, 0.14),
+    var(--elev-highlight);
+  --shadow-surface-3:
+    0 4px 8px rgba(20, 40, 60, 0.1), 0 20px 48px -12px rgba(20, 40, 60, 0.2),
+    var(--elev-highlight);
+  --shadow-pressed: 0 1px 3px rgba(20, 40, 60, 0.12), var(--elev-highlight);
+  --glow-brand:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.35), 0 4px 16px rgba(29, 158, 117, 0.35),
+    0 0 32px -6px rgba(93, 202, 165, 0.4);
+
   color-scheme: light;
 }
 
@@ -211,6 +245,49 @@
   backdrop-filter: blur(12px);
   border: 1px solid var(--glass-border);
   box-shadow: var(--shadow-card);
+}
+
+/* ── elevation & interaction utilities ────────────────────────────────────── */
+
+@utility surface-1 {
+  box-shadow: var(--shadow-surface-1);
+}
+
+@utility surface-2 {
+  box-shadow: var(--shadow-surface-2);
+}
+
+@utility surface-3 {
+  box-shadow: var(--shadow-surface-3);
+}
+
+/* Brand-green halo. `--glow-ring` (unset by default) lets callers stack an
+   extra ring — e.g. the bottom-nav "+" active state — without a second class. */
+@utility glow-brand {
+  box-shadow: var(--glow-ring, 0 0 0 0 transparent), var(--glow-brand);
+}
+
+/* Tactile press: scale down + collapse the shadow while active. Pair with a
+   surface or glow-brand class (or any box-shadow) — the pressed state wins. */
+@utility pressable {
+  transition:
+    transform 150ms cubic-bezier(0.2, 0.8, 0.4, 1),
+    box-shadow 150ms ease,
+    filter 150ms ease,
+    color 150ms ease,
+    background-color 150ms ease;
+  &:active {
+    transform: scale(0.97);
+    box-shadow: var(--shadow-pressed);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pressable,
+  .pressable:active {
+    transition: none;
+    transform: none;
+  }
 }
 
 /* Underwater rising bubbles */
