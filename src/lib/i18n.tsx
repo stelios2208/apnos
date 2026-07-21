@@ -283,8 +283,9 @@ const en: Dict = {
   "athlete.privateSub": "This profile is private or doesn't exist.",
   "athlete.recordWall": "Record Wall",
   "athlete.recordWallSub": "Best shared catch per species.",
-  "athlete.compResults": "Competition results",
-  "athlete.compResultsSub": "Best public result per discipline.",
+  "athlete.compResults": "Freediving records",
+  "athlete.compResultsSub": "Best shared or competition result per discipline.",
+  "athlete.compBadge": "Competition",
 };
 
 const el: Dict = {
@@ -552,8 +553,9 @@ const el: Dict = {
   "athlete.privateSub": "Αυτό το προφίλ είναι ιδιωτικό ή δεν υπάρχει.",
   "athlete.recordWall": "Τοίχος ρεκόρ",
   "athlete.recordWallSub": "Η καλύτερη κοινοποιημένη ψαριά ανά είδος.",
-  "athlete.compResults": "Αγωνιστικές επιδόσεις",
-  "athlete.compResultsSub": "Η καλύτερη δημόσια επίδοση ανά αγώνισμα.",
+  "athlete.compResults": "Ρεκόρ ελεύθερης κατάδυσης",
+  "athlete.compResultsSub": "Η καλύτερη κοινοποιημένη ή αγωνιστική επίδοση ανά αγώνισμα.",
+  "athlete.compBadge": "Αγώνας",
 };
 
 const DICTS: Record<Lang, Dict> = { el, en };

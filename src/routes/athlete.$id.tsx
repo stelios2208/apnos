@@ -5,12 +5,13 @@ import { ArrowLeft, Loader2, Lock, Trophy, Waves } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { Bubbles } from "@/components/Bubbles";
 import { useAuth } from "@/hooks/use-auth";
+import { useMode } from "@/hooks/use-mode";
 import { useI18n } from "@/lib/i18n";
-import { getPublicProfile, listFeedCatches, type FeedCatch } from "@/lib/profiles";
+import { getPublicProfile, listFeedCatches, listFeedDives, type FeedCatch } from "@/lib/profiles";
 import { personalBestsBySpecies } from "@/lib/spearo-catches";
 import { speciesLabel, formatCatchSize, formatCatchWeight, type SpearoCatch } from "@/lib/spearo";
-import { fetchPublicResultsByUser, type CompResult } from "@/lib/competitions";
-import { disciplineName, formatResult } from "@/lib/diving";
+import { fetchPublicResultsByUser } from "@/lib/competitions";
+import { disciplineName, formatResult, type DisciplineCode } from "@/lib/diving";
 import { athleteInitials, athleteColor } from "@/lib/athletes";
 
 // ── Route ──────────────────────────────────────────────────────────────────────
@@ -35,6 +36,37 @@ const UNDERWATER_GRADIENT =
   "linear-gradient(180deg, #0d4a63 0%, #0a3852 30%, #072a42 55%, #041a2e 80%, #02101d 100%)";
 const MEDAL_GOLD = "linear-gradient(135deg, #F7CE73 0%, #EF9F27 55%, #C97F16 100%)";
 const GREEN_LIGHT = "#5DCAA5";
+
+// Discipline-themed underwater gradient — same hue map as the Apnos feed
+// cards (dashboard.tsx), so a discipline reads identically everywhere.
+const DISCIPLINE_HUE: Record<DisciplineCode, number> = {
+  STA: 168,
+  DYN: 188,
+  DYNB: 200,
+  DNF: 210,
+  CWT: 220,
+  CWTB: 232,
+  CNF: 244,
+  FIM: 256,
+};
+
+function disciplineGradient(code: DisciplineCode): string {
+  const h = DISCIPLINE_HUE[code] ?? 210;
+  return `linear-gradient(180deg, hsl(${h},55%,24%) 0%, hsl(${h + 10},60%,12%) 60%, #02101d 100%)`;
+}
+
+/**
+ * One row of the athlete's Apnos performance wall: the best result per
+ * discipline across BOTH their shared training dives (sanitized feed_dives)
+ * and their public competition results — competition entries are badged.
+ */
+interface ApnosBest {
+  discipline: DisciplineCode;
+  result: number;
+  date: string | null;
+  fromCompetition: boolean;
+  competitionName?: string;
+}
 
 /**
  * Adapt sanitized feed rows to the SpearoCatch shape personalBestsBySpecies
@@ -61,6 +93,9 @@ function AthletePage() {
   const { user } = useAuth();
   const { t, lang } = useI18n();
   const navigate = useNavigate();
+  // Back returns to whichever community feed the viewer lives in.
+  const { mode } = useMode();
+  const homeTo = mode === "spearo" ? "/spearo" : "/dashboard";
 
   const { data: profile, isLoading: profileLoading } = useQuery({
     queryKey: ["public-profile", id],
@@ -75,7 +110,14 @@ function AthletePage() {
     enabled: !!user && !!profile,
   });
 
-  // Their public freediving competition results → best per discipline.
+  // Their shared freediving dives (sanitized view, scoped to them).
+  const { data: sharedDives = [], isLoading: sharedDivesLoading } = useQuery({
+    queryKey: ["feed-dives", id],
+    queryFn: () => listFeedDives({ userId: id, limit: 200 }),
+    enabled: !!user && !!profile,
+  });
+
+  // Their public freediving competition results.
   const { data: results = [], isLoading: resultsLoading } = useQuery({
     queryKey: ["public-comp-results", id],
     queryFn: () => fetchPublicResultsByUser(id),
@@ -84,15 +126,37 @@ function AthletePage() {
 
   const records = useMemo(() => personalBestsBySpecies(toCatches(shared)), [shared]);
 
+  // Best per discipline across shared dives AND public competition results —
+  // higher is better for both time (s) and distance/depth (m); when the record
+  // comes from a competition it carries the «Αγώνας» badge.
   const bestPerDiscipline = useMemo(() => {
-    const best = new Map<string, CompResult>();
+    const best = new Map<string, ApnosBest>();
+    for (const d of sharedDives) {
+      const code = d.discipline as DisciplineCode;
+      const cur = best.get(code);
+      if (!cur || d.result > cur.result) {
+        best.set(code, {
+          discipline: code,
+          result: d.result,
+          date: d.dive_date,
+          fromCompetition: false,
+        });
+      }
+    }
     for (const r of results) {
       const cur = best.get(r.discipline);
-      // higher is better for both time (s) and distance/depth (m)
-      if (!cur || r.result > cur.result) best.set(r.discipline, r);
+      if (!cur || r.result > cur.result) {
+        best.set(r.discipline, {
+          discipline: r.discipline,
+          result: r.result,
+          date: r.competition_date,
+          fromCompetition: true,
+          competitionName: r.competition_name,
+        });
+      }
     }
     return [...best.values()].sort((a, b) => b.result - a.result);
-  }, [results]);
+  }, [sharedDives, results]);
 
   const color = athleteColor(id);
   const name = profile?.display_name || t("spearo.feedAthlete");
@@ -109,7 +173,7 @@ function AthletePage() {
   if (!profile) {
     return (
       <div className="space-y-5 pb-4">
-        <BackButton onClick={() => navigate({ to: "/spearo" })} />
+        <BackButton onClick={() => navigate({ to: homeTo })} />
         <div
           className="surface-2 relative overflow-hidden rounded-2xl p-10 text-center"
           style={{ background: UNDERWATER_GRADIENT }}
@@ -132,7 +196,7 @@ function AthletePage() {
 
   return (
     <div className="space-y-6 pb-24">
-      <BackButton onClick={() => navigate({ to: "/spearo" })} />
+      <BackButton onClick={() => navigate({ to: homeTo })} />
 
       {/* ── header: avatar / name / bio ── */}
       <div
@@ -246,45 +310,84 @@ function AthletePage() {
         </section>
       )}
 
-      {/* ── Apnos: best public competition result per discipline ── */}
-      {!resultsLoading && bestPerDiscipline.length > 0 && (
+      {/* ── Apnos: best shared/competition result per discipline ── */}
+      {!resultsLoading && !sharedDivesLoading && bestPerDiscipline.length > 0 && (
         <section className="space-y-3">
           <SectionHeader
             icon={<Waves className="size-5" style={{ color: GREEN_LIGHT }} />}
             title={t("athlete.compResults")}
             sub={t("athlete.compResultsSub")}
           />
-          <div className="space-y-2">
+          <div className="space-y-3">
             {bestPerDiscipline.map((r) => (
-              <div
-                key={r.discipline}
-                className="surface-1 flex items-center gap-3 rounded-xl px-4 py-3"
-                style={{ background: "var(--card)", border: "1px solid rgba(var(--ink),0.05)" }}
-              >
-                <span
-                  className="shrink-0 rounded-md px-2 py-0.5 text-[0.6rem] font-bold tracking-wider"
-                  style={{ background: "rgba(29,158,117,0.15)", color: GREEN_LIGHT }}
-                >
-                  {r.discipline}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-xs font-semibold text-foreground/80">
-                    {disciplineName(r.discipline, lang)}
-                  </p>
-                  <p className="mt-0.5 truncate text-[0.65rem] text-foreground/40">
-                    {[r.competition_name, r.competition_date].filter(Boolean).join(" · ")}
-                  </p>
+              <div key={r.discipline} className="surface-2 relative overflow-hidden rounded-2xl">
+                <div
+                  className="absolute inset-0"
+                  style={{ background: disciplineGradient(r.discipline) }}
+                />
+                <div className="relative flex min-h-[8.5rem] flex-col justify-between p-4">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="rounded-md px-2 py-0.5 text-[0.6rem] font-bold tracking-wider"
+                      style={{
+                        background: "rgba(255,255,255,0.12)",
+                        color: "rgba(255,255,255,0.85)",
+                      }}
+                    >
+                      {r.discipline}
+                    </span>
+                    {/* gold PB medal — this IS the athlete's best per discipline */}
+                    <span
+                      className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[0.6rem] font-black tracking-[0.14em]"
+                      style={{
+                        background: MEDAL_GOLD,
+                        color: "#3A2503",
+                        boxShadow:
+                          "inset 0 1px 0 rgba(255,255,255,0.5), 0 2px 10px rgba(239,159,39,0.45)",
+                      }}
+                    >
+                      <Trophy className="size-3" /> PB
+                    </span>
+                    {r.fromCompetition && (
+                      <span
+                        className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[0.6rem] font-bold tracking-wider"
+                        style={{
+                          background: "rgba(79,168,224,0.22)",
+                          color: "#9CCFF2",
+                          border: "1px solid rgba(79,168,224,0.4)",
+                        }}
+                      >
+                        {t("athlete.compBadge")}
+                      </span>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-white/85">
+                      {disciplineName(r.discipline, lang)}
+                    </p>
+                    <p
+                      className="mt-0.5 text-4xl font-black tabular-nums text-white"
+                      style={{
+                        fontFamily: "'Outfit', sans-serif",
+                        textShadow: "0 2px 12px rgba(2,10,19,0.6)",
+                      }}
+                    >
+                      {formatResult(r.discipline, r.result)}
+                    </p>
+                    <p className="mt-1 truncate text-xs text-white/55">
+                      {[r.competitionName, r.date ? new Date(r.date).toLocaleDateString() : null]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </p>
+                  </div>
                 </div>
-                <p className="shrink-0 font-mono text-base font-bold text-foreground">
-                  {formatResult(r.discipline, r.result)}
-                </p>
               </div>
             ))}
           </div>
         </section>
       )}
 
-      {(sharedLoading || resultsLoading) && (
+      {(sharedLoading || sharedDivesLoading || resultsLoading) && (
         <div className="flex justify-center py-6">
           <Loader2 className="size-5 animate-spin text-foreground/25" />
         </div>
