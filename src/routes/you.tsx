@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
+import { ModeToggle } from "@/components/ModeToggle";
 import { useI18n } from "@/lib/i18n";
 
 export const Route = createFileRoute("/you")({
@@ -109,6 +110,10 @@ function YouHub() {
             : "Your profile, gear and settings"}
         </p>
       </div>
+
+      {/* App mode switch (Apnos ⇄ Spearo) — placed up top so it's easy to find;
+          this is the cross-discovery hook that lets a freediver try Spearo. */}
+      <ModeToggle />
 
       <div className="space-y-3">
         {ITEMS.map(({ to, icon: Icon, accent, title_el, title_en, sub_el, sub_en }) => (
