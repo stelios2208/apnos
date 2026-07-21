@@ -203,9 +203,26 @@ function SpearoLog() {
     }
   };
 
+  // Best-effort Storage removal of an UNSAVED upload (never the photo persisted
+  // on the row being edited — that one is only removed AFTER a successful
+  // update, see the update mutation). Cleanup must never block the UI flow, so
+  // errors are logged and swallowed, mirroring the delete mutation's hygiene.
+  const cleanupUnsavedUpload = async (url: string | null) => {
+    if (!url || url === editing?.photo_url) return;
+    try {
+      await deleteCatchPhoto(url);
+    } catch (err) {
+      console.error("unsaved catch photo cleanup failed (ignored):", err);
+    }
+  };
+
   // Revoke a local preview object URL (if any) so we don't leak it, then forget
-  // both the preview and the uploaded URL.
-  const clearPhoto = () => {
+  // both the preview and the uploaded URL. `cleanupUpload` additionally deletes
+  // a not-yet-saved upload from Storage — pass it from the explicit "remove
+  // photo" control, but NOT from resetForm (after a successful create the
+  // uploaded object IS the row's photo and must stay).
+  const clearPhoto = (cleanupUpload = false) => {
+    if (cleanupUpload) void cleanupUnsavedUpload(photoUrl);
     if (photoPreview) URL.revokeObjectURL(photoPreview);
     setPhotoPreview(null);
     setPhotoUrl(null);
@@ -219,7 +236,10 @@ function SpearoLog() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Replace any previously chosen photo (revoke its preview first).
+    // Replace any previously chosen photo (revoke its preview first). If the
+    // replaced photo was a fresh upload of this form session, remove its
+    // Storage object once the new upload lands so replacements never orphan.
+    const replacedUpload = photoUrl;
     if (photoPreview) URL.revokeObjectURL(photoPreview);
     const preview = URL.createObjectURL(file);
     setPhotoPreview(preview);
@@ -229,6 +249,7 @@ function SpearoLog() {
     try {
       const url = await uploadCatchPhoto(file, user!.id);
       setPhotoUrl(url);
+      void cleanupUnsavedUpload(replacedUpload);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t("spearo.photoError"));
       clearPhoto();
@@ -332,8 +353,11 @@ function SpearoLog() {
     onError: (err) => toast.error(err instanceof Error ? err.message : t("spearo.couldNotSave")),
   });
 
-  // Leave edit mode and restore the empty create form.
+  // Leave edit mode and restore the empty create form. A replacement photo that
+  // was uploaded but never saved is removed from Storage so cancelling an edit
+  // leaves no orphan (the row's own photo is untouched by the guard inside).
   const exitEdit = () => {
+    void cleanupUnsavedUpload(photoUrl);
     setEditingId(null);
     resetForm();
   };
@@ -347,14 +371,35 @@ function SpearoLog() {
 
   // Update path — separate from the untouched create `mutation`. Sends explicit
   // nulls for emptied optional fields so an edit that clears a field actually
-  // clears the column (omitting would leave the old value in place).
+  // clears the column (omitting would leave the old value in place). After the
+  // row update commits, the PREVIOUS photo object is removed from Storage when
+  // it was replaced or cleared — best-effort, never failing the update — so
+  // edits don't accumulate orphaned images. Deleting only after success means a
+  // failed update can never lose the photo still referenced by the row.
   const updateMutation = useMutation({
-    mutationFn: (vars: { id: string; patch: Partial<NewSpearoCatchInput> }) =>
-      updateCatch(vars.id, vars.patch),
+    mutationFn: async (vars: {
+      id: string;
+      patch: Partial<NewSpearoCatchInput>;
+      oldPhotoUrl?: string;
+    }) => {
+      const updated = await updateCatch(vars.id, vars.patch);
+      const newPhotoUrl = (vars.patch as { photo_url?: string | null }).photo_url ?? null;
+      if (vars.oldPhotoUrl && vars.oldPhotoUrl !== newPhotoUrl) {
+        try {
+          await deleteCatchPhoto(vars.oldPhotoUrl);
+        } catch (err) {
+          console.error("replaced catch photo cleanup failed (ignored):", err);
+        }
+      }
+      return updated;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["spearo-catches", user?.id] });
       toast.success(t("spearo.updated"));
-      exitEdit();
+      // Skip exitEdit's unsaved-upload cleanup: the fresh upload (if any) is now
+      // the row's saved photo.
+      setEditingId(null);
+      resetForm();
     },
     onError: (err) => toast.error(err instanceof Error ? err.message : t("spearo.couldNotSave")),
   });
@@ -423,7 +468,9 @@ function SpearoLog() {
         // drop-and-retry as every column (see spearo-catches.ts)
         shared_to_feed: sharedToFeed,
       } as unknown as Partial<NewSpearoCatchInput>;
-      updateMutation.mutate({ id: editingId, patch });
+      // `oldPhotoUrl` lets the mutation clean up a replaced/removed photo's
+      // Storage object after the row update commits.
+      updateMutation.mutate({ id: editingId, patch, oldPhotoUrl: editing?.photo_url });
       return;
     }
 
@@ -669,7 +716,7 @@ function SpearoLog() {
                 {/* remove chosen photo */}
                 <button
                   type="button"
-                  onClick={clearPhoto}
+                  onClick={() => clearPhoto(true)}
                   aria-label={t("spearo.photoRemove")}
                   className="absolute right-2 top-2 flex size-8 items-center justify-center rounded-full text-white transition-opacity hover:opacity-80"
                   style={{ background: "rgba(4,26,46,0.6)", backdropFilter: "blur(2px)" }}
