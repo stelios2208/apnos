@@ -40,6 +40,7 @@ import {
 } from "@/lib/spearo-catches";
 import { uploadCatchPhoto, deleteCatchPhoto } from "@/lib/spearo-photos";
 import { getCurrentSpot, mapsLink, SpotError } from "@/lib/spot";
+import { nativeVibrate } from "@/lib/native";
 import { shareCatchCard } from "@/lib/catch-share-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -757,6 +758,7 @@ function Spearo() {
             size="lg"
             className="w-full"
             disabled={mutation.isPending || updateMutation.isPending || photoUploading}
+            onClick={() => nativeVibrate(10)}
           >
             {mutation.isPending || updateMutation.isPending
               ? t("common.saving")
