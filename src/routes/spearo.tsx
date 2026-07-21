@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Fish,
   Ruler,
@@ -13,6 +13,8 @@ import {
   MapPin,
   Lock,
   Share2,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -31,10 +33,12 @@ import {
 import {
   listCatches,
   createCatch,
+  updateCatch,
+  deleteCatch,
   personalBestsSpearo,
   type NewSpearoCatchInput,
 } from "@/lib/spearo-catches";
-import { uploadCatchPhoto } from "@/lib/spearo-photos";
+import { uploadCatchPhoto, deleteCatchPhoto } from "@/lib/spearo-photos";
 import { getCurrentSpot, mapsLink, SpotError } from "@/lib/spot";
 import { shareCatchCard } from "@/lib/catch-share-card";
 import { Button } from "@/components/ui/button";
@@ -48,6 +52,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 // ── Route ──────────────────────────────────────────────────────────────────────
 // The first user-facing Apnos Spearo screen: log a spearfishing catch and see the
@@ -81,6 +96,14 @@ function Spearo() {
   const { user } = useAuth();
   const { t, lang } = useI18n();
   const queryClient = useQueryClient();
+
+  // ── edit mode ───────────────────────────────────────────────────────────────
+  // Mirrors log.tsx's edit-mode pattern (derive the record → prefill via effect →
+  // switch the submit action → cancel). `editingId` is the id of the catch being
+  // edited, or null in the normal create flow. `formRef` lets us bring the form
+  // into view when the user taps edit on a card further down the list.
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
 
   // ── form state ────────────────────────────────────────────────────────────
   // `species` holds either a MED_SPECIES code, the OTHER sentinel, or "" (unset).
@@ -200,6 +223,49 @@ function Spearo() {
     return new Set(Object.values(best).map((c) => c.id));
   }, [catches]);
 
+  // The catch currently being edited, resolved from the live list (like log.tsx
+  // resolves `editing` from `dives`). Undefined in the create flow.
+  const editing = editingId ? catches.find((c) => c.id === editingId) : undefined;
+
+  // Pre-fill EVERY form field from the record being edited — the direct analogue
+  // of log.tsx's edit effect. Runs whenever the edited record changes.
+  useEffect(() => {
+    if (!editing) return;
+    // species: a known code fills the select; free-text uses the OTHER sentinel.
+    if (editing.species_code) {
+      setSpecies(editing.species_code);
+      setSpeciesCustom("");
+    } else if (editing.species_custom) {
+      setSpecies(OTHER);
+      setSpeciesCustom(editing.species_custom);
+    } else {
+      setSpecies("");
+      setSpeciesCustom("");
+    }
+    setSizeCm(editing.size_cm != null ? String(editing.size_cm) : "");
+    setWeightKg(editing.weight_kg != null ? String(editing.weight_kg) : "");
+    setMaxDepthM(editing.max_depth_m != null ? String(editing.max_depth_m) : "");
+    // Split the stored ISO timestamp back into the date + time inputs.
+    setCaughtDate(format(new Date(editing.caught_at), "yyyy-MM-dd"));
+    setCaughtTime(format(new Date(editing.caught_at), "HH:mm"));
+    setNotes(editing.notes ?? "");
+    // Photo: show the existing photo in the same preview control (its public URL
+    // doubles as the preview src) and hold the URL so it persists unless the user
+    // replaces or removes it.
+    setPhotoPreview(editing.photo_url ?? null);
+    setPhotoUrl(editing.photo_url ?? null);
+    setPhotoUploading(false);
+    // Spot: reuse the existing spot control, pre-filled from the private coords.
+    if (editing.spot) {
+      setSpot({ lat: editing.spot.lat, lng: editing.spot.lng });
+      setSpotName(editing.spot.name ?? "");
+    } else {
+      setSpot(null);
+      setSpotName("");
+    }
+    setSpotError(null);
+  }, [editing]);
+
   const resetForm = () => {
     setSpecies("");
     setSpeciesCustom("");
@@ -227,6 +293,58 @@ function Spearo() {
     onError: (err) => toast.error(err instanceof Error ? err.message : t("spearo.couldNotSave")),
   });
 
+  // Leave edit mode and restore the empty create form.
+  const exitEdit = () => {
+    setEditingId(null);
+    resetForm();
+  };
+
+  // Enter edit mode for a catch (the effect above pre-fills the form) and bring
+  // the form into view since the tapped card may be far down the list.
+  const startEdit = (c: SpearoCatch) => {
+    setEditingId(c.id);
+    formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  // Update path — separate from the untouched create `mutation`. Sends explicit
+  // nulls for emptied optional fields so an edit that clears a field actually
+  // clears the column (omitting would leave the old value in place).
+  const updateMutation = useMutation({
+    mutationFn: (vars: { id: string; patch: Partial<NewSpearoCatchInput> }) =>
+      updateCatch(vars.id, vars.patch),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["spearo-catches", user?.id] });
+      toast.success(t("spearo.updated"));
+      exitEdit();
+    },
+    onError: (err) => toast.error(err instanceof Error ? err.message : t("spearo.couldNotSave")),
+  });
+
+  // Single delete — confirmed via the shared AlertDialog on each card.
+  const deleteMutation = useMutation({
+    mutationFn: async (c: SpearoCatch) => {
+      await deleteCatch(c.id);
+      // Best-effort hygiene: also remove the catch's PUBLIC photo from Storage so
+      // a deleted catch's image URL doesn't linger. This must never block or fail
+      // the delete — the row removal is what matters — so any cleanup error is
+      // swallowed (logged only).
+      if (c.photo_url) {
+        try {
+          await deleteCatchPhoto(c.photo_url);
+        } catch (err) {
+          console.error("catch photo cleanup failed (ignored):", err);
+        }
+      }
+    },
+    onSuccess: (_data, c) => {
+      queryClient.invalidateQueries({ queryKey: ["spearo-catches", user?.id] });
+      toast.success(t("spearo.deleted"));
+      // If the user was editing the catch they just deleted, exit edit cleanly.
+      if (editingId === c.id) exitEdit();
+    },
+    onError: (err) => toast.error(err instanceof Error ? err.message : t("spearo.deleteError")),
+  });
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!species) {
@@ -242,6 +360,32 @@ function Spearo() {
     // Reuses the same date/time input pattern as log.tsx (two <Input> controls).
     const caughtAt = new Date(`${caughtDate}T${caughtTime || "00:00"}`).toISOString();
 
+    // ── EDIT: update the existing catch ───────────────────────────────────────
+    if (editingId) {
+      // Unlike create (which omits empties), an update must send explicit `null`
+      // for cleared fields so the column is actually cleared. The data-layer type
+      // models these as optional strings rather than nullable, so we cast once at
+      // this boundary — we do NOT modify the data layer.
+      const patch = {
+        caught_at: caughtAt,
+        species_code: species === OTHER ? null : species,
+        species_custom: species === OTHER ? speciesCustom.trim() : null,
+        size_cm: sizeCm ? Number(sizeCm) : null,
+        weight_kg: weightKg ? Number(weightKg) : null,
+        max_depth_m: maxDepthM ? Number(maxDepthM) : null,
+        notes: notes.trim() ? notes.trim() : null,
+        // null clears a removed photo; the URL persists an existing/replaced one.
+        photo_url: photoUrl ?? null,
+        // null clears a removed spot; owner-only coords are never exposed anywhere.
+        spot: spot
+          ? { lat: spot.lat, lng: spot.lng, ...(spotName.trim() ? { name: spotName.trim() } : {}) }
+          : null,
+      } as unknown as Partial<NewSpearoCatchInput>;
+      updateMutation.mutate({ id: editingId, patch });
+      return;
+    }
+
+    // ── CREATE (unchanged) ────────────────────────────────────────────────────
     // Build the payload with only the fields the user actually filled in — empty
     // optional measurements are omitted rather than sent as 0/NaN. `user_id` is
     // intentionally NOT passed: it defaults to auth.uid() on the table (see
@@ -306,16 +450,18 @@ function Spearo() {
         </div>
       </div>
 
-      {/* ── log-a-catch form ── */}
-      <form onSubmit={handleSubmit} className="space-y-5">
+      {/* ── log/edit-a-catch form ── */}
+      <form ref={formRef} onSubmit={handleSubmit} className="space-y-5">
         <div className="glass-card space-y-4 rounded-2xl p-5">
           <h2
             className="flex items-center gap-2 text-sm font-semibold"
             style={{ color: GREEN_LIGHT }}
           >
-            <Anchor className="size-4" /> {t("spearo.logTitle")}
+            <Anchor className="size-4" /> {editingId ? t("spearo.editTitle") : t("spearo.logTitle")}
           </h2>
-          <p className="-mt-2 text-xs text-muted-foreground">{t("spearo.logSub")}</p>
+          <p className="-mt-2 text-xs text-muted-foreground">
+            {editingId ? t("spearo.editSub") : t("spearo.logSub")}
+          </p>
 
           {/* species — localized names are the whole point (σαργός / συναγρίδα) */}
           <div className="space-y-1.5">
@@ -604,15 +750,34 @@ function Spearo() {
           </div>
         </div>
 
-        <Button
-          type="submit"
-          variant="hero"
-          size="lg"
-          className="w-full"
-          disabled={mutation.isPending || photoUploading}
-        >
-          {mutation.isPending ? t("common.saving") : t("spearo.save")}
-        </Button>
+        <div className="space-y-3">
+          <Button
+            type="submit"
+            variant="hero"
+            size="lg"
+            className="w-full"
+            disabled={mutation.isPending || updateMutation.isPending || photoUploading}
+          >
+            {mutation.isPending || updateMutation.isPending
+              ? t("common.saving")
+              : editingId
+                ? t("spearo.update")
+                : t("spearo.save")}
+          </Button>
+          {/* Cancel exits edit mode and restores the empty create form. */}
+          {editingId && (
+            <Button
+              type="button"
+              variant="outline"
+              size="lg"
+              className="w-full"
+              onClick={exitEdit}
+              disabled={updateMutation.isPending}
+            >
+              {t("common.cancel")}
+            </Button>
+          )}
+        </div>
       </form>
 
       {/* ── catch list ── */}
@@ -648,7 +813,16 @@ function Spearo() {
         ) : (
           <ul className="space-y-3">
             {catches.map((c) => (
-              <CatchCard key={c.id} catch={c} isPB={pbIds.has(c.id)} lang={lang} t={t} />
+              <CatchCard
+                key={c.id}
+                catch={c}
+                isPB={pbIds.has(c.id)}
+                isEditing={editingId === c.id}
+                lang={lang}
+                t={t}
+                onEdit={startEdit}
+                onDelete={(x) => deleteMutation.mutate(x)}
+              />
             ))}
           </ul>
         )}
@@ -665,13 +839,19 @@ function Spearo() {
 function CatchCard({
   catch: c,
   isPB,
+  isEditing,
   lang,
   t,
+  onEdit,
+  onDelete,
 }: {
   catch: SpearoCatch;
   isPB: boolean;
+  isEditing: boolean;
   lang: "el" | "en";
   t: (k: string, v?: Record<string, string | number>) => string;
+  onEdit: (c: SpearoCatch) => void;
+  onDelete: (c: SpearoCatch) => void;
 }) {
   const border = isPB ? AMBER : GREEN;
   // Resolve the display name: known species get their localized label, otherwise
@@ -710,8 +890,12 @@ function CatchCard({
 
   return (
     <li
-      className="glass-card overflow-hidden rounded-2xl"
-      style={{ borderLeft: `3px solid ${border}` }}
+      className="glass-card overflow-hidden rounded-2xl transition-shadow"
+      style={{
+        borderLeft: `3px solid ${border}`,
+        // subtle ring while this catch is the one being edited in the form above
+        boxShadow: isEditing ? "0 0 0 2px rgba(93,202,165,0.55)" : undefined,
+      }}
     >
       <div className="space-y-3 p-4">
         {/* top row: species pill + PB badge + date */}
@@ -833,6 +1017,48 @@ function CatchCard({
 
         {/* notes */}
         {c.notes && <p className="text-xs leading-relaxed text-foreground/45">{c.notes}</p>}
+
+        {/* edit + delete actions — bottom-right, mirroring history.tsx's dive-card
+            controls exactly (ghost buttons, Pencil/Trash2). Kept at the bottom so
+            they never crowd or clip the share button in the top-right. */}
+        <div className="flex items-center justify-end gap-1 pt-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 gap-1.5 text-xs text-foreground/40"
+            onClick={() => onEdit(c)}
+          >
+            <Pencil className="size-3" /> {t("common.edit")}
+          </Button>
+
+          {/* delete → reuse the shared AlertDialog for a destructive confirm */}
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 gap-1.5 text-xs text-red-400/60 hover:text-red-400"
+              >
+                <Trash2 className="size-3" /> {t("common.delete")}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>{t("spearo.deleteTitle")}</AlertDialogTitle>
+                <AlertDialogDescription>{t("spearo.deleteDesc")}</AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => onDelete(c)}
+                  className="bg-red-600 text-white hover:bg-red-600/90"
+                >
+                  {t("common.delete")}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
       </div>
     </li>
   );
