@@ -11,6 +11,9 @@ import { PromoBanner } from "@/components/PromoBanner";
 import { PostReactions } from "@/components/PostReactions";
 import { PostComposer } from "@/components/PostComposer";
 import { PostCard } from "@/components/PostCard";
+import { RingedAvatar } from "@/components/RingedAvatar";
+import { AvatarBubble } from "@/components/AvatarBubble";
+import { SITE_URL } from "@/lib/site";
 import { useAuth } from "@/hooks/use-auth";
 import {
   listPublicProfiles,
@@ -22,7 +25,6 @@ import { listFeedPosts, deletePost, type CommunityPost } from "@/lib/posts";
 import { listStories, deleteStory, type CommunityStory } from "@/lib/stories";
 import { deleteCatchPhoto } from "@/lib/spearo-photos";
 import { disciplineName, formatResult, type DisciplineCode } from "@/lib/diving";
-import { athleteInitials, athleteColor } from "@/lib/athletes";
 import { nativeVibrate } from "@/lib/native";
 import { useI18n } from "@/lib/i18n";
 
@@ -155,6 +157,15 @@ function Dashboard() {
         onView={(i) => setStoryIndex(i)}
       />
 
+      {/* round profile circles — you + the crew (like the profile friends row) */}
+      {profiles.length > 0 && (
+        <div className="no-scrollbar -mx-4 flex gap-4 overflow-x-auto px-4 pb-1">
+          {profiles.map((p) => (
+            <AvatarBubble key={p.user_id} profile={p} fallbackName={el ? "Αθλητής" : "Athlete"} />
+          ))}
+        </div>
+      )}
+
       {/* quick chips into the training hubs (train · plan · calendar · history) */}
       <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
         {chips.map(({ to, icon: Icon, label }) => (
@@ -267,7 +278,6 @@ function FeedDiveCard({
 }) {
   const code = d.discipline as DisciplineCode;
   const name = author?.display_name || fallbackName;
-  const color = athleteColor(d.user_id);
   const dateStr = new Date(d.dive_date).toLocaleDateString(lang === "el" ? "el-GR" : "en-GB", {
     day: "numeric",
     month: "short",
@@ -275,29 +285,15 @@ function FeedDiveCard({
   });
 
   return (
-    <li className="surface-2 overflow-hidden border-y border-border/50 sm:rounded-2xl sm:border">
-      {/* post header — author identity, taps through to the athlete page */}
+    <li className="surface-2 overflow-hidden sm:rounded-2xl">
+      {/* post header — ringed avatar + name, taps through to the athlete page */}
       <Link
         to="/athlete/$id"
         params={{ id: d.user_id }}
         onClick={() => nativeVibrate(10)}
         className="pressable flex items-center gap-2.5 p-3"
       >
-        {author?.avatar_url ? (
-          <img
-            src={author.avatar_url}
-            alt=""
-            className="size-9 shrink-0 rounded-full object-cover"
-            style={{ border: `1.5px solid ${color}77` }}
-          />
-        ) : (
-          <span
-            className="flex size-9 shrink-0 items-center justify-center rounded-full text-xs font-bold"
-            style={{ background: `${color}33`, color: "#fff", border: `1.5px solid ${color}77` }}
-          >
-            {athleteInitials(name)}
-          </span>
-        )}
+        <RingedAvatar avatarUrl={author?.avatar_url} name={name} userId={d.user_id} />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm font-semibold text-foreground">{name}</span>
           <span className="block text-[0.65rem] text-foreground/45">{dateStr}</span>
@@ -346,9 +342,17 @@ function FeedDiveCard({
         </div>
       </div>
 
-      {/* action bar — heart / I'm OK */}
-      <div className="px-3 py-2">
-        <PostReactions targetType="dive" targetId={d.id} onDark={false} />
+      {/* action bar — heart / I'm OK / share */}
+      <div className="px-3 py-2.5">
+        <PostReactions
+          targetType="dive"
+          targetId={d.id}
+          shareData={{
+            title: name,
+            text: `${disciplineName(code, lang)} — ${formatResult(code, d.result)}`,
+            url: `${SITE_URL}/athlete/${d.user_id}`,
+          }}
+        />
       </div>
     </li>
   );

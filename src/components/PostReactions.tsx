@@ -1,19 +1,14 @@
 import { useEffect, useState } from "react";
-import { Heart } from "lucide-react";
+import { Heart, Send } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { nativeVibrate } from "@/lib/native";
 
-// ── Post reactions (Facebook-style) ──────────────────────────────────────────
-// A lightweight reaction bar for a feed post: a "heart" (like) and an "I'm OK"
-// safety signal (the 👌 divers use in the water). Reactions are stored
-// DEVICE-LOCAL in localStorage for now — there is no reactions table yet, so
-// this keeps the familiar tap-to-react feel working offline and across reloads
-// without a backend. When a shared reactions table lands, swap the storage
-// helpers below for a data-layer call; the component API stays the same.
-//
-// SSR-safe: localStorage is only touched inside effects / event handlers, and
-// the initial render is the neutral (un-reacted) state so server and client
-// markup match.
+// ── Post reactions (Instagram-style) ─────────────────────────────────────────
+// Icon-only action row, no pill backgrounds: a heart (like), the "I'm OK" 👌
+// safety signal divers use, and a share button. Reactions are stored
+// DEVICE-LOCAL in localStorage (no reactions table yet) so the tap-to-react feel
+// works offline and across reloads. Swap the storage helpers for a data-layer
+// call when a shared table lands; the component API stays the same.
 
 type Kind = "heart" | "ok";
 
@@ -44,18 +39,17 @@ function writeReaction(targetType: string, targetId: string, kind: Kind, on: boo
 export function PostReactions({
   targetType,
   targetId,
-  onDark = true,
+  shareData,
 }: {
   targetType: "dive" | "catch" | "post";
   targetId: string;
-  /** true when the bar sits over a dark photo/gradient (feed cards). */
-  onDark?: boolean;
+  /** Enables the share button; passed to the native share sheet. */
+  shareData?: { title?: string; text?: string; url?: string };
 }) {
   const { t } = useI18n();
   const [heart, setHeart] = useState(false);
   const [ok, setOk] = useState(false);
 
-  // Hydrate from localStorage after mount (keeps SSR markup neutral).
   useEffect(() => {
     setHeart(readReaction(targetType, targetId, "heart"));
     setOk(readReaction(targetType, targetId, "ok"));
@@ -74,26 +68,36 @@ export function PostReactions({
     }
   };
 
-  const base = onDark
-    ? "text-white/80 hover:text-white"
-    : "text-foreground/60 hover:text-foreground";
-  const idle = onDark ? "rgba(255,255,255,0.08)" : "rgba(var(--ink),0.04)";
+  const share = async () => {
+    nativeVibrate(10);
+    const data = {
+      title: shareData?.title || "Apnos",
+      text: shareData?.text || "",
+      url: shareData?.url || (typeof window !== "undefined" ? window.location.origin : ""),
+    };
+    try {
+      if (typeof navigator !== "undefined" && navigator.share) {
+        await navigator.share(data);
+      } else if (typeof navigator !== "undefined" && navigator.clipboard) {
+        await navigator.clipboard.writeText(`${data.text} ${data.url}`.trim());
+      }
+    } catch {
+      /* user dismissed the share sheet */
+    }
+  };
 
   return (
-    <div className="flex items-center gap-2">
+    // icon-only, larger, transparent — sits on the card background like Instagram
+    <div className="flex items-center gap-4">
       <button
         type="button"
         onClick={() => toggle("heart")}
         aria-pressed={heart}
         aria-label={t("react.heart")}
-        className={`pressable flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${base}`}
-        style={{
-          background: heart ? "rgba(240,80,90,0.18)" : idle,
-          color: heart ? "#ff6b76" : undefined,
-        }}
+        className="pressable -m-1 p-1"
+        style={{ color: heart ? "#ff3b5c" : "var(--foreground)" }}
       >
-        <Heart className="size-4" fill={heart ? "currentColor" : "none"} />
-        {t("react.heart")}
+        <Heart className="size-7" fill={heart ? "currentColor" : "none"} strokeWidth={1.8} />
       </button>
 
       <button
@@ -101,14 +105,20 @@ export function PostReactions({
         onClick={() => toggle("ok")}
         aria-pressed={ok}
         aria-label={t("react.ok")}
-        className={`pressable flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${base}`}
-        style={{
-          background: ok ? "rgba(29,158,117,0.2)" : idle,
-          color: ok ? "#5DCAA5" : undefined,
-        }}
+        className="pressable -m-1 p-1 text-2xl leading-none"
+        style={{ opacity: ok ? 1 : 0.85, filter: ok ? "none" : "grayscale(0.15)" }}
       >
-        <span className="text-sm leading-none">👌</span>
-        {t("react.ok")}
+        <span aria-hidden>👌</span>
+      </button>
+
+      <button
+        type="button"
+        onClick={share}
+        aria-label={t("react.share")}
+        className="pressable -m-1 p-1"
+        style={{ color: "var(--foreground)" }}
+      >
+        <Send className="size-6 -rotate-12" strokeWidth={1.8} />
       </button>
     </div>
   );
