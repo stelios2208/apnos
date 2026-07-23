@@ -5,6 +5,8 @@ import { toast } from "sonner";
 import { Trophy, Waves, ClipboardList, CalendarDays, History, Users } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { StoriesRow } from "@/components/StoriesRow";
+import { StoryComposer } from "@/components/StoryComposer";
+import { StoryViewer } from "@/components/StoryViewer";
 import { PromoBanner } from "@/components/PromoBanner";
 import { PostReactions } from "@/components/PostReactions";
 import { PostComposer } from "@/components/PostComposer";
@@ -17,6 +19,7 @@ import {
   type FeedDive,
 } from "@/lib/profiles";
 import { listFeedPosts, deletePost, type CommunityPost } from "@/lib/posts";
+import { listStories, deleteStory, type CommunityStory } from "@/lib/stories";
 import { deleteCatchPhoto } from "@/lib/spearo-photos";
 import { disciplineName, formatResult, type DisciplineCode } from "@/lib/diving";
 import { athleteInitials, athleteColor } from "@/lib/athletes";
@@ -69,6 +72,8 @@ function Dashboard() {
   const el = lang === "el";
   const qc = useQueryClient();
   const [composerOpen, setComposerOpen] = useState(false);
+  const [storyComposerOpen, setStoryComposerOpen] = useState(false);
+  const [storyIndex, setStoryIndex] = useState<number | null>(null);
 
   const { data: profiles = [], isLoading: profilesLoading } = useQuery({
     queryKey: ["public-profiles"],
@@ -88,8 +93,23 @@ function Dashboard() {
     enabled: !!user,
   });
 
+  const { data: stories = [] } = useQuery({
+    queryKey: ["stories"],
+    queryFn: () => listStories(40),
+    enabled: !!user,
+  });
+
   const profileByUser = useMemo(() => new Map(profiles.map((p) => [p.user_id, p])), [profiles]);
   const isLoading = profilesLoading || feedLoading || postsLoading;
+
+  const deleteStoryMutation = useMutation({
+    mutationFn: async (s: CommunityStory) => {
+      await deleteStory(s.id);
+      if (s.photo_url) await deleteCatchPhoto(s.photo_url).catch(() => {});
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["stories"] }),
+    onError: (err) => toast.error(err instanceof Error ? err.message : "Error"),
+  });
 
   // Delete own post — best-effort photo cleanup, then refresh the feed.
   const deletePostMutation = useMutation({
@@ -126,12 +146,13 @@ function Dashboard() {
       {/* our promo / tips slot (replaces the old oversized community hero) */}
       <PromoBanner variant="apnos" />
 
-      {/* Facebook-style stories row — the (+) tile opens the post composer */}
+      {/* Facebook-style stories row — the Create card uploads a story */}
       <StoriesRow
-        profiles={profiles}
+        stories={stories}
+        profileByUser={profileByUser}
         fallbackName={el ? "Αθλητής" : "Athlete"}
-        mode="apnos"
-        onCreate={() => setComposerOpen(true)}
+        onCreate={() => setStoryComposerOpen(true)}
+        onView={(i) => setStoryIndex(i)}
       />
 
       {/* quick chips into the training hubs (train · plan · calendar · history) */}
@@ -160,6 +181,18 @@ function Dashboard() {
 
       {/* free-form post composer ("what's on your mind?") */}
       <PostComposer open={composerOpen} onOpenChange={setComposerOpen} />
+
+      {/* story composer + fullscreen viewer (overlays) */}
+      <StoryComposer open={storyComposerOpen} onOpenChange={setStoryComposerOpen} />
+      <StoryViewer
+        stories={stories}
+        startIndex={storyIndex}
+        profileByUser={profileByUser}
+        fallbackName={el ? "Αθλητής" : "Athlete"}
+        currentUserId={user?.id}
+        onClose={() => setStoryIndex(null)}
+        onDelete={(s) => deleteStoryMutation.mutate(s)}
+      />
 
       {/* community feed — free-form posts interleaved with shared dives */}
       {isLoading ? (

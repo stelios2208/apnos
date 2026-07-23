@@ -1,33 +1,33 @@
-import { Link } from "@tanstack/react-router";
 import { Plus } from "lucide-react";
 import { athleteInitials, athleteColor } from "@/lib/athletes";
 import { useI18n } from "@/lib/i18n";
 import { nativeVibrate } from "@/lib/native";
 import type { SocialProfile } from "@/lib/profiles";
+import type { CommunityStory } from "@/lib/stories";
 
 // ── Community "stories" row (Facebook style) ─────────────────────────────────
 // A horizontally scrolling strip of TALL portrait cards, exactly like Facebook
-// stories: our own "Create" card comes FIRST (so we can always post / drop a
-// promoted card there), then one card per public athlete — their photo as the
-// background, a small ringed avatar top-left, their name at the bottom.
+// stories. Our own "Create" card comes FIRST (upload a photo → it becomes a
+// story), then one card per active story — the story photo as background, a
+// small ringed avatar of the author top-left, their name at the bottom. Tapping
+// a story opens the fullscreen viewer.
 //
 // NOTE: the small round ringed avatars (AvatarBubble) are the PROFILE affordance
-// used elsewhere (e.g. the friends row) — deliberately NOT reused here; stories
-// are their own tall-card shape.
-//
-// `mode` picks where the + card points when no composer callback is wired: the
-// Apnos "+" opens the dive log, the Spearo "+" the catch log.
+// used elsewhere (the friends row) — stories are their own tall-card shape.
 export function StoriesRow({
-  profiles,
+  stories,
+  profileByUser,
   fallbackName,
-  mode,
   onCreate,
+  onView,
 }: {
-  profiles: SocialProfile[];
+  stories: CommunityStory[];
+  profileByUser: Map<string, SocialProfile>;
   fallbackName: string;
-  mode: "apnos" | "spearo";
-  /** When set, the Create card opens the post composer instead of the log. */
-  onCreate?: () => void;
+  /** Opens the story composer (upload a photo). */
+  onCreate: () => void;
+  /** Opens the fullscreen viewer at the given story index. */
+  onView: (index: number) => void;
 }) {
   const { t } = useI18n();
 
@@ -35,9 +35,15 @@ export function StoriesRow({
     // full-bleed horizontal scroller; scrollbar hidden so a swipe never shows a
     // bottom line.
     <div className="no-scrollbar -mx-4 flex gap-2.5 overflow-x-auto px-4 pb-1">
-      <CreateStoryCard mode={mode} label={t("stories.create")} onCreate={onCreate} />
-      {profiles.map((p) => (
-        <StoryCard key={p.user_id} profile={p} fallbackName={fallbackName} />
+      <CreateStoryCard label={t("stories.create")} onCreate={onCreate} />
+      {stories.map((s, i) => (
+        <StoryCard
+          key={s.id}
+          story={s}
+          author={profileByUser.get(s.user_id)}
+          fallbackName={fallbackName}
+          onClick={() => onView(i)}
+        />
       ))}
     </div>
   );
@@ -47,17 +53,16 @@ export function StoriesRow({
 const CARD_CLS =
   "relative block h-44 w-[6.6rem] shrink-0 overflow-hidden rounded-2xl surface-1 pressable";
 
-function CreateStoryCard({
-  mode,
-  label,
-  onCreate,
-}: {
-  mode: "apnos" | "spearo";
-  label: string;
-  onCreate?: () => void;
-}) {
-  const inner = (
-    <>
+function CreateStoryCard({ label, onCreate }: { label: string; onCreate: () => void }) {
+  return (
+    <button
+      type="button"
+      className={CARD_CLS}
+      onClick={() => {
+        nativeVibrate(10);
+        onCreate();
+      }}
+    >
       {/* top: brand photo-stand-in */}
       <div
         className="h-[62%] w-full"
@@ -76,71 +81,43 @@ function CreateStoryCard({
       >
         <Plus className="size-4 text-white" />
       </span>
-    </>
-  );
-
-  if (onCreate) {
-    return (
-      <button
-        type="button"
-        className={CARD_CLS}
-        onClick={() => {
-          nativeVibrate(10);
-          onCreate();
-        }}
-      >
-        {inner}
-      </button>
-    );
-  }
-
-  // Fallback destinations (fully typed TanStack Links).
-  return mode === "spearo" ? (
-    <Link
-      to="/spearo"
-      search={{ log: true }}
-      onClick={() => nativeVibrate(10)}
-      className={CARD_CLS}
-    >
-      {inner}
-    </Link>
-  ) : (
-    <Link to="/log" onClick={() => nativeVibrate(10)} className={CARD_CLS}>
-      {inner}
-    </Link>
+    </button>
   );
 }
 
-function StoryCard({ profile, fallbackName }: { profile: SocialProfile; fallbackName: string }) {
-  const name = profile.display_name || fallbackName;
-  const color = athleteColor(profile.user_id);
+function StoryCard({
+  story,
+  author,
+  fallbackName,
+  onClick,
+}: {
+  story: CommunityStory;
+  author?: SocialProfile;
+  fallbackName: string;
+  onClick: () => void;
+}) {
+  const name = author?.display_name || fallbackName;
+  const color = athleteColor(story.user_id);
   return (
-    <Link
-      to="/athlete/$id"
-      params={{ id: profile.user_id }}
-      onClick={() => nativeVibrate(10)}
+    <button
+      type="button"
+      onClick={() => {
+        nativeVibrate(10);
+        onClick();
+      }}
       className={CARD_CLS}
     >
-      {/* background: their photo, or a tinted gradient with a big initial */}
-      {profile.avatar_url ? (
-        <img src={profile.avatar_url} alt={name} className="h-full w-full object-cover" />
-      ) : (
-        <div
-          className="flex h-full w-full items-center justify-center"
-          style={{ background: `linear-gradient(160deg, ${color}66 0%, #0a1622 100%)` }}
-        >
-          <span className="text-2xl font-black text-white/70">{athleteInitials(name)}</span>
-        </div>
-      )}
+      {/* the story photo */}
+      <img src={story.photo_url} alt="" className="h-full w-full object-cover" />
       {/* readability gradient */}
       <div
         className="absolute inset-0"
         style={{
           background:
-            "linear-gradient(180deg, rgba(2,10,19,0.25) 0%, rgba(2,10,19,0) 40%, rgba(2,10,19,0.85) 100%)",
+            "linear-gradient(180deg, rgba(2,10,19,0.3) 0%, rgba(2,10,19,0) 40%, rgba(2,10,19,0.85) 100%)",
         }}
       />
-      {/* small ringed avatar top-left (the profile affordance, in miniature) */}
+      {/* small ringed avatar of the author top-left */}
       <span
         className="absolute left-2 top-2 flex size-9 items-center justify-center rounded-full p-[2px]"
         style={{ background: "conic-gradient(from 210deg, #1D9E75, #5DCAA5, #9FE1CB, #1D9E75)" }}
@@ -149,8 +126,8 @@ function StoryCard({ profile, fallbackName }: { profile: SocialProfile; fallback
           className="flex size-full items-center justify-center overflow-hidden rounded-full"
           style={{ background: "var(--background)" }}
         >
-          {profile.avatar_url ? (
-            <img src={profile.avatar_url} alt="" className="size-full rounded-full object-cover" />
+          {author?.avatar_url ? (
+            <img src={author.avatar_url} alt="" className="size-full rounded-full object-cover" />
           ) : (
             <span className="text-[0.6rem] font-bold" style={{ color }}>
               {athleteInitials(name)}
@@ -158,13 +135,13 @@ function StoryCard({ profile, fallbackName }: { profile: SocialProfile; fallback
           )}
         </span>
       </span>
-      {/* name */}
+      {/* author name */}
       <span
-        className="absolute inset-x-0 bottom-0 line-clamp-2 p-2 text-[0.7rem] font-bold leading-tight text-white"
+        className="absolute inset-x-0 bottom-0 line-clamp-2 p-2 text-left text-[0.7rem] font-bold leading-tight text-white"
         style={{ textShadow: "0 1px 6px rgba(2,10,19,0.8)" }}
       >
-        {name}
+        {name.split(" ")[0]}
       </span>
-    </Link>
+    </button>
   );
 }

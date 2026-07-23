@@ -25,9 +25,10 @@ alter table public.app_admins enable row level security;
 -- below (and the service role in the SQL editor). This keeps the admin roster
 -- private from members.
 
--- Seed the owner as the first admin (no-op if the account/row already exists).
+-- Seed the owner accounts as admins (no-op if the account/row already exists).
 insert into public.app_admins (user_id)
-select id from auth.users where email = 'techfollow.eshop@gmail.com'
+select id from auth.users
+where email in ('steliosmarkis@hotmail.com', 'techfollow.eshop@gmail.com')
 on conflict (user_id) do nothing;
 
 -- ── 2. is_admin() helper ─────────────────────────────────────────────────────
