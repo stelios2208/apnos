@@ -1,6 +1,15 @@
 import React, { useEffect, type ReactNode } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { LayoutDashboard, Plus, History, LogOut, Waves, UserRound, Home } from "lucide-react";
+import {
+  LayoutDashboard,
+  Plus,
+  History,
+  LogOut,
+  Waves,
+  UserRound,
+  Home,
+  MessageCircle,
+} from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { useAuth } from "@/hooks/use-auth";
 import { useI18n } from "@/lib/i18n";
@@ -138,6 +147,20 @@ export function AppLayout({ children }: { children: ReactNode }) {
       </header>
 
       <main className="flex-1 pt-8">{children}</main>
+
+      {/* floating chat bubble — direct line to the admin (Messenger-style).
+          Hidden on the chat screen itself. */}
+      {!pathname.startsWith("/messages") && (
+        <Link
+          to="/messages"
+          aria-label={lang === "el" ? "Μηνύματα" : "Messages"}
+          onClick={hapticTick}
+          className="pressable glow-brand fixed bottom-24 right-4 z-40 flex size-12 items-center justify-center rounded-full"
+          style={{ background: "#1D9E75" }}
+        >
+          <MessageCircle className="size-6 text-white" />
+        </Link>
+      )}
 
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-background/80 backdrop-blur-lg">
         <div className="mx-auto flex max-w-2xl items-center justify-around px-2">
