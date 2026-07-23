@@ -2,13 +2,27 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { zodValidator, fallback } from "@tanstack/zod-adapter";
 import { z } from "zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, Flame, HeartPulse, Backpack, Waves, Users, Lock } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  ChevronDown,
+  Flame,
+  HeartPulse,
+  Backpack,
+  Waves,
+  Users,
+  Lock,
+  Camera,
+  Images,
+  SwitchCamera,
+  X,
+  Loader2,
+} from "lucide-react";
 import { toast } from "sonner";
 import { AppLayout } from "@/components/AppLayout";
 import { useAuth } from "@/hooks/use-auth";
 import { TimeInput } from "@/components/TimeInput";
 import { createDive, fetchDives, unitLabel, updateDive, type NewDiveInput } from "@/lib/dives";
+import { uploadCatchPhoto, deleteCatchPhoto } from "@/lib/spearo-photos";
 import {
   DISCIPLINES,
   DISCIPLINE_MAP,
@@ -81,6 +95,11 @@ function LogDive() {
   // Community opt-in — DEFAULT OFF, always. The feed only ever reads the
   // sanitized feed_dives view (result data only — never notes/wellness/gear).
   const [sharedToFeed, setSharedToFeed] = useState(false);
+  // optional shareable photo (same upload pipeline as catches)
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [gearOpen, setGearOpen] = useState(false);
   const [neckWeight, setNeckWeight] = useState("");
   const [beltWeight, setBeltWeight] = useState("");
@@ -126,6 +145,8 @@ function LogDive() {
     setMentalState(editing.mental_state ?? 3);
     setNotes(editing.notes ?? "");
     setSharedToFeed(editing.shared_to_feed ?? false);
+    setPhotoPreview(editing.photo_url ?? null);
+    setPhotoUrl(editing.photo_url ?? null);
     setNeckWeight(editing.neck_weight != null ? String(editing.neck_weight) : "");
     setBeltWeight(editing.belt_weight != null ? String(editing.belt_weight) : "");
     setWetsuitMm(editing.wetsuit_mm != null ? String(editing.wetsuit_mm) : "");
@@ -167,6 +188,39 @@ function LogDive() {
   });
 
   const isTime = isTimeDiscipline(discipline);
+
+  // ── photo (optional, reuses the metadata-stripping catch-photos upload) ──
+  const clearPhoto = () => {
+    if (photoPreview && photoPreview.startsWith("blob:")) URL.revokeObjectURL(photoPreview);
+    setPhotoPreview(null);
+    setPhotoUrl(null);
+    setPhotoUploading(false);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+  const openPhotoPicker = (facing?: "environment" | "user") => {
+    const input = fileInputRef.current;
+    if (!input) return;
+    if (facing) input.setAttribute("capture", facing);
+    else input.removeAttribute("capture");
+    input.click();
+  };
+  const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    if (photoPreview && photoPreview.startsWith("blob:")) URL.revokeObjectURL(photoPreview);
+    setPhotoPreview(URL.createObjectURL(file));
+    setPhotoUrl(null);
+    setPhotoUploading(true);
+    try {
+      const url = await uploadCatchPhoto(file, user.id);
+      setPhotoUrl(url);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("spearo.photoError"));
+      clearPhoto();
+    } finally {
+      setPhotoUploading(false);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -222,6 +276,7 @@ function LogDive() {
       // written with the PGRST204 drop-and-retry in dives.ts, so a lagging DB
       // (migration not applied) degrades gracefully
       shared_to_feed: sharedToFeed,
+      photo_url: photoUrl,
     });
   };
 
@@ -775,6 +830,87 @@ function LogDive() {
             </div>
           </div>
         )}
+
+        {/* optional photo — reuses the metadata-stripping catch-photos upload.
+            A shared dive with a photo shows it in the community feed. */}
+        <div className="space-y-1.5">
+          <Label>{t("spearo.photo")}</Label>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handlePhotoSelect}
+          />
+          {photoPreview ? (
+            <div
+              className="relative overflow-hidden rounded-xl"
+              style={{ border: "1px solid rgba(93,202,165,0.25)" }}
+            >
+              <img src={photoPreview} alt="" className="h-44 w-full object-cover" />
+              {photoUploading && (
+                <div
+                  className="absolute inset-0 flex items-center justify-center gap-2 text-xs font-semibold text-white"
+                  style={{ background: "rgba(4,26,46,0.55)", backdropFilter: "blur(2px)" }}
+                >
+                  <Loader2 className="size-4 animate-spin" />
+                  {t("spearo.photoUploading")}
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={clearPhoto}
+                aria-label={t("spearo.photoRemove")}
+                className="absolute right-2 top-2 flex size-8 items-center justify-center rounded-full text-white"
+                style={{ background: "rgba(4,26,46,0.6)", backdropFilter: "blur(2px)" }}
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => openPhotoPicker()}
+                className="flex flex-col items-center justify-center gap-1.5 rounded-xl px-2 py-4 text-[0.7rem] font-semibold transition-colors"
+                style={{
+                  border: "1px dashed rgba(93,202,165,0.35)",
+                  background: "rgba(29,158,117,0.06)",
+                  color: "#5DCAA5",
+                }}
+              >
+                <Images className="size-5" />
+                {t("spearo.addPhoto")}
+              </button>
+              <button
+                type="button"
+                onClick={() => openPhotoPicker("environment")}
+                className="flex flex-col items-center justify-center gap-1.5 rounded-xl px-2 py-4 text-[0.7rem] font-semibold transition-colors"
+                style={{
+                  border: "1px solid rgba(93,202,165,0.25)",
+                  background: "rgba(29,158,117,0.06)",
+                  color: "#5DCAA5",
+                }}
+              >
+                <Camera className="size-5" />
+                {t("spearo.cameraRear")}
+              </button>
+              <button
+                type="button"
+                onClick={() => openPhotoPicker("user")}
+                className="flex flex-col items-center justify-center gap-1.5 rounded-xl px-2 py-4 text-[0.7rem] font-semibold transition-colors"
+                style={{
+                  border: "1px solid rgba(93,202,165,0.25)",
+                  background: "rgba(29,158,117,0.06)",
+                  color: "#5DCAA5",
+                }}
+              >
+                <SwitchCamera className="size-5" />
+                {t("spearo.cameraFront")}
+              </button>
+            </div>
+          )}
+        </div>
 
         {/* share-to-feed — per-dive community opt-in, DEFAULT OFF. The feed
             serves the sanitized feed_dives view only (result data, never
