@@ -53,7 +53,6 @@ import {
   type SocialProfile,
   type FeedCatch,
 } from "@/lib/profiles";
-import { athleteInitials, athleteColor } from "@/lib/athletes";
 import { StoriesRow } from "@/components/StoriesRow";
 import { StoryComposer } from "@/components/StoryComposer";
 import { StoryViewer } from "@/components/StoryViewer";
@@ -61,6 +60,9 @@ import { PromoBanner } from "@/components/PromoBanner";
 import { PostReactions } from "@/components/PostReactions";
 import { PostComposer } from "@/components/PostComposer";
 import { PostCard } from "@/components/PostCard";
+import { RingedAvatar } from "@/components/RingedAvatar";
+import { AvatarBubble } from "@/components/AvatarBubble";
+import { SITE_URL } from "@/lib/site";
 import { listFeedPosts, deletePost, type CommunityPost } from "@/lib/posts";
 import { listStories, deleteStory, type CommunityStory } from "@/lib/stories";
 import { getCurrentSpot, mapsLink, SpotError } from "@/lib/spot";
@@ -1394,6 +1396,15 @@ function SpearoFeed() {
         onView={(i) => setStoryIndex(i)}
       />
 
+      {/* round profile circles — you + the crew */}
+      {profiles.length > 0 && (
+        <div className="no-scrollbar -mx-4 flex gap-4 overflow-x-auto px-4 pb-1">
+          {profiles.map((p) => (
+            <AvatarBubble key={p.user_id} profile={p} fallbackName={t("spearo.feedAthlete")} />
+          ))}
+        </div>
+      )}
+
       {/* quick chips into the training hubs (train · plan · calendar · history) */}
       <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
         {[
@@ -1517,55 +1528,25 @@ function FeedCard({
         : null;
   const secondary = c.weight_kg != null && c.size_cm != null ? formatCatchSize(c.size_cm) : null;
   const name = author?.display_name || fallbackName;
-  const color = athleteColor(c.user_id);
   const dateStr = format(new Date(c.caught_at ?? c.created_at), "d MMM yyyy");
 
   return (
-    <li className="surface-2 overflow-hidden border-y border-border/50 sm:rounded-2xl sm:border">
-      {/* post header — author identity, taps through to the athlete page */}
+    <li className="surface-2 overflow-hidden sm:rounded-2xl">
+      {/* post header — ringed avatar + name, taps through to the athlete page */}
       <Link
         to="/athlete/$id"
         params={{ id: c.user_id }}
         onClick={() => nativeVibrate(10)}
         className="pressable flex items-center gap-2.5 p-3"
       >
-        {author?.avatar_url ? (
-          <img
-            src={author.avatar_url}
-            alt=""
-            className="size-9 shrink-0 rounded-full object-cover"
-            style={{ border: `1.5px solid ${color}77` }}
-          />
-        ) : (
-          <span
-            className="flex size-9 shrink-0 items-center justify-center rounded-full text-xs font-bold"
-            style={{ background: `${color}33`, color: "#fff", border: `1.5px solid ${color}77` }}
-          >
-            {athleteInitials(name)}
-          </span>
-        )}
+        <RingedAvatar avatarUrl={author?.avatar_url} name={name} userId={c.user_id} />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm font-semibold text-foreground">{name}</span>
           <span className="block text-[0.65rem] text-foreground/45">{dateStr}</span>
         </span>
       </Link>
 
-      {/* caption — species + the headline measurement */}
-      <div className="flex flex-wrap items-center gap-2 px-3 pb-2.5">
-        <span className="text-sm font-semibold capitalize text-foreground">{species}</span>
-        {primary && (
-          <span
-            className="rounded-full px-2 py-0.5 text-xs font-bold tabular-nums"
-            style={{ background: "rgba(29,158,117,0.15)", color: GREEN_LIGHT }}
-          >
-            {primary}
-            {secondary && <span className="font-medium text-foreground/50"> · {secondary}</span>}
-          </span>
-        )}
-      </div>
-
-      {/* the photo — FULL WIDTH at its natural aspect so it opens correctly and
-          fills the screen edge-to-edge (the #1 ask). No-photo catches keep the
+      {/* the photo — FULL WIDTH at its natural aspect. No-photo catches keep the
           underwater panel with the measurement as the hero. Tapping opens the
           athlete page. */}
       <Link
@@ -1580,7 +1561,7 @@ function FeedCard({
             alt={species}
             loading="lazy"
             className="w-full"
-            style={{ maxHeight: "36rem", objectFit: "cover", background: "#02101d" }}
+            style={{ maxHeight: "38rem", objectFit: "cover", background: "#02101d" }}
           />
         ) : (
           <div
@@ -1602,9 +1583,31 @@ function FeedCard({
         )}
       </Link>
 
-      {/* action bar — heart / I'm OK */}
-      <div className="px-3 py-2">
-        <PostReactions targetType="catch" targetId={c.id} onDark={false} />
+      {/* action bar — heart / I'm OK / share */}
+      <div className="px-3 pb-1 pt-2.5">
+        <PostReactions
+          targetType="catch"
+          targetId={c.id}
+          shareData={{
+            title: name,
+            text: [species, primary].filter(Boolean).join(" — "),
+            url: `${SITE_URL}/athlete/${c.user_id}`,
+          }}
+        />
+      </div>
+
+      {/* caption below (Instagram) — species + the headline measurement */}
+      <div className="flex flex-wrap items-center gap-2 px-3 pb-3 pt-1">
+        <span className="text-sm font-semibold capitalize text-foreground">{species}</span>
+        {primary && (
+          <span
+            className="rounded-full px-2 py-0.5 text-xs font-bold tabular-nums"
+            style={{ background: "rgba(29,158,117,0.15)", color: GREEN_LIGHT }}
+          >
+            {primary}
+            {secondary && <span className="font-medium text-foreground/50"> · {secondary}</span>}
+          </span>
+        )}
       </div>
     </li>
   );

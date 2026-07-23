@@ -5,11 +5,12 @@ import { format } from "date-fns";
 import { Check, Pencil, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { PostReactions } from "@/components/PostReactions";
-import { athleteInitials, athleteColor } from "@/lib/athletes";
+import { RingedAvatar } from "@/components/RingedAvatar";
 import { nativeVibrate } from "@/lib/native";
 import { useI18n } from "@/lib/i18n";
 import { updatePost, type CommunityPost } from "@/lib/posts";
 import type { SocialProfile } from "@/lib/profiles";
+import { SITE_URL } from "@/lib/site";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -24,11 +25,9 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-// One free-form community post in the feed — the Facebook-style card: author
-// header, an optional bold title, the body text, an optional full-width photo,
-// then the reaction bar. The author can delete their own post (confirmed via
-// the shared AlertDialog). Author identity is stitched CLIENT-SIDE from the
-// profiles list, exactly like the dive/catch feed cards.
+// A free-form community post, Instagram-style: header (ringed avatar + name),
+// the full-width photo, an icon-only action row, then the caption below with a
+// "more/less" expander for long text. Author can edit/delete their own post.
 export function PostCard({
   post,
   author,
@@ -45,9 +44,12 @@ export function PostCard({
   const { t } = useI18n();
   const qc = useQueryClient();
   const name = author?.display_name || fallbackName;
-  const color = athleteColor(post.user_id);
   const dateStr = format(new Date(post.created_at), "d MMM yyyy · HH:mm");
   const isOwn = currentUserId === post.user_id;
+
+  // caption expand/collapse (Instagram "…more")
+  const [expanded, setExpanded] = useState(false);
+  const longBody = !!post.body && (post.body.length > 120 || post.body.includes("\n"));
 
   // ── inline edit (own post) ──
   const [editing, setEditing] = useState(false);
@@ -74,9 +76,15 @@ export function PostCard({
     setEditing(true);
   };
 
+  const shareData = {
+    title: post.title || name,
+    text: [post.title, post.body].filter(Boolean).join(" — "),
+    url: `${SITE_URL}/athlete/${post.user_id}`,
+  };
+
   return (
-    <li className="surface-2 overflow-hidden border-y border-border/50 sm:rounded-2xl sm:border">
-      {/* post header — author identity, taps through to the athlete page */}
+    <li className="surface-2 overflow-hidden sm:rounded-2xl">
+      {/* header — ringed avatar + name, taps through to the athlete page */}
       <div className="flex items-center gap-2.5 p-3">
         <Link
           to="/athlete/$id"
@@ -84,21 +92,7 @@ export function PostCard({
           onClick={() => nativeVibrate(10)}
           className="pressable flex min-w-0 flex-1 items-center gap-2.5"
         >
-          {author?.avatar_url ? (
-            <img
-              src={author.avatar_url}
-              alt=""
-              className="size-9 shrink-0 rounded-full object-cover"
-              style={{ border: `1.5px solid ${color}77` }}
-            />
-          ) : (
-            <span
-              className="flex size-9 shrink-0 items-center justify-center rounded-full text-xs font-bold"
-              style={{ background: `${color}33`, color: "#fff", border: `1.5px solid ${color}77` }}
-            >
-              {athleteInitials(name)}
-            </span>
-          )}
+          <RingedAvatar avatarUrl={author?.avatar_url} name={name} userId={post.user_id} />
           <span className="min-w-0 flex-1">
             <span className="block truncate text-sm font-semibold text-foreground">{name}</span>
             <span className="block text-[0.65rem] text-foreground/45">{dateStr}</span>
@@ -110,7 +104,7 @@ export function PostCard({
             type="button"
             onClick={startEdit}
             aria-label={t("post.edit")}
-            className="pressable flex size-8 shrink-0 items-center justify-center rounded-full text-foreground/40 hover:text-foreground"
+            className="pressable flex size-8 shrink-0 items-center justify-center rounded-full text-foreground/45 hover:text-foreground"
           >
             <Pencil className="size-4" />
           </button>
@@ -146,7 +140,7 @@ export function PostCard({
         )}
       </div>
 
-      {/* title + body — editable inline for the author */}
+      {/* editing form (own) */}
       {editing ? (
         <div className="space-y-2 px-3 pb-3">
           <Input
@@ -183,35 +177,45 @@ export function PostCard({
           </div>
         </div>
       ) : (
-        (post.title || post.body) && (
-          <div className="space-y-1 px-3 pb-2.5">
-            {post.title && (
-              <p className="text-base font-bold leading-snug text-foreground">{post.title}</p>
-            )}
-            {post.body && (
-              <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/75">
-                {post.body}
-              </p>
-            )}
+        <>
+          {/* full-width photo */}
+          {post.photo_url && (
+            <img
+              src={post.photo_url}
+              alt=""
+              loading="lazy"
+              className="w-full"
+              style={{ maxHeight: "38rem", objectFit: "cover", background: "#02101d" }}
+            />
+          )}
+
+          {/* icon-only action row */}
+          <div className="px-3 pb-1 pt-2.5">
+            <PostReactions targetType="post" targetId={post.id} shareData={shareData} />
           </div>
-        )
-      )}
 
-      {/* optional full-width photo at natural aspect */}
-      {post.photo_url && (
-        <img
-          src={post.photo_url}
-          alt=""
-          loading="lazy"
-          className="w-full"
-          style={{ maxHeight: "36rem", objectFit: "cover", background: "#02101d" }}
-        />
+          {/* caption below (Instagram) — white text, more/less for long bodies */}
+          {(post.title || post.body) && (
+            <div className="px-3 pb-3 pt-1 text-sm leading-relaxed text-foreground">
+              {post.title && <span className="font-bold">{post.title} </span>}
+              {post.body && (
+                <span className={!expanded && longBody ? "line-clamp-2" : undefined}>
+                  {post.body}
+                </span>
+              )}
+              {longBody && (
+                <button
+                  type="button"
+                  onClick={() => setExpanded((v) => !v)}
+                  className="mt-0.5 block text-xs font-medium text-foreground/50"
+                >
+                  {expanded ? t("react.less") : t("react.more")}
+                </button>
+              )}
+            </div>
+          )}
+        </>
       )}
-
-      {/* action bar — heart / I'm OK */}
-      <div className="px-3 py-2">
-        <PostReactions targetType="post" targetId={post.id} onDark={false} />
-      </div>
     </li>
   );
 }
