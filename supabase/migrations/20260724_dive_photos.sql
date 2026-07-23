@@ -10,6 +10,10 @@
 alter table public.dives
   add column if not exists photo_url text;
 
+-- NOTE: `photo_url` is appended AFTER `created_at`. `create or replace view`
+-- can only ADD columns at the END of an existing view — inserting it in the
+-- middle raises "cannot change name of view column" (Postgres reads it as a
+-- rename). The client selects `*`, so column order is irrelevant to the app.
 create or replace view public.feed_dives as
   select
     id,
@@ -18,8 +22,8 @@ create or replace view public.feed_dives as
     result,
     dive_date,
     is_personal_best,
-    photo_url,
-    created_at
+    created_at,
+    photo_url
   from public.dives
   where shared_to_feed = true;
 
