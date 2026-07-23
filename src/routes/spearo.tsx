@@ -1361,36 +1361,8 @@ function SpearoFeed() {
   }, [posts, feed]);
 
   return (
-    <div className="space-y-6 pb-24">
-      {/* ── hero header — same underwater treatment as the log view ── */}
-      <div
-        className="relative overflow-hidden rounded-2xl p-6"
-        style={{
-          background: "linear-gradient(160deg, #0d4a63 0%, #072a42 55%, #041a2e 100%)",
-          border: "1px solid rgba(93,202,165,0.18)",
-          boxShadow: "0 8px 32px rgba(4,26,46,0.45)",
-        }}
-      >
-        <Bubbles />
-        <div className="relative z-10">
-          <span
-            className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[0.6rem] font-bold tracking-[0.18em]"
-            style={{ background: "rgba(93,202,165,0.15)", color: GREEN_LIGHT }}
-          >
-            <Users className="size-3" />
-            {t("spearo.badge")}
-          </span>
-          <h1
-            className="mt-3 text-2xl font-bold text-white"
-            style={{ fontFamily: "'Outfit', sans-serif" }}
-          >
-            {t("spearo.feedTitle")}
-          </h1>
-          <p className="mt-1 max-w-sm text-sm text-white/55">{t("spearo.feedSub")}</p>
-        </div>
-      </div>
-
-      {/* our promo / tips slot */}
+    <div className="space-y-4 pb-24">
+      {/* our promo / tips slot (replaces the old oversized community hero) */}
       <PromoBanner variant="spearo" />
 
       {/* ── Facebook-style stories row — the (+) tile opens the post composer ── */}
@@ -1402,7 +1374,7 @@ function SpearoFeed() {
       />
 
       {/* quick chips into the training hubs (train · plan · calendar · history) */}
-      <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
         {[
           { to: "/train", icon: Waves, label: lang === "el" ? "Προπόνηση" : "Train" },
           { to: "/planner", icon: ClipboardList, label: lang === "el" ? "Πλάνο" : "Plan" },

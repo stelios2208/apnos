@@ -31,7 +31,7 @@ export function StoriesRow({
   return (
     // full-bleed horizontal scroller; fixed item widths keep the row height
     // stable so tapping a bubble never reflows the feed below it.
-    <div className="-mx-4 flex gap-4 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+    <div className="no-scrollbar -mx-4 flex gap-4 overflow-x-auto px-4 pb-1">
       {/* leading Create / + tile (also the future promoted-post slot) */}
       <CreateTile mode={mode} label={t("stories.create")} onCreate={onCreate} />
 
