@@ -8,6 +8,8 @@ import {
   ArrowDownToLine,
   Anchor,
   Camera,
+  SwitchCamera,
+  Images,
   X,
   Loader2,
   MapPin,
@@ -17,6 +19,10 @@ import {
   Trash2,
   Trophy,
   Users,
+  Waves,
+  ClipboardList,
+  CalendarDays,
+  History,
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -48,7 +54,9 @@ import {
   type FeedCatch,
 } from "@/lib/profiles";
 import { athleteInitials, athleteColor } from "@/lib/athletes";
-import { AvatarBubble } from "@/components/AvatarBubble";
+import { StoriesRow } from "@/components/StoriesRow";
+import { PromoBanner } from "@/components/PromoBanner";
+import { PostReactions } from "@/components/PostReactions";
 import { getCurrentSpot, mapsLink, SpotError } from "@/lib/spot";
 import { nativeVibrate } from "@/lib/native";
 import { shareCatchCard } from "@/lib/catch-share-card";
@@ -169,10 +177,12 @@ function SpearoLog() {
   const [spotError, setSpotError] = useState<string | null>(null);
 
   // ── share-to-feed state ───────────────────────────────────────────────────
-  // Per-catch community opt-in — DEFAULT OFF, always. The feed only ever sees
-  // the sanitized feed_catches view (no spot, no notes), so this toggle can
-  // never leak location; still, sharing stays a deliberate per-catch choice.
-  const [sharedToFeed, setSharedToFeed] = useState(false);
+  // Per-catch community opt-in — DEFAULT ON so the community actually fills up
+  // (divers kept forgetting to flip it). The feed only ever sees the sanitized
+  // feed_catches view (no spot, no notes), so a shared catch can never leak
+  // location; the toggle stays visible for anyone who wants to keep a catch
+  // private, but the safe-by-construction default is to share.
+  const [sharedToFeed, setSharedToFeed] = useState(true);
 
   // Forget the captured spot, its name, and any error message.
   const clearSpot = () => {
@@ -259,6 +269,19 @@ function SpearoLog() {
     }
   };
 
+  // Open the photo picker with an optional camera preference. `capture` is a
+  // hint the OS honours where it can: "environment" opens the REAR camera,
+  // "user" the FRONT (selfie) camera, and no capture attribute shows the normal
+  // sheet (Gallery + Camera) so an existing photo can still be chosen. We toggle
+  // the attribute on the shared hidden <input> right before triggering it.
+  const openPhotoPicker = (facing?: "environment" | "user") => {
+    const input = fileInputRef.current;
+    if (!input) return;
+    if (facing) input.setAttribute("capture", facing);
+    else input.removeAttribute("capture");
+    input.click();
+  };
+
   // ── catch list ────────────────────────────────────────────────────────────
   // Keyed on the authenticated user id, exactly like fetchDives in the other
   // routes. `enabled: !!user` mirrors log.tsx / history.tsx.
@@ -337,7 +360,7 @@ function SpearoLog() {
     setNotes("");
     clearPhoto();
     clearSpot();
-    setSharedToFeed(false);
+    setSharedToFeed(true);
   };
 
   const mutation = useMutation({
@@ -677,11 +700,11 @@ function SpearoLog() {
               language. The <input> is hidden; the tile below triggers it. */}
           <div className="space-y-1.5">
             <Label>{t("spearo.photo")}</Label>
-            {/* accept only images; deliberately NO `capture` attribute so the OS
-                shows its normal picker sheet (Camera + Gallery/Files). Spearos
-                usually shoot the fish on the boat and log later, so choosing an
-                existing photo from the gallery must be possible — forcing the
-                camera would block that. */}
+            {/* accept only images. The `capture` attribute is set on the fly by
+                openPhotoPicker: the "Gallery" tile clears it (normal sheet), the
+                camera buttons set "environment" (rear) or "user" (front/selfie).
+                Spearos often log an existing photo later, so Gallery stays the
+                primary path and the camera choices are quick shortcuts. */}
             <input
               ref={fileInputRef}
               type="file"
@@ -726,29 +749,61 @@ function SpearoLog() {
                 </button>
               </div>
             ) : (
-              // empty state: on-brand dashed tile inviting a photo.
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="flex w-full flex-col items-center gap-2 rounded-xl px-4 py-6 text-center transition-colors"
-                style={{
-                  border: "1px dashed rgba(93,202,165,0.35)",
-                  background: "rgba(29,158,117,0.06)",
-                }}
-              >
-                <span
-                  className="flex size-11 items-center justify-center rounded-full"
-                  style={{ background: "rgba(29,158,117,0.14)" }}
+              // empty state: primary "Gallery" tile + quick camera shortcuts
+              // (rear / front). The OS still lets the user swap camera once open;
+              // these just pick the starting lens the diver asked for.
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={() => openPhotoPicker()}
+                  className="flex w-full flex-col items-center gap-2 rounded-xl px-4 py-6 text-center transition-colors"
+                  style={{
+                    border: "1px dashed rgba(93,202,165,0.35)",
+                    background: "rgba(29,158,117,0.06)",
+                  }}
                 >
-                  <Camera className="size-5" style={{ color: GREEN_LIGHT }} />
-                </span>
-                <span className="text-sm font-semibold" style={{ color: GREEN_LIGHT }}>
-                  {t("spearo.addPhoto")}
-                </span>
-                <span className="max-w-[16rem] text-[0.7rem] leading-snug text-foreground/40">
-                  {t("spearo.photoHint")}
-                </span>
-              </button>
+                  <span
+                    className="flex size-11 items-center justify-center rounded-full"
+                    style={{ background: "rgba(29,158,117,0.14)" }}
+                  >
+                    <Images className="size-5" style={{ color: GREEN_LIGHT }} />
+                  </span>
+                  <span className="text-sm font-semibold" style={{ color: GREEN_LIGHT }}>
+                    {t("spearo.addPhoto")}
+                  </span>
+                  <span className="max-w-[16rem] text-[0.7rem] leading-snug text-foreground/40">
+                    {t("spearo.photoHint")}
+                  </span>
+                </button>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => openPhotoPicker("environment")}
+                    className="flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-semibold transition-colors"
+                    style={{
+                      border: "1px solid rgba(93,202,165,0.25)",
+                      background: "rgba(29,158,117,0.06)",
+                      color: GREEN_LIGHT,
+                    }}
+                  >
+                    <Camera className="size-4" />
+                    {t("spearo.cameraRear")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => openPhotoPicker("user")}
+                    className="flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-semibold transition-colors"
+                    style={{
+                      border: "1px solid rgba(93,202,165,0.25)",
+                      background: "rgba(29,158,117,0.06)",
+                      color: GREEN_LIGHT,
+                    }}
+                  >
+                    <SwitchCamera className="size-4" />
+                    {t("spearo.cameraFront")}
+                  </button>
+                </div>
+              </div>
             )}
           </div>
 
@@ -1297,14 +1352,40 @@ function SpearoFeed() {
         </div>
       </div>
 
-      {/* ── public athletes row — horizontal scroll of opted-in profiles ── */}
-      {profiles.length > 0 && (
-        <div className="-mx-4 flex gap-4 overflow-x-auto px-4 pb-1">
-          {profiles.map((p) => (
-            <AvatarBubble key={p.user_id} profile={p} fallbackName={t("spearo.feedAthlete")} />
-          ))}
-        </div>
-      )}
+      {/* our promo / tips slot */}
+      <PromoBanner variant="spearo" />
+
+      {/* ── Facebook-style stories row — always leads with the Create (+) tile ── */}
+      <StoriesRow profiles={profiles} fallbackName={t("spearo.feedAthlete")} mode="spearo" />
+
+      {/* quick chips into the training hubs (train · plan · calendar · history) */}
+      <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {[
+          { to: "/train", icon: Waves, label: lang === "el" ? "Προπόνηση" : "Train" },
+          { to: "/planner", icon: ClipboardList, label: lang === "el" ? "Πλάνο" : "Plan" },
+          { to: "/calendar", icon: CalendarDays, label: lang === "el" ? "Ημερολόγιο" : "Calendar" },
+          { to: "/history", icon: History, label: lang === "el" ? "Ιστορικό" : "History" },
+        ].map(({ to, icon: Icon, label }) => (
+          <Link
+            key={to}
+            to={to}
+            onClick={() => nativeVibrate(10)}
+            className="pressable surface-1 flex shrink-0 items-center gap-2 rounded-full py-2 pl-2 pr-4"
+            style={{
+              background: "rgba(29,158,117,0.08)",
+              border: "1px solid rgba(93,202,165,0.2)",
+            }}
+          >
+            <span
+              className="flex size-7 items-center justify-center rounded-full"
+              style={{ background: "rgba(29,158,117,0.16)" }}
+            >
+              <Icon className="size-3.5" style={{ color: GREEN_LIGHT }} />
+            </span>
+            <span className="text-xs font-semibold text-foreground/80">{label}</span>
+          </Link>
+        ))}
+      </div>
 
       {/* ── shared-catch feed ── */}
       {isLoading ? (
@@ -1329,7 +1410,8 @@ function SpearoFeed() {
           </div>
         </div>
       ) : (
-        <ul className="space-y-3">
+        // full-bleed on phones (edge-to-edge like Facebook), rounded on wide
+        <ul className="-mx-4 space-y-2.5 sm:mx-0">
           {feed.map((c) => (
             <FeedCard
               key={c.id}
@@ -1377,7 +1459,53 @@ function FeedCard({
   const dateStr = format(new Date(c.caught_at ?? c.created_at), "d MMM yyyy");
 
   return (
-    <li className="surface-2 pressable relative block overflow-hidden rounded-2xl">
+    <li className="surface-2 overflow-hidden border-y border-border/50 sm:rounded-2xl sm:border">
+      {/* post header — author identity, taps through to the athlete page */}
+      <Link
+        to="/athlete/$id"
+        params={{ id: c.user_id }}
+        onClick={() => nativeVibrate(10)}
+        className="pressable flex items-center gap-2.5 p-3"
+      >
+        {author?.avatar_url ? (
+          <img
+            src={author.avatar_url}
+            alt=""
+            className="size-9 shrink-0 rounded-full object-cover"
+            style={{ border: `1.5px solid ${color}77` }}
+          />
+        ) : (
+          <span
+            className="flex size-9 shrink-0 items-center justify-center rounded-full text-xs font-bold"
+            style={{ background: `${color}33`, color: "#fff", border: `1.5px solid ${color}77` }}
+          >
+            {athleteInitials(name)}
+          </span>
+        )}
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-semibold text-foreground">{name}</span>
+          <span className="block text-[0.65rem] text-foreground/45">{dateStr}</span>
+        </span>
+      </Link>
+
+      {/* caption — species + the headline measurement */}
+      <div className="flex flex-wrap items-center gap-2 px-3 pb-2.5">
+        <span className="text-sm font-semibold capitalize text-foreground">{species}</span>
+        {primary && (
+          <span
+            className="rounded-full px-2 py-0.5 text-xs font-bold tabular-nums"
+            style={{ background: "rgba(29,158,117,0.15)", color: GREEN_LIGHT }}
+          >
+            {primary}
+            {secondary && <span className="font-medium text-foreground/50"> · {secondary}</span>}
+          </span>
+        )}
+      </div>
+
+      {/* the photo — FULL WIDTH at its natural aspect so it opens correctly and
+          fills the screen edge-to-edge (the #1 ask). No-photo catches keep the
+          underwater panel with the measurement as the hero. Tapping opens the
+          athlete page. */}
       <Link
         to="/athlete/$id"
         params={{ id: c.user_id }}
@@ -1389,58 +1517,33 @@ function FeedCard({
             src={c.photo_url}
             alt={species}
             loading="lazy"
-            className="absolute inset-0 h-full w-full object-cover"
+            className="w-full"
+            style={{ maxHeight: "36rem", objectFit: "cover", background: "#02101d" }}
           />
         ) : (
-          <div className="absolute inset-0" style={{ background: UNDERWATER_GRADIENT }} />
-        )}
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              "linear-gradient(180deg, rgba(2,10,19,0.3) 0%, rgba(2,10,19,0.12) 35%, rgba(2,10,19,0.6) 65%, rgba(2,10,19,0.9) 100%)",
-          }}
-        />
-
-        <div className="relative flex min-h-[13rem] flex-col justify-end p-4">
-          <p className="text-sm font-semibold capitalize text-white/85">{species}</p>
-          {primary && (
-            <p
-              className="mt-0.5 text-4xl font-black tabular-nums text-white"
-              style={{
-                fontFamily: "'Outfit', sans-serif",
-                textShadow: "0 2px 12px rgba(2,10,19,0.6)",
-              }}
-            >
-              {primary}
-            </p>
-          )}
-
-          {/* author + date row */}
-          <div className="mt-3 flex items-center gap-2">
-            {author?.avatar_url ? (
-              <img
-                src={author.avatar_url}
-                alt=""
-                className="size-7 shrink-0 rounded-full object-cover"
-                style={{ border: `1px solid ${color}66` }}
-              />
-            ) : (
-              <span
-                className="flex size-7 shrink-0 items-center justify-center rounded-full text-[0.6rem] font-bold"
-                style={{ background: `${color}33`, color: "#fff", border: `1px solid ${color}66` }}
+          <div
+            className="relative flex min-h-[11rem] flex-col justify-end p-4"
+            style={{ background: UNDERWATER_GRADIENT }}
+          >
+            {primary && (
+              <p
+                className="text-4xl font-black tabular-nums text-white"
+                style={{
+                  fontFamily: "'Outfit', sans-serif",
+                  textShadow: "0 2px 12px rgba(2,10,19,0.6)",
+                }}
               >
-                {athleteInitials(name)}
-              </span>
+                {primary}
+              </p>
             )}
-            <span className="min-w-0 truncate text-xs font-semibold text-white/85">{name}</span>
-            <span className="ml-auto shrink-0 text-[0.65rem] text-white/50">
-              {secondary && <span className="tabular-nums">{secondary} · </span>}
-              {dateStr}
-            </span>
           </div>
-        </div>
+        )}
       </Link>
+
+      {/* action bar — heart / I'm OK */}
+      <div className="px-3 py-2">
+        <PostReactions targetType="catch" targetId={c.id} onDark={false} />
+      </div>
     </li>
   );
 }

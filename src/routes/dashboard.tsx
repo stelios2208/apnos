@@ -3,7 +3,9 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Trophy, Waves, ClipboardList, CalendarDays, History, Users } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
-import { AvatarBubble } from "@/components/AvatarBubble";
+import { StoriesRow } from "@/components/StoriesRow";
+import { PromoBanner } from "@/components/PromoBanner";
+import { PostReactions } from "@/components/PostReactions";
 import { useAuth } from "@/hooks/use-auth";
 import {
   listPublicProfiles,
@@ -118,7 +120,7 @@ function BubbleHero({ children }: { children: React.ReactNode }) {
 
 function Dashboard() {
   const { user } = useAuth();
-  const { lang } = useI18n();
+  const { t, lang } = useI18n();
   const el = lang === "el";
 
   const { data: profiles = [], isLoading: profilesLoading } = useQuery({
@@ -152,24 +154,17 @@ function Dashboard() {
           Apnos
         </p>
         <p className="text-2xl font-light text-white">{el ? "Κοινότητα" : "Community"}</p>
-        <p className="mt-1 text-xs text-white/55">
-          {el
-            ? "Οι προσπάθειες που μοιράζεται η ομάδα — ποτέ σημειώσεις και wellness."
-            : "The efforts the crew is sharing — never notes or wellness."}
-        </p>
+        <p className="mt-1 text-xs text-white/55">{t("feed.tagline")}</p>
       </BubbleHero>
 
-      {/* public athletes row — same component as the Spearo feed */}
-      {profiles.length > 0 && (
-        <div className="-mx-4 flex gap-4 overflow-x-auto px-4 pb-1">
-          {profiles.map((p) => (
-            <AvatarBubble key={p.user_id} profile={p} fallbackName={el ? "Αθλητής" : "Athlete"} />
-          ))}
-        </div>
-      )}
+      {/* our promo / tips slot */}
+      <PromoBanner variant="apnos" />
 
-      {/* quick chips into the training hubs */}
-      <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
+      {/* Facebook-style stories row — always leads with the Create (+) tile */}
+      <StoriesRow profiles={profiles} fallbackName={el ? "Αθλητής" : "Athlete"} mode="apnos" />
+
+      {/* quick chips into the training hubs (train · plan · calendar · history) */}
+      <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {chips.map(({ to, icon: Icon, label }) => (
           <Link
             key={to}
@@ -220,7 +215,8 @@ function Dashboard() {
           </div>
         </div>
       ) : (
-        <ul className="space-y-3">
+        // full-bleed on phones (edge-to-edge like Facebook), rounded card on wide
+        <ul className="-mx-4 space-y-2.5 sm:mx-0">
           {feed.map((d) => (
             <FeedDiveCard
               key={d.id}
@@ -261,16 +257,41 @@ function FeedDiveCard({
   });
 
   return (
-    <li className="surface-2 pressable relative block overflow-hidden rounded-2xl">
+    <li className="surface-2 overflow-hidden border-y border-border/50 sm:rounded-2xl sm:border">
+      {/* post header — author identity, taps through to the athlete page */}
       <Link
         to="/athlete/$id"
         params={{ id: d.user_id }}
         onClick={() => nativeVibrate(10)}
-        className="block"
+        className="pressable flex items-center gap-2.5 p-3"
       >
-        <div className="absolute inset-0" style={{ background: disciplineGradient(code) }} />
+        {author?.avatar_url ? (
+          <img
+            src={author.avatar_url}
+            alt=""
+            className="size-9 shrink-0 rounded-full object-cover"
+            style={{ border: `1.5px solid ${color}77` }}
+          />
+        ) : (
+          <span
+            className="flex size-9 shrink-0 items-center justify-center rounded-full text-xs font-bold"
+            style={{ background: `${color}33`, color: "#fff", border: `1.5px solid ${color}77` }}
+          >
+            {athleteInitials(name)}
+          </span>
+        )}
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-semibold text-foreground">{name}</span>
+          <span className="block text-[0.65rem] text-foreground/45">{dateStr}</span>
+        </span>
+      </Link>
 
-        <div className="relative flex min-h-[10rem] flex-col justify-between p-4">
+      {/* post body — the dive result on its discipline-themed underwater panel */}
+      <div
+        className="relative w-full overflow-hidden"
+        style={{ background: disciplineGradient(code) }}
+      >
+        <div className="relative flex min-h-[9rem] flex-col justify-between p-4">
           <div className="flex items-center gap-2">
             <span
               className="rounded-md px-2 py-0.5 text-[0.6rem] font-bold tracking-wider"
@@ -292,7 +313,6 @@ function FeedDiveCard({
               </span>
             )}
           </div>
-
           <div>
             <p className="text-sm font-semibold text-white/85">{disciplineName(code, lang)}</p>
             <p
@@ -304,34 +324,14 @@ function FeedDiveCard({
             >
               {formatResult(code, d.result)}
             </p>
-
-            {/* author + date row */}
-            <div className="mt-3 flex items-center gap-2">
-              {author?.avatar_url ? (
-                <img
-                  src={author.avatar_url}
-                  alt=""
-                  className="size-7 shrink-0 rounded-full object-cover"
-                  style={{ border: `1px solid ${color}66` }}
-                />
-              ) : (
-                <span
-                  className="flex size-7 shrink-0 items-center justify-center rounded-full text-[0.6rem] font-bold"
-                  style={{
-                    background: `${color}33`,
-                    color: "#fff",
-                    border: `1px solid ${color}66`,
-                  }}
-                >
-                  {athleteInitials(name)}
-                </span>
-              )}
-              <span className="min-w-0 truncate text-xs font-semibold text-white/85">{name}</span>
-              <span className="ml-auto shrink-0 text-[0.65rem] text-white/50">{dateStr}</span>
-            </div>
           </div>
         </div>
-      </Link>
+      </div>
+
+      {/* action bar — heart / I'm OK */}
+      <div className="px-3 py-2">
+        <PostReactions targetType="dive" targetId={d.id} onDark={false} />
+      </div>
     </li>
   );
 }

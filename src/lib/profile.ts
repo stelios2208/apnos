@@ -30,7 +30,11 @@ export function emptyProfile(): AthleteProfile {
     countryCode: "",
     city: "",
     bio: "",
-    isPublic: false,
+    // Public by default: the community is small and members kept forgetting to
+    // opt in, leaving an empty feed. A profile only ever exposes name/avatar/bio
+    // and what the member explicitly shares — never spots — so public-first is
+    // safe. Anyone who wants to hide can still flip the toggle off.
+    isPublic: true,
     avatarUrl: "",
   };
 }

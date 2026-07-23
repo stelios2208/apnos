@@ -1,18 +1,39 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo } from "react";
-import { ArrowLeft, Loader2, Lock, Trophy, Waves } from "lucide-react";
+import { useMemo, useState } from "react";
+import {
+  ArrowLeft,
+  Loader2,
+  Lock,
+  Trophy,
+  Waves,
+  Pencil,
+  Share2,
+  Users,
+  ClipboardList,
+  CalendarDays,
+  History,
+} from "lucide-react";
+import { toast } from "sonner";
 import { AppLayout } from "@/components/AppLayout";
+import { AvatarBubble } from "@/components/AvatarBubble";
 import { Bubbles } from "@/components/Bubbles";
 import { useAuth } from "@/hooks/use-auth";
 import { useMode } from "@/hooks/use-mode";
 import { useI18n } from "@/lib/i18n";
-import { getPublicProfile, listFeedCatches, listFeedDives, type FeedCatch } from "@/lib/profiles";
+import {
+  getPublicProfile,
+  listPublicProfiles,
+  listFeedCatches,
+  listFeedDives,
+  type FeedCatch,
+} from "@/lib/profiles";
 import { personalBestsBySpecies } from "@/lib/spearo-catches";
 import { speciesLabel, formatCatchSize, formatCatchWeight, type SpearoCatch } from "@/lib/spearo";
 import { fetchPublicResultsByUser } from "@/lib/competitions";
 import { disciplineName, formatResult, type DisciplineCode } from "@/lib/diving";
 import { athleteInitials, athleteColor } from "@/lib/athletes";
+import { SITE_URL } from "@/lib/site";
 
 // ── Route ──────────────────────────────────────────────────────────────────────
 // The PUBLIC athlete page, shared by both modes: header (avatar/name/bio), a
@@ -123,6 +144,38 @@ function AthletePage() {
     queryFn: () => fetchPublicResultsByUser(id),
     enabled: !!user && !!profile,
   });
+
+  // "Friends" — the crew. Until a real interaction/friend graph is persisted,
+  // this is the other public athletes in the community (self + the profile being
+  // viewed excluded). Stacked Instagram-style, tap to expand the full row.
+  const { data: allPublic = [] } = useQuery({
+    queryKey: ["public-profiles"],
+    queryFn: () => listPublicProfiles(50),
+    enabled: !!user && !!profile,
+  });
+  const friends = useMemo(
+    () => allPublic.filter((p) => p.user_id !== id && p.user_id !== user?.id),
+    [allPublic, id, user?.id],
+  );
+  const [friendsOpen, setFriendsOpen] = useState(false);
+
+  // Is the viewer looking at their own public profile?
+  const isOwn = user?.id === id;
+
+  // Share the profile: native share sheet where available, clipboard fallback.
+  const shareProfile = async () => {
+    const url = `${SITE_URL}/athlete/${id}`;
+    try {
+      if (typeof navigator !== "undefined" && navigator.share) {
+        await navigator.share({ title: name, text: t("athlete.shareText"), url });
+      } else if (typeof navigator !== "undefined" && navigator.clipboard) {
+        await navigator.clipboard.writeText(url);
+        toast.success(t("athlete.shareCopied"));
+      }
+    } catch {
+      /* user cancelled the share sheet — nothing to do */
+    }
+  };
 
   const records = useMemo(() => personalBestsBySpecies(toCatches(shared)), [shared]);
 
@@ -238,6 +291,123 @@ function AthletePage() {
           </div>
         </div>
       </div>
+
+      {/* ── Instagram-style action row: Edit (own) + Share ── */}
+      <div className="flex items-center gap-2">
+        {isOwn && (
+          <button
+            onClick={() => navigate({ to: "/profile" })}
+            className="pressable flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold"
+            style={{
+              background: "rgba(29,158,117,0.12)",
+              border: "1px solid rgba(93,202,165,0.3)",
+              color: "#5DCAA5",
+            }}
+          >
+            <Pencil className="size-4" />
+            {t("athlete.edit")}
+          </button>
+        )}
+        <button
+          onClick={shareProfile}
+          className="pressable flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold"
+          style={{
+            background: "rgba(var(--ink),0.05)",
+            border: "1px solid rgba(var(--ink),0.1)",
+            color: "rgba(var(--ink),0.75)",
+          }}
+        >
+          <Share2 className="size-4" />
+          {t("athlete.share")}
+        </button>
+      </div>
+
+      {/* ── Friends — stacked avatars, tap to expand the full row ── */}
+      {friends.length > 0 && (
+        <section className="space-y-3">
+          <button
+            onClick={() => setFriendsOpen((v) => !v)}
+            className="pressable flex w-full items-center gap-3 text-left"
+          >
+            {/* overlapping avatar stack */}
+            <div className="flex items-center">
+              {friends.slice(0, 5).map((f, i) => {
+                const fc = athleteColor(f.user_id);
+                const fn = f.display_name || t("spearo.feedAthlete");
+                return (
+                  <span
+                    key={f.user_id}
+                    className="flex size-9 items-center justify-center overflow-hidden rounded-full text-[0.6rem] font-bold"
+                    style={{
+                      marginLeft: i === 0 ? 0 : -12,
+                      background: `${fc}33`,
+                      color: "#fff",
+                      border: "2px solid var(--background)",
+                      zIndex: 5 - i,
+                    }}
+                  >
+                    {f.avatar_url ? (
+                      <img src={f.avatar_url} alt="" className="size-full object-cover" />
+                    ) : (
+                      athleteInitials(fn)
+                    )}
+                  </span>
+                );
+              })}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="flex items-center gap-1.5 text-sm font-bold text-foreground">
+                <Users className="size-4" style={{ color: GREEN_LIGHT }} />
+                {t("athlete.friends")}
+                <span className="text-foreground/40">· {friends.length}</span>
+              </p>
+              <p className="text-xs text-foreground/45">{t("athlete.friendsSub")}</p>
+            </div>
+          </button>
+
+          {friendsOpen && (
+            <div className="-mx-4 flex gap-4 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {friends.map((f) => (
+                <AvatarBubble key={f.user_id} profile={f} fallbackName={t("spearo.feedAthlete")} />
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* ── training hubs (own profile only) — train · plan · calendar · history ── */}
+      {isOwn && (
+        <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {[
+            { to: "/train", icon: Waves, label: lang === "el" ? "Προπόνηση" : "Train" },
+            { to: "/planner", icon: ClipboardList, label: lang === "el" ? "Πλάνο" : "Plan" },
+            {
+              to: "/calendar",
+              icon: CalendarDays,
+              label: lang === "el" ? "Ημερολόγιο" : "Calendar",
+            },
+            { to: "/history", icon: History, label: lang === "el" ? "Ιστορικό" : "History" },
+          ].map(({ to, icon: Icon, label }) => (
+            <Link
+              key={to}
+              to={to}
+              className="pressable surface-1 flex shrink-0 items-center gap-2 rounded-full py-2 pl-2 pr-4"
+              style={{
+                background: "rgba(29,158,117,0.08)",
+                border: "1px solid rgba(93,202,165,0.2)",
+              }}
+            >
+              <span
+                className="flex size-7 items-center justify-center rounded-full"
+                style={{ background: "rgba(29,158,117,0.16)" }}
+              >
+                <Icon className="size-3.5" style={{ color: GREEN_LIGHT }} />
+              </span>
+              <span className="text-xs font-semibold text-foreground/80">{label}</span>
+            </Link>
+          ))}
+        </div>
+      )}
 
       {/* ── Spearo: record wall from SHARED catches only ── */}
       {!sharedLoading && records.length > 0 && (

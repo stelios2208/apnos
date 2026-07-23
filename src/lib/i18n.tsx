@@ -233,7 +233,9 @@ const en: Dict = {
   "spearo.pb": "PB",
   "spearo.depth": "depth",
   "spearo.photo": "Photo",
-  "spearo.addPhoto": "Add a photo",
+  "spearo.addPhoto": "Photo / gallery",
+  "spearo.cameraRear": "Camera",
+  "spearo.cameraFront": "Selfie",
   "spearo.photoHint": "Location data is stripped before upload — your spot stays private.",
   "spearo.photoUploading": "Uploading…",
   "spearo.photoRemove": "Remove photo",
@@ -271,9 +273,16 @@ const en: Dict = {
   "spearo.shareToFeedHint": "No location — your spot stays yours.",
   // community feed (Spearo home) — sanitized shared catches, never spots
   "spearo.feedTitle": "Community",
-  "spearo.feedSub": "What the crew is sharing — never the spots.",
+  "spearo.feedSub": "Record wall & adventures — never the spots.",
   "spearo.feedEmpty": "The community starts here — share your first catch.",
   "spearo.feedAthlete": "Athlete",
+  // Facebook-style community bits (shared by both feeds)
+  "stories.create": "Create",
+  "react.heart": "Like",
+  "react.ok": "I'm OK",
+  "feed.friends": "Friends",
+  "feed.friendsSub": "People you dive and share with.",
+  "feed.tagline": "Freediving records & training",
   // dive share-to-feed — per-dive opt-in (default OFF); the feed payload never
   // carries notes, wellness, gear or conditions (see the feed_dives view)
   "dive.shareToFeed": "Share with the community",
@@ -281,11 +290,18 @@ const en: Dict = {
   // public athlete page (/athlete/$id) — shared between both modes
   "athlete.private": "Private profile",
   "athlete.privateSub": "This profile is private or doesn't exist.",
-  "athlete.recordWall": "Record Wall",
+  "athlete.recordWall": "Record wall & adventures",
   "athlete.recordWallSub": "Best shared catch per species.",
-  "athlete.compResults": "Freediving records",
+  "athlete.compResults": "Freediving records & training",
   "athlete.compResultsSub": "Best shared or competition result per discipline.",
   "athlete.compBadge": "Competition",
+  "athlete.edit": "Edit profile",
+  "athlete.share": "Share profile",
+  "athlete.shareText": "Check out this freediver on Apnos",
+  "athlete.shareCopied": "Profile link copied",
+  "athlete.friends": "Friends",
+  "athlete.friendsSub": "The crew they dive and share with.",
+  "athlete.viewTraining": "Training & calendar",
 };
 
 const el: Dict = {
@@ -501,7 +517,9 @@ const el: Dict = {
   "spearo.pb": "PB",
   "spearo.depth": "βάθος",
   "spearo.photo": "Φωτογραφία",
-  "spearo.addPhoto": "Πρόσθεσε φωτογραφία",
+  "spearo.addPhoto": "Φωτο / συλλογή",
+  "spearo.cameraRear": "Κάμερα",
+  "spearo.cameraFront": "Selfie",
   "spearo.photoHint":
     "Τα δεδομένα τοποθεσίας αφαιρούνται πριν τη μεταφόρτωση — το σημείο σου παραμένει κρυφό.",
   "spearo.photoUploading": "Μεταφόρτωση…",
@@ -541,9 +559,16 @@ const el: Dict = {
   "spearo.shareToFeedHint": "Χωρίς τοποθεσία — το spot μένει δικό σου.",
   // feed κοινότητας (αρχική Spearo) — μόνο εξυγιασμένες κοινοποιήσεις, ποτέ spots
   "spearo.feedTitle": "Κοινότητα",
-  "spearo.feedSub": "Ό,τι μοιράζεται η παρέα — ποτέ τα spots.",
+  "spearo.feedSub": "Τοίχος ρεκόρ & περιπέτειες — ποτέ τα spots.",
   "spearo.feedEmpty": "Η κοινότητα ξεκινάει εδώ — μοιράσου την πρώτη σου ψαριά.",
   "spearo.feedAthlete": "Αθλητής",
+  // Facebook-style στοιχεία κοινότητας (κοινά και για τα δύο feeds)
+  "stories.create": "Δημιουργία",
+  "react.heart": "Μου αρέσει",
+  "react.ok": "Είμαι ΟΚ",
+  "feed.friends": "Φίλοι",
+  "feed.friendsSub": "Άτομα που καταδύεσαι και μοιράζεσαι μαζί τους.",
+  "feed.tagline": "Ρεκόρ & προπόνηση ελεύθερης κατάδυσης",
   // κοινοποίηση βουτιάς στο feed — opt-in ανά κατάδυση (default OFF)· το payload
   // του feed δεν περιέχει ποτέ σημειώσεις, wellness, εξοπλισμό ή συνθήκες
   "dive.shareToFeed": "Κοινοποίηση στην κοινότητα",
@@ -551,11 +576,18 @@ const el: Dict = {
   // δημόσια σελίδα αθλητή (/athlete/$id) — κοινή και για τα δύο modes
   "athlete.private": "Ιδιωτικό προφίλ",
   "athlete.privateSub": "Αυτό το προφίλ είναι ιδιωτικό ή δεν υπάρχει.",
-  "athlete.recordWall": "Τοίχος ρεκόρ",
+  "athlete.recordWall": "Τοίχος ρεκόρ & περιπέτειες",
   "athlete.recordWallSub": "Η καλύτερη κοινοποιημένη ψαριά ανά είδος.",
-  "athlete.compResults": "Ρεκόρ ελεύθερης κατάδυσης",
+  "athlete.compResults": "Ρεκόρ & προπόνηση ελεύθερης κατάδυσης",
   "athlete.compResultsSub": "Η καλύτερη κοινοποιημένη ή αγωνιστική επίδοση ανά αγώνισμα.",
   "athlete.compBadge": "Αγώνας",
+  "athlete.edit": "Επεξεργασία προφίλ",
+  "athlete.share": "Κοινοποίηση προφίλ",
+  "athlete.shareText": "Δες αυτόν τον ελεύθερο δύτη στο Apnos",
+  "athlete.shareCopied": "Ο σύνδεσμος αντιγράφηκε",
+  "athlete.friends": "Φίλοι",
+  "athlete.friendsSub": "Η παρέα που καταδύεται και μοιράζεται μαζί τους.",
+  "athlete.viewTraining": "Προπόνηση & ημερολόγιο",
 };
 
 const DICTS: Record<Lang, Dict> = { el, en };
