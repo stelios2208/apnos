@@ -125,6 +125,8 @@ export interface Dive {
   conditions: StaConditions | null;
   is_personal_best: boolean;
   created_at: string;
+  /** Optional shareable photo (public `catch-photos` bucket, EXIF stripped). */
+  photo_url?: string | null;
   /**
    * Per-dive community opt-in, default OFF (false/undefined = private).
    * When true the dive appears in the community feed — but ONLY through the

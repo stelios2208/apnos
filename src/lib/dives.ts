@@ -25,6 +25,8 @@ export interface NewDiveInput {
   conditions?: StaConditions | null;
   /** Community opt-in (default false). See Dive.shared_to_feed. */
   shared_to_feed?: boolean;
+  /** Optional shareable photo URL (public catch-photos bucket). */
+  photo_url?: string | null;
 }
 
 // PostgREST reports an unknown column with code PGRST204. The deployed DB may

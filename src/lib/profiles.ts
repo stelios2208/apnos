@@ -272,6 +272,7 @@ export interface FeedDive {
   result: number;
   dive_date: string;
   is_personal_best: boolean;
+  photo_url?: string | null;
   created_at: string;
 }
 

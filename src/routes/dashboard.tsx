@@ -300,22 +300,27 @@ function FeedDiveCard({
         </span>
       </Link>
 
-      {/* post body — the dive result on its discipline-themed underwater panel */}
-      <div
-        className="relative w-full overflow-hidden"
-        style={{ background: disciplineGradient(code) }}
+      {/* body — the dive photo if the athlete added one, otherwise the
+          discipline-themed underwater panel with the result as hero. Taps
+          through to the athlete page. */}
+      <Link
+        to="/athlete/$id"
+        params={{ id: d.user_id }}
+        onClick={() => nativeVibrate(10)}
+        className="block"
       >
-        <div className="relative flex min-h-[9rem] flex-col justify-between p-4">
-          <div className="flex items-center gap-2">
-            <span
-              className="rounded-md px-2 py-0.5 text-[0.6rem] font-bold tracking-wider"
-              style={{ background: "rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.85)" }}
-            >
-              {code}
-            </span>
+        {d.photo_url ? (
+          <div className="relative">
+            <img
+              src={d.photo_url}
+              alt=""
+              loading="lazy"
+              className="w-full"
+              style={{ maxHeight: "38rem", objectFit: "cover", background: "#02101d" }}
+            />
             {d.is_personal_best && (
               <span
-                className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[0.6rem] font-black tracking-[0.14em]"
+                className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[0.6rem] font-black tracking-[0.14em]"
                 style={{
                   background: MEDAL_GOLD,
                   color: "#3A2503",
@@ -327,23 +332,52 @@ function FeedDiveCard({
               </span>
             )}
           </div>
-          <div>
-            <p className="text-sm font-semibold text-white/85">{disciplineName(code, lang)}</p>
-            <p
-              className="mt-0.5 text-4xl font-black tabular-nums text-white"
-              style={{
-                fontFamily: "'Outfit', sans-serif",
-                textShadow: "0 2px 12px rgba(2,10,19,0.6)",
-              }}
-            >
-              {formatResult(code, d.result)}
-            </p>
+        ) : (
+          <div
+            className="relative w-full overflow-hidden"
+            style={{ background: disciplineGradient(code) }}
+          >
+            <div className="relative flex min-h-[9rem] flex-col justify-between p-4">
+              <div className="flex items-center gap-2">
+                <span
+                  className="rounded-md px-2 py-0.5 text-[0.6rem] font-bold tracking-wider"
+                  style={{ background: "rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.85)" }}
+                >
+                  {code}
+                </span>
+                {d.is_personal_best && (
+                  <span
+                    className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[0.6rem] font-black tracking-[0.14em]"
+                    style={{
+                      background: MEDAL_GOLD,
+                      color: "#3A2503",
+                      boxShadow:
+                        "inset 0 1px 0 rgba(255,255,255,0.5), 0 2px 10px rgba(239,159,39,0.45)",
+                    }}
+                  >
+                    <Trophy className="size-3" /> PB
+                  </span>
+                )}
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-white/85">{disciplineName(code, lang)}</p>
+                <p
+                  className="mt-0.5 text-4xl font-black tabular-nums text-white"
+                  style={{
+                    fontFamily: "'Outfit', sans-serif",
+                    textShadow: "0 2px 12px rgba(2,10,19,0.6)",
+                  }}
+                >
+                  {formatResult(code, d.result)}
+                </p>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
+        )}
+      </Link>
 
       {/* action bar — heart / I'm OK / share */}
-      <div className="px-3 py-2.5">
+      <div className="px-3 pb-1 pt-2.5">
         <PostReactions
           targetType="dive"
           targetId={d.id}
@@ -354,6 +388,24 @@ function FeedDiveCard({
           }}
         />
       </div>
+
+      {/* caption below (only when a photo replaced the result panel) */}
+      {d.photo_url && (
+        <div className="flex flex-wrap items-center gap-2 px-3 pb-3 pt-1">
+          <span
+            className="rounded-md px-2 py-0.5 text-[0.6rem] font-bold tracking-wider"
+            style={{ background: "rgba(29,158,117,0.15)", color: "#5DCAA5" }}
+          >
+            {code}
+          </span>
+          <span className="text-sm font-semibold text-foreground">
+            {disciplineName(code, lang)}
+          </span>
+          <span className="text-sm font-black tabular-nums text-foreground">
+            {formatResult(code, d.result)}
+          </span>
+        </div>
+      )}
     </li>
   );
 }
