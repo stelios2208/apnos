@@ -185,14 +185,11 @@
   /* elevation on white surfaces: softer drops, near-white top highlight */
   --elev-highlight: inset 0 1px 0 0 rgba(255, 255, 255, 0.9);
   --shadow-surface-1:
-    0 1px 2px rgba(20, 40, 60, 0.08), 0 2px 8px -2px rgba(20, 40, 60, 0.08),
-    var(--elev-highlight);
+    0 1px 2px rgba(20, 40, 60, 0.08), 0 2px 8px -2px rgba(20, 40, 60, 0.08), var(--elev-highlight);
   --shadow-surface-2:
-    0 2px 4px rgba(20, 40, 60, 0.08), 0 10px 24px -8px rgba(20, 40, 60, 0.14),
-    var(--elev-highlight);
+    0 2px 4px rgba(20, 40, 60, 0.08), 0 10px 24px -8px rgba(20, 40, 60, 0.14), var(--elev-highlight);
   --shadow-surface-3:
-    0 4px 8px rgba(20, 40, 60, 0.1), 0 20px 48px -12px rgba(20, 40, 60, 0.2),
-    var(--elev-highlight);
+    0 4px 8px rgba(20, 40, 60, 0.1), 0 20px 48px -12px rgba(20, 40, 60, 0.2), var(--elev-highlight);
   --shadow-pressed: 0 1px 3px rgba(20, 40, 60, 0.12), var(--elev-highlight);
   --glow-brand:
     inset 0 1px 0 0 rgba(255, 255, 255, 0.35), 0 4px 16px rgba(29, 158, 117, 0.35),
@@ -259,6 +256,16 @@
 
 @utility surface-3 {
   box-shadow: var(--shadow-surface-3);
+}
+
+/* Hide the horizontal scrollbar on a scroller (stories, chips, friends rows)
+   so a swipe never reveals a bottom scroll line. Works in WebKit/Blink + FF. */
+@utility no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 /* Brand-green halo. `--glow-ring` (unset by default) lets callers stack an

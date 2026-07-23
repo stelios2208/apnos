@@ -101,6 +101,34 @@ export async function createPost(input: NewCommunityPostInput): Promise<Communit
 }
 
 /**
+ * Update a post's editable fields (owner enforced by RLS). Uses the PGRST204
+ * drop-and-retry pattern for individual missing columns.
+ */
+export async function updatePost(
+  id: string,
+  patch: Partial<Pick<CommunityPost, "title" | "body" | "photo_url">>,
+): Promise<CommunityPost> {
+  const payload: Record<string, unknown> = { ...patch };
+  for (let attempt = 0; attempt <= Object.keys(payload).length; attempt++) {
+    const { data, error } = await supabase
+      .from("community_posts")
+      .update(payload)
+      .eq("id", id)
+      .select("*")
+      .single();
+    if (!error) return data as CommunityPost;
+    if (isMissingTable(error)) throw new Error(MIGRATION_HINT);
+    const col = missingColumn(error);
+    if (col && col in payload) {
+      delete payload[col];
+      continue;
+    }
+    throw error;
+  }
+  throw new Error("community_posts update failed after dropping all unknown columns.");
+}
+
+/**
  * Delete a post (owner enforced by RLS). Best-effort photo cleanup is the
  * caller's job (it holds the deleteCatchPhoto import), so this only removes the
  * row.

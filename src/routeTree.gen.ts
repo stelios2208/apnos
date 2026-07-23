@@ -25,6 +25,7 @@ import { Route as RankingsRouteImport } from './routes/rankings'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as PlannerRouteImport } from './routes/planner'
 import { Route as PerformancesRouteImport } from './routes/performances'
+import { Route as MessagesRouteImport } from './routes/messages'
 import { Route as LogRouteImport } from './routes/log'
 import { Route as HistoryRouteImport } from './routes/history'
 import { Route as EquipmentRouteImport } from './routes/equipment'
@@ -121,6 +122,11 @@ const PerformancesRoute = PerformancesRouteImport.update({
   path: '/performances',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MessagesRoute = MessagesRouteImport.update({
+  id: '/messages',
+  path: '/messages',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LogRoute = LogRouteImport.update({
   id: '/log',
   path: '/log',
@@ -207,6 +213,7 @@ export interface FileRoutesByFullPath {
   '/equipment': typeof EquipmentRoute
   '/history': typeof HistoryRoute
   '/log': typeof LogRoute
+  '/messages': typeof MessagesRoute
   '/performances': typeof PerformancesRoute
   '/planner': typeof PlannerRoute
   '/profile': typeof ProfileRoute
@@ -239,6 +246,7 @@ export interface FileRoutesByTo {
   '/equipment': typeof EquipmentRoute
   '/history': typeof HistoryRoute
   '/log': typeof LogRoute
+  '/messages': typeof MessagesRoute
   '/performances': typeof PerformancesRoute
   '/planner': typeof PlannerRoute
   '/profile': typeof ProfileRoute
@@ -273,6 +281,7 @@ export interface FileRoutesById {
   '/equipment': typeof EquipmentRoute
   '/history': typeof HistoryRoute
   '/log': typeof LogRoute
+  '/messages': typeof MessagesRoute
   '/performances': typeof PerformancesRoute
   '/planner': typeof PlannerRoute
   '/profile': typeof ProfileRoute
@@ -308,6 +317,7 @@ export interface FileRouteTypes {
     | '/equipment'
     | '/history'
     | '/log'
+    | '/messages'
     | '/performances'
     | '/planner'
     | '/profile'
@@ -340,6 +350,7 @@ export interface FileRouteTypes {
     | '/equipment'
     | '/history'
     | '/log'
+    | '/messages'
     | '/performances'
     | '/planner'
     | '/profile'
@@ -373,6 +384,7 @@ export interface FileRouteTypes {
     | '/equipment'
     | '/history'
     | '/log'
+    | '/messages'
     | '/performances'
     | '/planner'
     | '/profile'
@@ -407,6 +419,7 @@ export interface RootRouteChildren {
   EquipmentRoute: typeof EquipmentRoute
   HistoryRoute: typeof HistoryRoute
   LogRoute: typeof LogRoute
+  MessagesRoute: typeof MessagesRoute
   PerformancesRoute: typeof PerformancesRoute
   PlannerRoute: typeof PlannerRoute
   ProfileRoute: typeof ProfileRoute
@@ -543,6 +556,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PerformancesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/messages': {
+      id: '/messages'
+      path: '/messages'
+      fullPath: '/messages'
+      preLoaderRoute: typeof MessagesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/log': {
       id: '/log'
       path: '/log'
@@ -673,6 +693,7 @@ const rootRouteChildren: RootRouteChildren = {
   EquipmentRoute: EquipmentRoute,
   HistoryRoute: HistoryRoute,
   LogRoute: LogRoute,
+  MessagesRoute: MessagesRoute,
   PerformancesRoute: PerformancesRoute,
   PlannerRoute: PlannerRoute,
   ProfileRoute: ProfileRoute,

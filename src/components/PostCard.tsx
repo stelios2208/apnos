@@ -1,12 +1,17 @@
+import { useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
-import { Trash2 } from "lucide-react";
+import { Check, Pencil, Trash2, X } from "lucide-react";
+import { toast } from "sonner";
 import { PostReactions } from "@/components/PostReactions";
 import { athleteInitials, athleteColor } from "@/lib/athletes";
 import { nativeVibrate } from "@/lib/native";
 import { useI18n } from "@/lib/i18n";
-import type { CommunityPost } from "@/lib/posts";
+import { updatePost, type CommunityPost } from "@/lib/posts";
 import type { SocialProfile } from "@/lib/profiles";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -38,10 +43,36 @@ export function PostCard({
   onDelete: (post: CommunityPost) => void;
 }) {
   const { t } = useI18n();
+  const qc = useQueryClient();
   const name = author?.display_name || fallbackName;
   const color = athleteColor(post.user_id);
   const dateStr = format(new Date(post.created_at), "d MMM yyyy · HH:mm");
   const isOwn = currentUserId === post.user_id;
+
+  // ── inline edit (own post) ──
+  const [editing, setEditing] = useState(false);
+  const [titleDraft, setTitleDraft] = useState(post.title ?? "");
+  const [bodyDraft, setBodyDraft] = useState(post.body ?? "");
+
+  const editMutation = useMutation({
+    mutationFn: () =>
+      updatePost(post.id, {
+        title: titleDraft.trim() || null,
+        body: bodyDraft.trim() || null,
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["feed-posts"] });
+      toast.success(t("post.updated"));
+      setEditing(false);
+    },
+    onError: (err) => toast.error(err instanceof Error ? err.message : t("post.couldNotPost")),
+  });
+
+  const startEdit = () => {
+    setTitleDraft(post.title ?? "");
+    setBodyDraft(post.body ?? "");
+    setEditing(true);
+  };
 
   return (
     <li className="surface-2 overflow-hidden border-y border-border/50 sm:rounded-2xl sm:border">
@@ -74,6 +105,17 @@ export function PostCard({
           </span>
         </Link>
 
+        {isOwn && !editing && (
+          <button
+            type="button"
+            onClick={startEdit}
+            aria-label={t("post.edit")}
+            className="pressable flex size-8 shrink-0 items-center justify-center rounded-full text-foreground/40 hover:text-foreground"
+          >
+            <Pencil className="size-4" />
+          </button>
+        )}
+
         {isOwn && (
           <AlertDialog>
             <AlertDialogTrigger asChild>
@@ -104,18 +146,55 @@ export function PostCard({
         )}
       </div>
 
-      {/* title + body */}
-      {(post.title || post.body) && (
-        <div className="space-y-1 px-3 pb-2.5">
-          {post.title && (
-            <p className="text-base font-bold leading-snug text-foreground">{post.title}</p>
-          )}
-          {post.body && (
-            <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/75">
-              {post.body}
-            </p>
-          )}
+      {/* title + body — editable inline for the author */}
+      {editing ? (
+        <div className="space-y-2 px-3 pb-3">
+          <Input
+            value={titleDraft}
+            onChange={(e) => setTitleDraft(e.target.value)}
+            placeholder={t("post.titlePlaceholder")}
+          />
+          <Textarea
+            value={bodyDraft}
+            onChange={(e) => setBodyDraft(e.target.value)}
+            placeholder={t("post.bodyPlaceholder")}
+            rows={3}
+          />
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => editMutation.mutate()}
+              disabled={editMutation.isPending}
+              className="pressable flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2 text-sm font-semibold text-white disabled:opacity-50"
+              style={{ background: "#1D9E75" }}
+            >
+              <Check className="size-4" />
+              {t("post.save")}
+            </button>
+            <button
+              type="button"
+              onClick={() => setEditing(false)}
+              className="pressable flex items-center justify-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold"
+              style={{ background: "rgba(var(--ink),0.05)", color: "rgba(var(--ink),0.7)" }}
+            >
+              <X className="size-4" />
+              {t("common.cancel")}
+            </button>
+          </div>
         </div>
+      ) : (
+        (post.title || post.body) && (
+          <div className="space-y-1 px-3 pb-2.5">
+            {post.title && (
+              <p className="text-base font-bold leading-snug text-foreground">{post.title}</p>
+            )}
+            {post.body && (
+              <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/75">
+                {post.body}
+              </p>
+            )}
+          </div>
+        )
       )}
 
       {/* optional full-width photo at natural aspect */}

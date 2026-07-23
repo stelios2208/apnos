@@ -295,9 +295,31 @@ const en: Dict = {
   "post.publish": "Post",
   "post.posted": "Posted to the community",
   "post.couldNotPost": "Could not post",
+  "post.edit": "Edit post",
+  "post.save": "Save",
+  "post.updated": "Post updated",
   "post.empty": "Write something or add a photo first",
   "post.deleteTitle": "Delete post?",
   "post.deleteDesc": "This permanently removes your post. This can't be undone.",
+  // admin chat (Messenger-style)
+  "chat.adminSub": "Message the Apnos coach directly.",
+  "chat.memberSub": "Member chat",
+  "chat.member": "Diver",
+  "chat.placeholder": "Write a message…",
+  "chat.send": "Send",
+  "chat.sendError": "Could not send message",
+  "chat.empty": "Say hi 👋 — ask anything, no email needed.",
+  "chat.inboxTitle": "Messages",
+  "chat.inboxEmpty": "No messages yet.",
+  // stories
+  "story.newTitle": "New story",
+  "story.pick": "Pick a photo",
+  "story.captionPlaceholder": "Add a caption…",
+  "story.share": "Share story",
+  "story.uploading": "Uploading…",
+  "story.photoError": "Could not upload photo",
+  "story.shared": "Story shared",
+  "story.couldNotShare": "Could not share story",
   // dive share-to-feed — per-dive opt-in (default OFF); the feed payload never
   // carries notes, wellness, gear or conditions (see the feed_dives view)
   "dive.shareToFeed": "Share with the community",
@@ -317,6 +339,8 @@ const en: Dict = {
   "athlete.friends": "Friends",
   "athlete.friendsSub": "The crew they dive and share with.",
   "athlete.viewTraining": "Training & calendar",
+  "athlete.posts": "Posts",
+  "athlete.postsSub": "Their free-form community posts.",
 };
 
 const el: Dict = {
@@ -596,9 +620,31 @@ const el: Dict = {
   "post.publish": "Δημοσίευση",
   "post.posted": "Δημοσιεύτηκε στην κοινότητα",
   "post.couldNotPost": "Αδυναμία δημοσίευσης",
+  "post.edit": "Επεξεργασία post",
+  "post.save": "Αποθήκευση",
+  "post.updated": "Το post ενημερώθηκε",
   "post.empty": "Γράψε κάτι ή πρόσθεσε φωτογραφία πρώτα",
   "post.deleteTitle": "Διαγραφή post;",
   "post.deleteDesc": "Αφαιρεί οριστικά το post σου. Δεν αναιρείται.",
+  // chat με admin (τύπου Messenger)
+  "chat.adminSub": "Στείλε απευθείας μήνυμα στον προπονητή του Apnos.",
+  "chat.memberSub": "Συνομιλία μέλους",
+  "chat.member": "Δύτης",
+  "chat.placeholder": "Γράψε ένα μήνυμα…",
+  "chat.send": "Αποστολή",
+  "chat.sendError": "Αδυναμία αποστολής μηνύματος",
+  "chat.empty": "Πες ένα γεια 👋 — ρώτησε ό,τι θες, χωρίς email.",
+  "chat.inboxTitle": "Μηνύματα",
+  "chat.inboxEmpty": "Δεν υπάρχουν μηνύματα ακόμα.",
+  // stories
+  "story.newTitle": "Νέα ιστορία",
+  "story.pick": "Διάλεξε φωτογραφία",
+  "story.captionPlaceholder": "Πρόσθεσε λεζάντα…",
+  "story.share": "Κοινοποίηση",
+  "story.uploading": "Ανέβασμα…",
+  "story.photoError": "Αδυναμία ανεβάσματος φωτογραφίας",
+  "story.shared": "Η ιστορία κοινοποιήθηκε",
+  "story.couldNotShare": "Αδυναμία κοινοποίησης",
   // κοινοποίηση βουτιάς στο feed — opt-in ανά κατάδυση (default OFF)· το payload
   // του feed δεν περιέχει ποτέ σημειώσεις, wellness, εξοπλισμό ή συνθήκες
   "dive.shareToFeed": "Κοινοποίηση στην κοινότητα",
@@ -618,6 +664,8 @@ const el: Dict = {
   "athlete.friends": "Φίλοι",
   "athlete.friendsSub": "Η παρέα που καταδύεται και μοιράζεται μαζί τους.",
   "athlete.viewTraining": "Προπόνηση & ημερολόγιο",
+  "athlete.posts": "Δημοσιεύσεις",
+  "athlete.postsSub": "Οι ελεύθερες δημοσιεύσεις τους στην κοινότητα.",
 };
 
 const DICTS: Record<Lang, Dict> = { el, en };

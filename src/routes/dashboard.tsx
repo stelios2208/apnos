@@ -5,6 +5,8 @@ import { toast } from "sonner";
 import { Trophy, Waves, ClipboardList, CalendarDays, History, Users } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { StoriesRow } from "@/components/StoriesRow";
+import { StoryComposer } from "@/components/StoryComposer";
+import { StoryViewer } from "@/components/StoryViewer";
 import { PromoBanner } from "@/components/PromoBanner";
 import { PostReactions } from "@/components/PostReactions";
 import { PostComposer } from "@/components/PostComposer";
@@ -17,12 +19,12 @@ import {
   type FeedDive,
 } from "@/lib/profiles";
 import { listFeedPosts, deletePost, type CommunityPost } from "@/lib/posts";
+import { listStories, deleteStory, type CommunityStory } from "@/lib/stories";
 import { deleteCatchPhoto } from "@/lib/spearo-photos";
 import { disciplineName, formatResult, type DisciplineCode } from "@/lib/diving";
 import { athleteInitials, athleteColor } from "@/lib/athletes";
 import { nativeVibrate } from "@/lib/native";
 import { useI18n } from "@/lib/i18n";
-import { useEffect, useRef } from "react";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard — Apnos" }] }),
@@ -56,65 +58,6 @@ function disciplineGradient(code: DisciplineCode): string {
   return `linear-gradient(180deg, hsl(${h},55%,24%) 0%, hsl(${h + 10},60%,12%) 60%, #02101d 100%)`;
 }
 
-// ── BubbleHero ─────────────────────────────────────────────────────────────────
-// The animated underwater hero shell (rising bubbles + light shafts), unchanged.
-
-function BubbleHero({ children }: { children: React.ReactNode }) {
-  const svgRef = useRef<SVGSVGElement>(null);
-
-  useEffect(() => {
-    const svg = svgRef.current;
-    if (!svg) return;
-    const ns = "http://www.w3.org/2000/svg";
-    const bubbles: SVGCircleElement[] = [];
-    for (let i = 0; i < 22; i++) {
-      const c = document.createElementNS(ns, "circle");
-      const x = 5 + Math.random() * 90;
-      const r = 0.5 + Math.random() * 2.5;
-      const dur = (5 + Math.random() * 7).toFixed(1);
-      const delay = -(Math.random() * 9).toFixed(1);
-      c.setAttribute("cx", x + "%");
-      c.setAttribute("cy", "105%");
-      c.setAttribute("r", r + "%");
-      c.setAttribute("fill", "#9FE1CB");
-      c.style.opacity = (0.15 + Math.random() * 0.45).toFixed(2);
-      c.style.animation = `bubble-rise ${dur}s ${delay}s linear infinite`;
-      svg.appendChild(c);
-      bubbles.push(c);
-    }
-    return () => bubbles.forEach((b) => b.remove());
-  }, []);
-
-  return (
-    <div
-      className="relative overflow-hidden rounded-2xl border border-white/10"
-      style={{
-        background: "linear-gradient(160deg, #1a3a5c 0%, #10293f 40%, #0a1622 100%)",
-        minHeight: 120,
-      }}
-    >
-      <svg className="absolute inset-0 h-full w-full" preserveAspectRatio="none" aria-hidden="true">
-        <defs>
-          <radialGradient id="sun-hero" cx="50%" cy="-10%" r="75%">
-            <stop offset="0%" stopColor="#5DCAA5" stopOpacity="0.35" />
-            <stop offset="100%" stopColor="#1D9E75" stopOpacity="0" />
-          </radialGradient>
-        </defs>
-        <rect width="100%" height="100%" fill="url(#sun-hero)" />
-        <line x1="20%" y1="0" x2="28%" y2="100%" stroke="#5DCAA5" strokeWidth="1" opacity="0.07" />
-        <line x1="50%" y1="0" x2="46%" y2="100%" stroke="#5DCAA5" strokeWidth="1" opacity="0.07" />
-        <line x1="78%" y1="0" x2="70%" y2="100%" stroke="#5DCAA5" strokeWidth="1" opacity="0.07" />
-      </svg>
-      <svg
-        ref={svgRef}
-        className="pointer-events-none absolute inset-0 h-full w-full"
-        aria-hidden="true"
-      />
-      <div className="relative z-10 p-5">{children}</div>
-    </div>
-  );
-}
-
 // ── Dashboard = the Apnos community feed ──────────────────────────────────────
 // The freediving home mirrors the Spearo one: public-athlete avatars row (same
 // AvatarBubble component), a quick-chips row into the training hubs, and the
@@ -125,10 +68,12 @@ function BubbleHero({ children }: { children: React.ReactNode }) {
 
 function Dashboard() {
   const { user } = useAuth();
-  const { t, lang } = useI18n();
+  const { lang } = useI18n();
   const el = lang === "el";
   const qc = useQueryClient();
   const [composerOpen, setComposerOpen] = useState(false);
+  const [storyComposerOpen, setStoryComposerOpen] = useState(false);
+  const [storyIndex, setStoryIndex] = useState<number | null>(null);
 
   const { data: profiles = [], isLoading: profilesLoading } = useQuery({
     queryKey: ["public-profiles"],
@@ -148,8 +93,23 @@ function Dashboard() {
     enabled: !!user,
   });
 
+  const { data: stories = [] } = useQuery({
+    queryKey: ["stories"],
+    queryFn: () => listStories(40),
+    enabled: !!user,
+  });
+
   const profileByUser = useMemo(() => new Map(profiles.map((p) => [p.user_id, p])), [profiles]);
   const isLoading = profilesLoading || feedLoading || postsLoading;
+
+  const deleteStoryMutation = useMutation({
+    mutationFn: async (s: CommunityStory) => {
+      await deleteStory(s.id);
+      if (s.photo_url) await deleteCatchPhoto(s.photo_url).catch(() => {});
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["stories"] }),
+    onError: (err) => toast.error(err instanceof Error ? err.message : "Error"),
+  });
 
   // Delete own post — best-effort photo cleanup, then refresh the feed.
   const deletePostMutation = useMutation({
@@ -182,29 +142,21 @@ function Dashboard() {
   ] as const;
 
   return (
-    <div className="space-y-5 pb-24">
-      {/* hero */}
-      <BubbleHero>
-        <p className="mb-2 text-[0.6rem] font-semibold uppercase tracking-[0.25em] text-[#5DCAA5]">
-          Apnos
-        </p>
-        <p className="text-2xl font-light text-white">{el ? "Κοινότητα" : "Community"}</p>
-        <p className="mt-1 text-xs text-white/55">{t("feed.tagline")}</p>
-      </BubbleHero>
-
-      {/* our promo / tips slot */}
+    <div className="space-y-4 pb-24">
+      {/* our promo / tips slot (replaces the old oversized community hero) */}
       <PromoBanner variant="apnos" />
 
-      {/* Facebook-style stories row — the (+) tile opens the post composer */}
+      {/* Facebook-style stories row — the Create card uploads a story */}
       <StoriesRow
-        profiles={profiles}
+        stories={stories}
+        profileByUser={profileByUser}
         fallbackName={el ? "Αθλητής" : "Athlete"}
-        mode="apnos"
-        onCreate={() => setComposerOpen(true)}
+        onCreate={() => setStoryComposerOpen(true)}
+        onView={(i) => setStoryIndex(i)}
       />
 
       {/* quick chips into the training hubs (train · plan · calendar · history) */}
-      <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
         {chips.map(({ to, icon: Icon, label }) => (
           <Link
             key={to}
@@ -229,6 +181,18 @@ function Dashboard() {
 
       {/* free-form post composer ("what's on your mind?") */}
       <PostComposer open={composerOpen} onOpenChange={setComposerOpen} />
+
+      {/* story composer + fullscreen viewer (overlays) */}
+      <StoryComposer open={storyComposerOpen} onOpenChange={setStoryComposerOpen} />
+      <StoryViewer
+        stories={stories}
+        startIndex={storyIndex}
+        profileByUser={profileByUser}
+        fallbackName={el ? "Αθλητής" : "Athlete"}
+        currentUserId={user?.id}
+        onClose={() => setStoryIndex(null)}
+        onDelete={(s) => deleteStoryMutation.mutate(s)}
+      />
 
       {/* community feed — free-form posts interleaved with shared dives */}
       {isLoading ? (

@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import {
   ArrowLeft,
@@ -13,10 +13,13 @@ import {
   ClipboardList,
   CalendarDays,
   History,
+  MessageSquare,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AppLayout } from "@/components/AppLayout";
 import { AvatarBubble } from "@/components/AvatarBubble";
+import { PostComposer } from "@/components/PostComposer";
+import { PostCard } from "@/components/PostCard";
 import { Bubbles } from "@/components/Bubbles";
 import { useAuth } from "@/hooks/use-auth";
 import { useMode } from "@/hooks/use-mode";
@@ -28,6 +31,8 @@ import {
   listFeedDives,
   type FeedCatch,
 } from "@/lib/profiles";
+import { listFeedPosts, deletePost, type CommunityPost } from "@/lib/posts";
+import { deleteCatchPhoto } from "@/lib/spearo-photos";
 import { personalBestsBySpecies } from "@/lib/spearo-catches";
 import { speciesLabel, formatCatchSize, formatCatchWeight, type SpearoCatch } from "@/lib/spearo";
 import { fetchPublicResultsByUser } from "@/lib/competitions";
@@ -159,8 +164,31 @@ function AthletePage() {
   );
   const [friendsOpen, setFriendsOpen] = useState(false);
 
+  // This athlete's free-form community posts (their own wall).
+  const { data: posts = [] } = useQuery({
+    queryKey: ["feed-posts", id],
+    queryFn: () => listFeedPosts({ userId: id, limit: 30 }),
+    enabled: !!user && !!profile,
+  });
+
+  const queryClient = useQueryClient();
+  const [composerOpen, setComposerOpen] = useState(false);
+
   // Is the viewer looking at their own public profile?
   const isOwn = user?.id === id;
+
+  // Delete own post — best-effort photo cleanup, then refresh.
+  const deletePostMutation = useMutation({
+    mutationFn: async (p: CommunityPost) => {
+      await deletePost(p.id);
+      if (p.photo_url) await deleteCatchPhoto(p.photo_url).catch(() => {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["feed-posts", id] });
+      queryClient.invalidateQueries({ queryKey: ["feed-posts"] });
+    },
+    onError: (err) => toast.error(err instanceof Error ? err.message : "Error"),
+  });
 
   // Share the profile: native share sheet where available, clipboard fallback.
   const shareProfile = async () => {
@@ -248,31 +276,44 @@ function AthletePage() {
   }
 
   return (
-    <div className="space-y-6 pb-24">
-      <BackButton onClick={() => navigate({ to: homeTo })} />
+    <div className="space-y-5 pb-24">
+      {/* ── full-bleed cover header: the profile photo runs the FULL WIDTH and
+          is pulled up under the app header so there's no empty gap at the top.
+          Back button + identity are overlaid on the image (Facebook-style). ── */}
+      <div className="relative -mx-4 -mt-8 overflow-hidden">
+        {profile.avatar_url ? (
+          <img src={profile.avatar_url} alt={name} className="h-64 w-full object-cover" />
+        ) : (
+          <div
+            className="h-48 w-full"
+            style={{ background: "linear-gradient(160deg, #0d4a63 0%, #072a42 55%, #041a2e 100%)" }}
+          />
+        )}
+        {/* readability gradient (top for the back button, bottom for the name) */}
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              "linear-gradient(180deg, rgba(2,10,19,0.55) 0%, rgba(2,10,19,0.05) 30%, rgba(2,10,19,0.35) 58%, rgba(2,10,19,0.92) 100%)",
+          }}
+        />
 
-      {/* ── header: avatar / name / bio ── */}
-      <div
-        className="relative overflow-hidden rounded-2xl p-6"
-        style={{
-          background: "linear-gradient(160deg, #0d4a63 0%, #072a42 55%, #041a2e 100%)",
-          border: "1px solid rgba(93,202,165,0.18)",
-          boxShadow: "0 8px 32px rgba(4,26,46,0.45)",
-        }}
-      >
-        <Bubbles />
-        <div className="relative z-10 flex items-center gap-4">
-          {profile.avatar_url ? (
-            <img
-              src={profile.avatar_url}
-              alt={name}
-              className="size-20 shrink-0 rounded-full object-cover"
-              style={{ border: `2px solid ${color}66` }}
-            />
-          ) : (
+        {/* back button overlaid top-left */}
+        <button
+          onClick={() => navigate({ to: homeTo })}
+          aria-label={t("common.back")}
+          className="pressable absolute left-4 top-4 flex size-10 items-center justify-center rounded-full text-white"
+          style={{ background: "rgba(2,10,19,0.45)", backdropFilter: "blur(4px)" }}
+        >
+          <ArrowLeft className="size-5" />
+        </button>
+
+        {/* identity overlaid at the bottom */}
+        <div className="absolute inset-x-0 bottom-0 flex items-end gap-3 p-5">
+          {!profile.avatar_url && (
             <span
-              className="flex size-20 shrink-0 items-center justify-center rounded-full text-2xl font-bold"
-              style={{ background: `${color}33`, color: "#fff", border: `2px solid ${color}66` }}
+              className="flex size-14 shrink-0 items-center justify-center rounded-full text-xl font-bold"
+              style={{ background: `${color}44`, color: "#fff", border: `2px solid ${color}88` }}
             >
               {athleteInitials(name)}
             </span>
@@ -280,13 +321,16 @@ function AthletePage() {
           <div className="min-w-0 flex-1">
             <h1
               className="truncate text-2xl font-bold text-white"
-              style={{ fontFamily: "'Outfit', sans-serif" }}
+              style={{
+                fontFamily: "'Outfit', sans-serif",
+                textShadow: "0 2px 12px rgba(2,10,19,0.7)",
+              }}
             >
               {name}
             </h1>
-            {profile.country && <p className="mt-0.5 text-xs text-white/55">{profile.country}</p>}
+            {profile.country && <p className="mt-0.5 text-xs text-white/70">{profile.country}</p>}
             {profile.bio && (
-              <p className="mt-1.5 text-sm leading-snug text-white/70">{profile.bio}</p>
+              <p className="mt-1 line-clamp-2 text-sm leading-snug text-white/80">{profile.bio}</p>
             )}
           </div>
         </div>
@@ -321,6 +365,9 @@ function AthletePage() {
           {t("athlete.share")}
         </button>
       </div>
+
+      {/* ── post from your own profile (the "option to post" on profiles) ── */}
+      {isOwn && <PostComposer open={composerOpen} onOpenChange={setComposerOpen} />}
 
       {/* ── Friends — stacked avatars, tap to expand the full row ── */}
       {friends.length > 0 && (
@@ -366,7 +413,7 @@ function AthletePage() {
           </button>
 
           {friendsOpen && (
-            <div className="-mx-4 flex gap-4 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="no-scrollbar -mx-4 flex gap-4 overflow-x-auto px-4 pb-1">
               {friends.map((f) => (
                 <AvatarBubble key={f.user_id} profile={f} fallbackName={t("spearo.feedAthlete")} />
               ))}
@@ -377,7 +424,7 @@ function AthletePage() {
 
       {/* ── training hubs (own profile only) — train · plan · calendar · history ── */}
       {isOwn && (
-        <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
           {[
             { to: "/train", icon: Waves, label: lang === "el" ? "Προπόνηση" : "Train" },
             { to: "/planner", icon: ClipboardList, label: lang === "el" ? "Πλάνο" : "Plan" },
@@ -417,14 +464,17 @@ function AthletePage() {
             title={t("athlete.recordWall")}
             sub={t("athlete.recordWallSub")}
           />
-          <div className="space-y-3">
+          <div className="no-scrollbar -mx-4 space-y-2.5 sm:mx-0">
             {records.map((r) => {
               const speciesName = r.isCustomSpecies ? r.species : speciesLabel(r.species, lang);
               const primary =
                 r.weight != null ? formatCatchWeight(r.weight) : formatCatchSize(r.size);
               const secondary = r.weight != null && r.size != null ? formatCatchSize(r.size) : null;
               return (
-                <div key={r.species} className="surface-2 relative overflow-hidden rounded-2xl">
+                <div
+                  key={r.species}
+                  className="surface-2 relative overflow-hidden border-y border-border/50 sm:rounded-2xl sm:border"
+                >
                   {r.photoUrl ? (
                     <img
                       src={r.photoUrl}
@@ -442,7 +492,7 @@ function AthletePage() {
                         "linear-gradient(180deg, rgba(2,10,19,0.3) 0%, rgba(2,10,19,0.15) 35%, rgba(2,10,19,0.55) 65%, rgba(2,10,19,0.88) 100%)",
                     }}
                   />
-                  <div className="relative flex min-h-[10rem] flex-col justify-between p-4">
+                  <div className="relative flex min-h-[14rem] flex-col justify-between p-4">
                     <span
                       className="inline-flex w-fit items-center gap-1 rounded-full px-2.5 py-1 text-[0.6rem] font-black tracking-[0.14em]"
                       style={{
@@ -488,14 +538,17 @@ function AthletePage() {
             title={t("athlete.compResults")}
             sub={t("athlete.compResultsSub")}
           />
-          <div className="space-y-3">
+          <div className="-mx-4 space-y-2.5 sm:mx-0">
             {bestPerDiscipline.map((r) => (
-              <div key={r.discipline} className="surface-2 relative overflow-hidden rounded-2xl">
+              <div
+                key={r.discipline}
+                className="surface-2 relative overflow-hidden border-y border-border/50 sm:rounded-2xl sm:border"
+              >
                 <div
                   className="absolute inset-0"
                   style={{ background: disciplineGradient(r.discipline) }}
                 />
-                <div className="relative flex min-h-[8.5rem] flex-col justify-between p-4">
+                <div className="relative flex min-h-[9rem] flex-col justify-between p-4">
                   <div className="flex items-center gap-2">
                     <span
                       className="rounded-md px-2 py-0.5 text-[0.6rem] font-bold tracking-wider"
@@ -554,6 +607,29 @@ function AthletePage() {
               </div>
             ))}
           </div>
+        </section>
+      )}
+
+      {/* ── this athlete's free-form community posts ── */}
+      {posts.length > 0 && (
+        <section className="space-y-3">
+          <SectionHeader
+            icon={<MessageSquare className="size-5" style={{ color: GREEN_LIGHT }} />}
+            title={t("athlete.posts")}
+            sub={t("athlete.postsSub")}
+          />
+          <ul className="-mx-4 space-y-2.5 sm:mx-0">
+            {posts.map((p) => (
+              <PostCard
+                key={p.id}
+                post={p}
+                author={profile}
+                fallbackName={name}
+                currentUserId={user?.id}
+                onDelete={(x) => deletePostMutation.mutate(x)}
+              />
+            ))}
+          </ul>
         </section>
       )}
 

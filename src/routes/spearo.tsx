@@ -55,11 +55,14 @@ import {
 } from "@/lib/profiles";
 import { athleteInitials, athleteColor } from "@/lib/athletes";
 import { StoriesRow } from "@/components/StoriesRow";
+import { StoryComposer } from "@/components/StoryComposer";
+import { StoryViewer } from "@/components/StoryViewer";
 import { PromoBanner } from "@/components/PromoBanner";
 import { PostReactions } from "@/components/PostReactions";
 import { PostComposer } from "@/components/PostComposer";
 import { PostCard } from "@/components/PostCard";
 import { listFeedPosts, deletePost, type CommunityPost } from "@/lib/posts";
+import { listStories, deleteStory, type CommunityStory } from "@/lib/stories";
 import { getCurrentSpot, mapsLink, SpotError } from "@/lib/spot";
 import { nativeVibrate } from "@/lib/native";
 import { shareCatchCard } from "@/lib/catch-share-card";
@@ -1325,8 +1328,16 @@ function SpearoFeed() {
     enabled: !!user,
   });
 
+  const { data: stories = [] } = useQuery({
+    queryKey: ["stories"],
+    queryFn: () => listStories(40),
+    enabled: !!user,
+  });
+
   const queryClient = useQueryClient();
   const [composerOpen, setComposerOpen] = useState(false);
+  const [storyComposerOpen, setStoryComposerOpen] = useState(false);
+  const [storyIndex, setStoryIndex] = useState<number | null>(null);
 
   // client-side stitch: author profile by user_id (sharers without a public
   // profile fall back to a neutral identity in <FeedCard>)
@@ -1341,6 +1352,15 @@ function SpearoFeed() {
       if (p.photo_url) await deleteCatchPhoto(p.photo_url).catch(() => {});
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["feed-posts"] }),
+    onError: (err) => toast.error(err instanceof Error ? err.message : t("spearo.couldNotSave")),
+  });
+
+  const deleteStoryMutation = useMutation({
+    mutationFn: async (s: CommunityStory) => {
+      await deleteStory(s.id);
+      if (s.photo_url) await deleteCatchPhoto(s.photo_url).catch(() => {});
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["stories"] }),
     onError: (err) => toast.error(err instanceof Error ? err.message : t("spearo.couldNotSave")),
   });
 
@@ -1361,48 +1381,21 @@ function SpearoFeed() {
   }, [posts, feed]);
 
   return (
-    <div className="space-y-6 pb-24">
-      {/* ── hero header — same underwater treatment as the log view ── */}
-      <div
-        className="relative overflow-hidden rounded-2xl p-6"
-        style={{
-          background: "linear-gradient(160deg, #0d4a63 0%, #072a42 55%, #041a2e 100%)",
-          border: "1px solid rgba(93,202,165,0.18)",
-          boxShadow: "0 8px 32px rgba(4,26,46,0.45)",
-        }}
-      >
-        <Bubbles />
-        <div className="relative z-10">
-          <span
-            className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[0.6rem] font-bold tracking-[0.18em]"
-            style={{ background: "rgba(93,202,165,0.15)", color: GREEN_LIGHT }}
-          >
-            <Users className="size-3" />
-            {t("spearo.badge")}
-          </span>
-          <h1
-            className="mt-3 text-2xl font-bold text-white"
-            style={{ fontFamily: "'Outfit', sans-serif" }}
-          >
-            {t("spearo.feedTitle")}
-          </h1>
-          <p className="mt-1 max-w-sm text-sm text-white/55">{t("spearo.feedSub")}</p>
-        </div>
-      </div>
-
-      {/* our promo / tips slot */}
+    <div className="space-y-4 pb-24">
+      {/* our promo / tips slot (replaces the old oversized community hero) */}
       <PromoBanner variant="spearo" />
 
-      {/* ── Facebook-style stories row — the (+) tile opens the post composer ── */}
+      {/* ── Facebook-style stories row — the Create card uploads a story ── */}
       <StoriesRow
-        profiles={profiles}
+        stories={stories}
+        profileByUser={profileByUser}
         fallbackName={t("spearo.feedAthlete")}
-        mode="spearo"
-        onCreate={() => setComposerOpen(true)}
+        onCreate={() => setStoryComposerOpen(true)}
+        onView={(i) => setStoryIndex(i)}
       />
 
       {/* quick chips into the training hubs (train · plan · calendar · history) */}
-      <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
         {[
           { to: "/train", icon: Waves, label: lang === "el" ? "Προπόνηση" : "Train" },
           { to: "/planner", icon: ClipboardList, label: lang === "el" ? "Πλάνο" : "Plan" },
@@ -1432,6 +1425,18 @@ function SpearoFeed() {
 
       {/* free-form post composer ("what's on your mind?") */}
       <PostComposer open={composerOpen} onOpenChange={setComposerOpen} />
+
+      {/* story composer + fullscreen viewer (overlays) */}
+      <StoryComposer open={storyComposerOpen} onOpenChange={setStoryComposerOpen} />
+      <StoryViewer
+        stories={stories}
+        startIndex={storyIndex}
+        profileByUser={profileByUser}
+        fallbackName={t("spearo.feedAthlete")}
+        currentUserId={user?.id}
+        onClose={() => setStoryIndex(null)}
+        onDelete={(s) => deleteStoryMutation.mutate(s)}
+      />
 
       {/* ── community feed — free-form posts interleaved with shared catches ── */}
       {isLoading ? (
