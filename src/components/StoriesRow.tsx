@@ -3,31 +3,31 @@ import { athleteInitials, athleteColor } from "@/lib/athletes";
 import { useI18n } from "@/lib/i18n";
 import { nativeVibrate } from "@/lib/native";
 import type { SocialProfile } from "@/lib/profiles";
-import type { CommunityStory } from "@/lib/stories";
+import type { StoryGroup } from "@/lib/stories";
 
-// ── Community "stories" row (Facebook style) ─────────────────────────────────
-// A horizontally scrolling strip of TALL portrait cards, exactly like Facebook
-// stories. Our own "Create" card comes FIRST (upload a photo → it becomes a
-// story), then one card per active story — the story photo as background, a
-// small ringed avatar of the author top-left, their name at the bottom. Tapping
-// a story opens the fullscreen viewer.
+// ── Community "stories" row (Instagram style) ────────────────────────────────
+// A horizontally scrolling strip of TALL portrait cards. Our own "Create" card
+// comes FIRST (upload a photo → it becomes a story), then ONE card per author
+// (their latest story as the cover) — exactly like Instagram, where a person's
+// 2-3 stories collapse into a single tray entry. Tapping opens the fullscreen
+// viewer at that author's group.
 //
 // NOTE: the small round ringed avatars (AvatarBubble) are the PROFILE affordance
 // used elsewhere (the friends row) — stories are their own tall-card shape.
 export function StoriesRow({
-  stories,
+  groups,
   profileByUser,
   fallbackName,
   onCreate,
   onView,
 }: {
-  stories: CommunityStory[];
+  groups: StoryGroup[];
   profileByUser: Map<string, SocialProfile>;
   fallbackName: string;
   /** Opens the story composer (upload a photo). */
   onCreate: () => void;
-  /** Opens the fullscreen viewer at the given story index. */
-  onView: (index: number) => void;
+  /** Opens the fullscreen viewer at the given author-group index. */
+  onView: (groupIndex: number) => void;
 }) {
   const { t } = useI18n();
 
@@ -36,12 +36,15 @@ export function StoriesRow({
     // bottom line.
     <div className="no-scrollbar -mx-4 flex gap-2.5 overflow-x-auto px-4 pb-1">
       <CreateStoryCard label={t("stories.create")} onCreate={onCreate} />
-      {stories.map((s, i) => (
+      {groups.map((g, i) => (
         <StoryCard
-          key={s.id}
-          story={s}
-          author={profileByUser.get(s.user_id)}
+          key={g.user_id}
+          // cover = the author's most recent story
+          coverUrl={g.stories[g.stories.length - 1].photo_url}
+          userId={g.user_id}
+          author={profileByUser.get(g.user_id)}
           fallbackName={fallbackName}
+          count={g.stories.length}
           onClick={() => onView(i)}
         />
       ))}
@@ -86,18 +89,22 @@ function CreateStoryCard({ label, onCreate }: { label: string; onCreate: () => v
 }
 
 function StoryCard({
-  story,
+  coverUrl,
+  userId,
   author,
   fallbackName,
+  count,
   onClick,
 }: {
-  story: CommunityStory;
+  coverUrl: string;
+  userId: string;
   author?: SocialProfile;
   fallbackName: string;
+  count: number;
   onClick: () => void;
 }) {
   const name = author?.display_name || fallbackName;
-  const color = athleteColor(story.user_id);
+  const color = athleteColor(userId);
   return (
     <button
       type="button"
@@ -107,8 +114,20 @@ function StoryCard({
       }}
       className={CARD_CLS}
     >
-      {/* the story photo */}
-      <img src={story.photo_url} alt="" className="h-full w-full object-cover" />
+      {/* the author's latest story photo */}
+      <img src={coverUrl} alt="" className="h-full w-full object-cover" />
+      {/* multi-story hint — segmented bar like Instagram */}
+      {count > 1 && (
+        <div className="absolute inset-x-1.5 top-1.5 z-10 flex gap-0.5">
+          {Array.from({ length: Math.min(count, 5) }).map((_, i) => (
+            <span
+              key={i}
+              className="h-[3px] flex-1 rounded-full"
+              style={{ background: "rgba(255,255,255,0.9)" }}
+            />
+          ))}
+        </div>
+      )}
       {/* readability gradient */}
       <div
         className="absolute inset-0"

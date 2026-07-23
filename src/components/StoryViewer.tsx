@@ -2,25 +2,26 @@ import { useEffect, useState } from "react";
 import { X, Trash2 } from "lucide-react";
 import { athleteInitials, athleteColor } from "@/lib/athletes";
 import { useI18n } from "@/lib/i18n";
-import type { CommunityStory } from "@/lib/stories";
+import type { CommunityStory, StoryGroup } from "@/lib/stories";
 import type { SocialProfile } from "@/lib/profiles";
 
 // ── Story viewer ─────────────────────────────────────────────────────────────
-// Fullscreen story playback (Facebook/Instagram style). Tap the right half for
-// the next story, the left half for the previous; past the last one it closes.
-// The author can delete their own story. `startIndex` seeds the position when
-// the viewer opens; `null` startIndex means closed.
+// Fullscreen playback grouped by author (Instagram). The segmented bar at the
+// top shows the current author's stories; tapping the right half advances to
+// the next segment and, at the end of a person's stories, continues to the next
+// author's group. Tapping the left half goes back. The author can delete their
+// own story. `startGroup === null` means closed.
 export function StoryViewer({
-  stories,
-  startIndex,
+  groups,
+  startGroup,
   profileByUser,
   fallbackName,
   currentUserId,
   onClose,
   onDelete,
 }: {
-  stories: CommunityStory[];
-  startIndex: number | null;
+  groups: StoryGroup[];
+  startGroup: number | null;
   profileByUser: Map<string, SocialProfile>;
   fallbackName: string;
   currentUserId?: string;
@@ -28,33 +29,51 @@ export function StoryViewer({
   onDelete: (story: CommunityStory) => void;
 }) {
   const { t } = useI18n();
-  const [index, setIndex] = useState(0);
+  const [groupIdx, setGroupIdx] = useState(0);
+  const [itemIdx, setItemIdx] = useState(0);
 
   useEffect(() => {
-    if (startIndex != null) setIndex(startIndex);
-  }, [startIndex]);
+    if (startGroup != null) {
+      setGroupIdx(startGroup);
+      setItemIdx(0);
+    }
+  }, [startGroup]);
 
-  if (startIndex == null) return null;
-  const story = stories[index];
+  if (startGroup == null) return null;
+  const group = groups[groupIdx];
+  if (!group) return null;
+  const story = group.stories[itemIdx];
   if (!story) return null;
 
-  const author = profileByUser.get(story.user_id);
+  const author = profileByUser.get(group.user_id);
   const name = author?.display_name || fallbackName;
-  const color = athleteColor(story.user_id);
-  const isOwn = currentUserId === story.user_id;
+  const color = athleteColor(group.user_id);
+  const isOwn = currentUserId === group.user_id;
 
-  const next = () => (index + 1 < stories.length ? setIndex(index + 1) : onClose());
-  const prev = () => (index > 0 ? setIndex(index - 1) : onClose());
+  const next = () => {
+    if (itemIdx + 1 < group.stories.length) setItemIdx(itemIdx + 1);
+    else if (groupIdx + 1 < groups.length) {
+      setGroupIdx(groupIdx + 1);
+      setItemIdx(0);
+    } else onClose();
+  };
+  const prev = () => {
+    if (itemIdx > 0) setItemIdx(itemIdx - 1);
+    else if (groupIdx > 0) {
+      setGroupIdx(groupIdx - 1);
+      setItemIdx(0);
+    } else onClose();
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col" style={{ background: "#02101d" }}>
-      {/* progress segments */}
+      {/* segmented progress — one segment per story in THIS author's group */}
       <div className="flex gap-1 p-2">
-        {stories.map((_, i) => (
+        {group.stories.map((_, i) => (
           <span
             key={i}
             className="h-0.5 flex-1 rounded-full"
-            style={{ background: i <= index ? "#fff" : "rgba(255,255,255,0.3)" }}
+            style={{ background: i <= itemIdx ? "#fff" : "rgba(255,255,255,0.3)" }}
           />
         ))}
       </div>
@@ -102,7 +121,6 @@ export function StoryViewer({
           alt=""
           className="absolute inset-0 h-full w-full object-contain"
         />
-        {/* left / right tap zones for prev / next */}
         <button
           type="button"
           aria-label="previous"
@@ -116,7 +134,6 @@ export function StoryViewer({
           className="absolute inset-y-0 right-0 w-2/3"
         />
 
-        {/* caption */}
         {story.caption && (
           <div
             className="pointer-events-none absolute inset-x-0 bottom-0 p-5"

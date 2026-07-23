@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { AppLayout } from "@/components/AppLayout";
-import { AvatarBubble } from "@/components/AvatarBubble";
+import { FriendsStack } from "@/components/FriendsStack";
 import { PostComposer } from "@/components/PostComposer";
 import { PostCard } from "@/components/PostCard";
 import { Bubbles } from "@/components/Bubbles";
@@ -162,8 +162,6 @@ function AthletePage() {
     () => allPublic.filter((p) => p.user_id !== id && p.user_id !== user?.id),
     [allPublic, id, user?.id],
   );
-  const [friendsOpen, setFriendsOpen] = useState(false);
-
   // This athlete's free-form community posts (their own wall).
   const { data: posts = [] } = useQuery({
     queryKey: ["feed-posts", id],
@@ -369,58 +367,8 @@ function AthletePage() {
       {/* ── post from your own profile (the "option to post" on profiles) ── */}
       {isOwn && <PostComposer open={composerOpen} onOpenChange={setComposerOpen} />}
 
-      {/* ── Friends — stacked avatars, tap to expand the full row ── */}
-      {friends.length > 0 && (
-        <section className="space-y-3">
-          <button
-            onClick={() => setFriendsOpen((v) => !v)}
-            className="pressable flex w-full items-center gap-3 text-left"
-          >
-            {/* overlapping avatar stack */}
-            <div className="flex items-center">
-              {friends.slice(0, 5).map((f, i) => {
-                const fc = athleteColor(f.user_id);
-                const fn = f.display_name || t("spearo.feedAthlete");
-                return (
-                  <span
-                    key={f.user_id}
-                    className="flex size-9 items-center justify-center overflow-hidden rounded-full text-[0.6rem] font-bold"
-                    style={{
-                      marginLeft: i === 0 ? 0 : -12,
-                      background: `${fc}33`,
-                      color: "#fff",
-                      border: "2px solid var(--background)",
-                      zIndex: 5 - i,
-                    }}
-                  >
-                    {f.avatar_url ? (
-                      <img src={f.avatar_url} alt="" className="size-full object-cover" />
-                    ) : (
-                      athleteInitials(fn)
-                    )}
-                  </span>
-                );
-              })}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="flex items-center gap-1.5 text-sm font-bold text-foreground">
-                <Users className="size-4" style={{ color: GREEN_LIGHT }} />
-                {t("athlete.friends")}
-                <span className="text-foreground/40">· {friends.length}</span>
-              </p>
-              <p className="text-xs text-foreground/45">{t("athlete.friendsSub")}</p>
-            </div>
-          </button>
-
-          {friendsOpen && (
-            <div className="no-scrollbar -mx-4 flex gap-4 overflow-x-auto px-4 pb-1">
-              {friends.map((f) => (
-                <AvatarBubble key={f.user_id} profile={f} fallbackName={t("spearo.feedAthlete")} />
-              ))}
-            </div>
-          )}
-        </section>
-      )}
+      {/* ── Friends — overlapping stack + label, expands to the full crew ── */}
+      <FriendsStack profiles={friends} fallbackName={t("spearo.feedAthlete")} />
 
       {/* ── training hubs (own profile only) — train · plan · calendar · history ── */}
       {isOwn && (

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
-import { Check, Pencil, Trash2, X } from "lucide-react";
+import { Check, MoreHorizontal, Pencil, Share2, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { PostReactions } from "@/components/PostReactions";
 import { RingedAvatar } from "@/components/RingedAvatar";
@@ -14,6 +14,12 @@ import { SITE_URL } from "@/lib/site";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -22,7 +28,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
 // A free-form community post, Instagram-style: header (ringed avatar + name),
@@ -53,6 +58,7 @@ export function PostCard({
 
   // ── inline edit (own post) ──
   const [editing, setEditing] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [titleDraft, setTitleDraft] = useState(post.title ?? "");
   const [bodyDraft, setBodyDraft] = useState(post.body ?? "");
 
@@ -82,6 +88,18 @@ export function PostCard({
     url: `${SITE_URL}/athlete/${post.user_id}`,
   };
 
+  const sharePost = async () => {
+    try {
+      if (typeof navigator !== "undefined" && navigator.share) await navigator.share(shareData);
+      else if (typeof navigator !== "undefined" && navigator.clipboard) {
+        await navigator.clipboard.writeText(`${shareData.text} ${shareData.url}`.trim());
+        toast.success(t("athlete.shareCopied"));
+      }
+    } catch {
+      /* dismissed */
+    }
+  };
+
   return (
     <li className="surface-2 overflow-hidden sm:rounded-2xl">
       {/* header — ringed avatar + name, taps through to the athlete page */}
@@ -99,46 +117,61 @@ export function PostCard({
           </span>
         </Link>
 
-        {isOwn && !editing && (
-          <button
-            type="button"
-            onClick={startEdit}
-            aria-label={t("post.edit")}
-            className="pressable flex size-8 shrink-0 items-center justify-center rounded-full text-foreground/45 hover:text-foreground"
-          >
-            <Pencil className="size-4" />
-          </button>
-        )}
-
-        {isOwn && (
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
+        {/* ⋯ menu — Instagram-style (edit · share · delete) */}
+        {!editing && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                aria-label={t("common.delete")}
-                className="pressable flex size-8 shrink-0 items-center justify-center rounded-full text-red-400/60 hover:text-red-400"
+                aria-label="•••"
+                className="pressable flex size-8 shrink-0 items-center justify-center rounded-full text-foreground/45 hover:text-foreground"
               >
-                <Trash2 className="size-4" />
+                <MoreHorizontal className="size-5" />
               </button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>{t("post.deleteTitle")}</AlertDialogTitle>
-                <AlertDialogDescription>{t("post.deleteDesc")}</AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={() => onDelete(post)}
-                  className="bg-red-600 text-white hover:bg-red-600/90"
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44">
+              {isOwn && (
+                <DropdownMenuItem onClick={startEdit}>
+                  <Pencil className="mr-2 size-4" />
+                  {t("post.edit")}
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem onClick={sharePost}>
+                <Share2 className="mr-2 size-4" />
+                {t("react.share")}
+              </DropdownMenuItem>
+              {isOwn && (
+                <DropdownMenuItem
+                  onClick={() => setConfirmOpen(true)}
+                  className="text-red-500 focus:text-red-500"
                 >
+                  <Trash2 className="mr-2 size-4" />
                   {t("common.delete")}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
       </div>
+
+      {/* delete confirm (controlled by the ⋯ menu) */}
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("post.deleteTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("post.deleteDesc")}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => onDelete(post)}
+              className="bg-red-600 text-white hover:bg-red-600/90"
+            >
+              {t("common.delete")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* editing form (own) */}
       {editing ? (
@@ -194,9 +227,9 @@ export function PostCard({
             <PostReactions targetType="post" targetId={post.id} shareData={shareData} />
           </div>
 
-          {/* caption below (Instagram) — white text, more/less for long bodies */}
+          {/* caption below (Instagram) — small premium white text, more/less */}
           {(post.title || post.body) && (
-            <div className="px-3 pb-3 pt-1 text-sm leading-relaxed text-foreground">
+            <div className="px-3 pb-3 pt-1 text-[0.8rem] leading-relaxed text-foreground">
               {post.title && <span className="font-bold">{post.title} </span>}
               {post.body && (
                 <span className={!expanded && longBody ? "line-clamp-2" : undefined}>
