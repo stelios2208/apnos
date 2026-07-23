@@ -317,6 +317,8 @@ const en: Dict = {
   "athlete.friends": "Friends",
   "athlete.friendsSub": "The crew they dive and share with.",
   "athlete.viewTraining": "Training & calendar",
+  "athlete.posts": "Posts",
+  "athlete.postsSub": "Their free-form community posts.",
 };
 
 const el: Dict = {
@@ -618,6 +620,8 @@ const el: Dict = {
   "athlete.friends": "Φίλοι",
   "athlete.friendsSub": "Η παρέα που καταδύεται και μοιράζεται μαζί τους.",
   "athlete.viewTraining": "Προπόνηση & ημερολόγιο",
+  "athlete.posts": "Δημοσιεύσεις",
+  "athlete.postsSub": "Οι ελεύθερες δημοσιεύσεις τους στην κοινότητα.",
 };
 
 const DICTS: Record<Lang, Dict> = { el, en };

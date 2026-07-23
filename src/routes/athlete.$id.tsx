@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import {
   ArrowLeft,
@@ -13,10 +13,13 @@ import {
   ClipboardList,
   CalendarDays,
   History,
+  MessageSquare,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AppLayout } from "@/components/AppLayout";
 import { AvatarBubble } from "@/components/AvatarBubble";
+import { PostComposer } from "@/components/PostComposer";
+import { PostCard } from "@/components/PostCard";
 import { Bubbles } from "@/components/Bubbles";
 import { useAuth } from "@/hooks/use-auth";
 import { useMode } from "@/hooks/use-mode";
@@ -28,6 +31,8 @@ import {
   listFeedDives,
   type FeedCatch,
 } from "@/lib/profiles";
+import { listFeedPosts, deletePost, type CommunityPost } from "@/lib/posts";
+import { deleteCatchPhoto } from "@/lib/spearo-photos";
 import { personalBestsBySpecies } from "@/lib/spearo-catches";
 import { speciesLabel, formatCatchSize, formatCatchWeight, type SpearoCatch } from "@/lib/spearo";
 import { fetchPublicResultsByUser } from "@/lib/competitions";
@@ -159,8 +164,31 @@ function AthletePage() {
   );
   const [friendsOpen, setFriendsOpen] = useState(false);
 
+  // This athlete's free-form community posts (their own wall).
+  const { data: posts = [] } = useQuery({
+    queryKey: ["feed-posts", id],
+    queryFn: () => listFeedPosts({ userId: id, limit: 30 }),
+    enabled: !!user && !!profile,
+  });
+
+  const queryClient = useQueryClient();
+  const [composerOpen, setComposerOpen] = useState(false);
+
   // Is the viewer looking at their own public profile?
   const isOwn = user?.id === id;
+
+  // Delete own post — best-effort photo cleanup, then refresh.
+  const deletePostMutation = useMutation({
+    mutationFn: async (p: CommunityPost) => {
+      await deletePost(p.id);
+      if (p.photo_url) await deleteCatchPhoto(p.photo_url).catch(() => {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["feed-posts", id] });
+      queryClient.invalidateQueries({ queryKey: ["feed-posts"] });
+    },
+    onError: (err) => toast.error(err instanceof Error ? err.message : "Error"),
+  });
 
   // Share the profile: native share sheet where available, clipboard fallback.
   const shareProfile = async () => {
@@ -337,6 +365,9 @@ function AthletePage() {
           {t("athlete.share")}
         </button>
       </div>
+
+      {/* ── post from your own profile (the "option to post" on profiles) ── */}
+      {isOwn && <PostComposer open={composerOpen} onOpenChange={setComposerOpen} />}
 
       {/* ── Friends — stacked avatars, tap to expand the full row ── */}
       {friends.length > 0 && (
@@ -576,6 +607,29 @@ function AthletePage() {
               </div>
             ))}
           </div>
+        </section>
+      )}
+
+      {/* ── this athlete's free-form community posts ── */}
+      {posts.length > 0 && (
+        <section className="space-y-3">
+          <SectionHeader
+            icon={<MessageSquare className="size-5" style={{ color: GREEN_LIGHT }} />}
+            title={t("athlete.posts")}
+            sub={t("athlete.postsSub")}
+          />
+          <ul className="-mx-4 space-y-2.5 sm:mx-0">
+            {posts.map((p) => (
+              <PostCard
+                key={p.id}
+                post={p}
+                author={profile}
+                fallbackName={name}
+                currentUserId={user?.id}
+                onDelete={(x) => deletePostMutation.mutate(x)}
+              />
+            ))}
+          </ul>
         </section>
       )}
 
