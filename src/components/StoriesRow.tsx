@@ -44,7 +44,6 @@ export function StoriesRow({
           userId={g.user_id}
           author={profileByUser.get(g.user_id)}
           fallbackName={fallbackName}
-          count={g.stories.length}
           onClick={() => onView(i)}
         />
       ))}
@@ -56,7 +55,19 @@ export function StoriesRow({
 const CARD_CLS =
   "relative block h-44 w-[6.6rem] shrink-0 overflow-hidden rounded-2xl surface-1 pressable";
 
+// Short freediving tips shown in the Create card so it's never a blank tile
+// (we keep the + for posting; the top area carries a rotating tip).
+const STORY_TIPS: { el: string; en: string }[] = [
+  { el: "Ζέστανε ήρεμα πριν βουτήξεις.", en: "Warm up calmly before you dive." },
+  { el: "Ποτέ μόνος — πάντα με buddy.", en: "Never alone — always with a buddy." },
+  { el: "Το spot σου μένει πάντα κρυφό.", en: "Your spot always stays hidden." },
+  { el: "Μοιράσου μια προσπάθεια σήμερα.", en: "Share an effort today." },
+  { el: "Σεβάσου τα όριά σου.", en: "Respect your limits." },
+];
+
 function CreateStoryCard({ label, onCreate }: { label: string; onCreate: () => void }) {
+  const { lang } = useI18n();
+  const tip = STORY_TIPS[new Date().getDate() % STORY_TIPS.length];
   return (
     <button
       type="button"
@@ -66,11 +77,18 @@ function CreateStoryCard({ label, onCreate }: { label: string; onCreate: () => v
         onCreate();
       }}
     >
-      {/* top: brand photo-stand-in */}
+      {/* top: a rotating tip on the brand gradient (instead of a blank tile) */}
       <div
-        className="h-[62%] w-full"
+        className="flex h-[62%] w-full flex-col p-2 text-left"
         style={{ background: "linear-gradient(160deg, #1a3a5c 0%, #10293f 45%, #0a1622 100%)" }}
-      />
+      >
+        <span className="text-[0.5rem] font-bold uppercase tracking-wider text-[#5DCAA5]">
+          💡 {lang === "el" ? "Συμβουλή" : "Tip"}
+        </span>
+        <span className="mt-1 line-clamp-4 text-[0.58rem] font-medium leading-snug text-white/90">
+          {lang === "el" ? tip.el : tip.en}
+        </span>
+      </div>
       {/* bottom: solid footer with the label */}
       <div className="flex h-[38%] w-full items-end justify-center bg-card pb-2">
         <span className="px-1 text-center text-[0.62rem] font-semibold leading-tight text-foreground/80">
@@ -93,14 +111,12 @@ function StoryCard({
   userId,
   author,
   fallbackName,
-  count,
   onClick,
 }: {
   coverUrl: string;
   userId: string;
   author?: SocialProfile;
   fallbackName: string;
-  count: number;
   onClick: () => void;
 }) {
   const name = author?.display_name || fallbackName;
@@ -114,20 +130,9 @@ function StoryCard({
       }}
       className={CARD_CLS}
     >
-      {/* the author's latest story photo */}
+      {/* the author's latest story photo (no pre-open segment bars — Instagram
+          only shows them once you open the story) */}
       <img src={coverUrl} alt="" className="h-full w-full object-cover" />
-      {/* multi-story hint — segmented bar like Instagram */}
-      {count > 1 && (
-        <div className="absolute inset-x-1.5 top-1.5 z-10 flex gap-0.5">
-          {Array.from({ length: Math.min(count, 5) }).map((_, i) => (
-            <span
-              key={i}
-              className="h-[3px] flex-1 rounded-full"
-              style={{ background: "rgba(255,255,255,0.9)" }}
-            />
-          ))}
-        </div>
-      )}
       {/* readability gradient */}
       <div
         className="absolute inset-0"

@@ -10,6 +10,7 @@ import {
   UserRound,
   Home,
   MessageCircle,
+  Settings2,
 } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { useAuth } from "@/hooks/use-auth";
@@ -87,6 +88,8 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const logActive = matches(["/log"]);
   const progressActive = matches(["/history"]);
   const youActive = matches(["/you", "/profile", "/equipment", "/rules", "/settings"]);
+  // The avatar tab lights up on your OWN public profile page or the hub.
+  const meActive = youActive || pathname === `/athlete/${user.id}`;
   // Spearo mode: the catch feed + log both live at /spearo.
   const spearoActive = matches(["/spearo"]);
 
@@ -114,14 +117,16 @@ export function AppLayout({ children }: { children: ReactNode }) {
     },
   ] as const;
 
-  // The "You" tab, Instagram-style: your round profile photo instead of a
-  // generic icon, labelled with your first name (falls back to "You").
+  // The profile tab, Instagram-style: your round photo goes to YOUR public
+  // profile (not the settings hub — that's the gear in the header), labelled
+  // with your first name.
   const MeTab = ({ active }: { active: boolean }) => {
     const first =
-      myProfile?.display_name?.trim().split(/\s+/)[0] || (lang === "el" ? "Εσύ" : "You");
+      myProfile?.display_name?.trim().split(/\s+/)[0] || (lang === "el" ? "Προφίλ" : "Profile");
     return (
       <Link
-        to="/you"
+        to="/athlete/$id"
+        params={{ id: user.id }}
         style={NAV_ITEM_STYLE}
         className={cn(
           "rounded-lg text-[0.65rem] font-medium transition-colors",
@@ -177,14 +182,22 @@ export function AppLayout({ children }: { children: ReactNode }) {
     <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col px-4 pb-28 pt-6">
       <header className="flex items-center justify-between">
         <Logo />
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => signOut()}
-          aria-label={t("common.signOut")}
-        >
-          <LogOut className="size-5" />
-        </Button>
+        <div className="flex items-center">
+          {/* hub / settings — profile edit, equipment, rules, mode switch */}
+          <Button asChild variant="ghost" size="icon" aria-label={lang === "el" ? "Μενού" : "Menu"}>
+            <Link to="/you">
+              <Settings2 className="size-5" />
+            </Link>
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => signOut()}
+            aria-label={t("common.signOut")}
+          >
+            <LogOut className="size-5" />
+          </Button>
+        </div>
       </header>
 
       <main className="flex-1 pt-8">{children}</main>
@@ -249,7 +262,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
                 </span>
               </Link>
 
-              <MeTab active={youActive} />
+              <MeTab active={meActive} />
             </>
           ) : (
             <>
@@ -281,7 +294,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
               {endItems.map((item) => (
                 <NavLink key={item.to} {...item} />
               ))}
-              <MeTab active={youActive} />
+              <MeTab active={meActive} />
             </>
           )}
         </div>
