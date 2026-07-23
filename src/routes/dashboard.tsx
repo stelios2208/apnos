@@ -7,12 +7,11 @@ import { AppLayout } from "@/components/AppLayout";
 import { StoriesRow } from "@/components/StoriesRow";
 import { StoryComposer } from "@/components/StoryComposer";
 import { StoryViewer } from "@/components/StoryViewer";
-import { PromoBanner } from "@/components/PromoBanner";
 import { PostReactions } from "@/components/PostReactions";
 import { PostComposer } from "@/components/PostComposer";
 import { PostCard } from "@/components/PostCard";
 import { RingedAvatar } from "@/components/RingedAvatar";
-import { AvatarBubble } from "@/components/AvatarBubble";
+import { FriendsStack } from "@/components/FriendsStack";
 import { SITE_URL } from "@/lib/site";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -22,7 +21,7 @@ import {
   type FeedDive,
 } from "@/lib/profiles";
 import { listFeedPosts, deletePost, type CommunityPost } from "@/lib/posts";
-import { listStories, deleteStory, type CommunityStory } from "@/lib/stories";
+import { listStories, deleteStory, groupStoriesByAuthor, type CommunityStory } from "@/lib/stories";
 import { deleteCatchPhoto } from "@/lib/spearo-photos";
 import { disciplineName, formatResult, type DisciplineCode } from "@/lib/diving";
 import { nativeVibrate } from "@/lib/native";
@@ -100,6 +99,7 @@ function Dashboard() {
     queryFn: () => listStories(40),
     enabled: !!user,
   });
+  const storyGroups = useMemo(() => groupStoriesByAuthor(stories), [stories]);
 
   const profileByUser = useMemo(() => new Map(profiles.map((p) => [p.user_id, p])), [profiles]);
   const isLoading = profilesLoading || feedLoading || postsLoading;
@@ -145,26 +145,20 @@ function Dashboard() {
 
   return (
     <div className="space-y-4 pb-24">
-      {/* our promo / tips slot (replaces the old oversized community hero) */}
-      <PromoBanner variant="apnos" />
-
-      {/* Facebook-style stories row — the Create card uploads a story */}
+      {/* order (top → bottom): stories · what's-on-your-mind · friends · chips · feed */}
       <StoriesRow
-        stories={stories}
+        groups={storyGroups}
         profileByUser={profileByUser}
         fallbackName={el ? "Αθλητής" : "Athlete"}
         onCreate={() => setStoryComposerOpen(true)}
         onView={(i) => setStoryIndex(i)}
       />
 
-      {/* round profile circles — you + the crew (like the profile friends row) */}
-      {profiles.length > 0 && (
-        <div className="no-scrollbar -mx-4 flex gap-4 overflow-x-auto px-4 pb-1">
-          {profiles.map((p) => (
-            <AvatarBubble key={p.user_id} profile={p} fallbackName={el ? "Αθλητής" : "Athlete"} />
-          ))}
-        </div>
-      )}
+      {/* free-form post composer ("what's on your mind?") */}
+      <PostComposer open={composerOpen} onOpenChange={setComposerOpen} />
+
+      {/* friends — overlapping stack + "Friends", expands to the full crew */}
+      <FriendsStack profiles={profiles} fallbackName={el ? "Αθλητής" : "Athlete"} />
 
       {/* quick chips into the training hubs (train · plan · calendar · history) */}
       <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
@@ -190,14 +184,11 @@ function Dashboard() {
         ))}
       </div>
 
-      {/* free-form post composer ("what's on your mind?") */}
-      <PostComposer open={composerOpen} onOpenChange={setComposerOpen} />
-
       {/* story composer + fullscreen viewer (overlays) */}
       <StoryComposer open={storyComposerOpen} onOpenChange={setStoryComposerOpen} />
       <StoryViewer
-        stories={stories}
-        startIndex={storyIndex}
+        groups={storyGroups}
+        startGroup={storyIndex}
         profileByUser={profileByUser}
         fallbackName={el ? "Αθλητής" : "Athlete"}
         currentUserId={user?.id}

@@ -1,5 +1,6 @@
 import React, { useEffect, type ReactNode } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import {
   LayoutDashboard,
   Plus,
@@ -14,6 +15,7 @@ import { Logo } from "@/components/Logo";
 import { useAuth } from "@/hooks/use-auth";
 import { useI18n } from "@/lib/i18n";
 import { useMode, useModeAutoDefault } from "@/hooks/use-mode";
+import { getMyProfile } from "@/lib/profiles";
 import { nativeVibrate } from "@/lib/native";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -47,6 +49,13 @@ export function AppLayout({ children }: { children: ReactNode }) {
   // always a concrete value; the smart default resolves once for new users.
   const { mode } = useMode();
   useModeAutoDefault();
+
+  // My profile — drives the Instagram-style avatar on the "You" tab.
+  const { data: myProfile } = useQuery({
+    queryKey: ["profile-avatar", user?.id],
+    queryFn: () => getMyProfile(user!.id),
+    enabled: !!user,
+  });
 
   useEffect(() => {
     if (!loading && !user) {
@@ -103,8 +112,40 @@ export function AppLayout({ children }: { children: ReactNode }) {
       icon: History,
       active: progressActive,
     },
-    { to: "/you", label: lang === "el" ? "Εσύ" : "You", icon: UserRound, active: youActive },
   ] as const;
+
+  // The "You" tab, Instagram-style: your round profile photo instead of a
+  // generic icon, labelled with your first name (falls back to "You").
+  const MeTab = ({ active }: { active: boolean }) => {
+    const first =
+      myProfile?.display_name?.trim().split(/\s+/)[0] || (lang === "el" ? "Εσύ" : "You");
+    return (
+      <Link
+        to="/you"
+        style={NAV_ITEM_STYLE}
+        className={cn(
+          "rounded-lg text-[0.65rem] font-medium transition-colors",
+          active ? "text-primary" : "text-muted-foreground hover:text-foreground",
+        )}
+      >
+        <span
+          className="flex size-6 items-center justify-center overflow-hidden rounded-full"
+          style={{
+            boxShadow: active
+              ? "0 0 0 2px var(--color-primary)"
+              : "0 0 0 1.5px rgba(var(--ink),0.2)",
+          }}
+        >
+          {myProfile?.avatar_url ? (
+            <img src={myProfile.avatar_url} alt="" className="size-full object-cover" />
+          ) : (
+            <UserRound className="size-4" />
+          )}
+        </span>
+        <span className="max-w-[4.5rem] truncate">{first}</span>
+      </Link>
+    );
+  };
 
   const NavLink = ({
     to,
@@ -208,7 +249,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
                 </span>
               </Link>
 
-              <NavLink to="/you" label={t("nav.spearoYou")} icon={UserRound} active={youActive} />
+              <MeTab active={youActive} />
             </>
           ) : (
             <>
@@ -240,6 +281,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
               {endItems.map((item) => (
                 <NavLink key={item.to} {...item} />
               ))}
+              <MeTab active={youActive} />
             </>
           )}
         </div>

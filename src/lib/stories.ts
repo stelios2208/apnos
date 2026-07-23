@@ -21,6 +21,30 @@ export interface NewStoryInput {
   caption?: string | null;
 }
 
+/** One author's stories, oldest → newest for playback. */
+export interface StoryGroup {
+  user_id: string;
+  stories: CommunityStory[];
+}
+
+/**
+ * Group a newest-first story list by author (Instagram tray): one entry per
+ * author, authors ordered by most-recent activity, each author's stories put
+ * back in oldest→newest order so the viewer plays them forward.
+ */
+export function groupStoriesByAuthor(stories: CommunityStory[]): StoryGroup[] {
+  const order: string[] = [];
+  const map = new Map<string, CommunityStory[]>();
+  for (const s of stories) {
+    if (!map.has(s.user_id)) {
+      map.set(s.user_id, []);
+      order.push(s.user_id);
+    }
+    map.get(s.user_id)!.push(s);
+  }
+  return order.map((uid) => ({ user_id: uid, stories: [...map.get(uid)!].reverse() }));
+}
+
 const MIGRATION_HINT =
   "community_stories table is missing — apply " +
   "supabase/migrations/20260723_community_stories.sql in the Supabase SQL editor.";

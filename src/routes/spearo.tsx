@@ -56,15 +56,14 @@ import {
 import { StoriesRow } from "@/components/StoriesRow";
 import { StoryComposer } from "@/components/StoryComposer";
 import { StoryViewer } from "@/components/StoryViewer";
-import { PromoBanner } from "@/components/PromoBanner";
 import { PostReactions } from "@/components/PostReactions";
 import { PostComposer } from "@/components/PostComposer";
 import { PostCard } from "@/components/PostCard";
 import { RingedAvatar } from "@/components/RingedAvatar";
-import { AvatarBubble } from "@/components/AvatarBubble";
+import { FriendsStack } from "@/components/FriendsStack";
 import { SITE_URL } from "@/lib/site";
 import { listFeedPosts, deletePost, type CommunityPost } from "@/lib/posts";
-import { listStories, deleteStory, type CommunityStory } from "@/lib/stories";
+import { listStories, deleteStory, groupStoriesByAuthor, type CommunityStory } from "@/lib/stories";
 import { getCurrentSpot, mapsLink, SpotError } from "@/lib/spot";
 import { nativeVibrate } from "@/lib/native";
 import { shareCatchCard } from "@/lib/catch-share-card";
@@ -1335,6 +1334,7 @@ function SpearoFeed() {
     queryFn: () => listStories(40),
     enabled: !!user,
   });
+  const storyGroups = useMemo(() => groupStoriesByAuthor(stories), [stories]);
 
   const queryClient = useQueryClient();
   const [composerOpen, setComposerOpen] = useState(false);
@@ -1384,26 +1384,20 @@ function SpearoFeed() {
 
   return (
     <div className="space-y-4 pb-24">
-      {/* our promo / tips slot (replaces the old oversized community hero) */}
-      <PromoBanner variant="spearo" />
-
-      {/* ── Facebook-style stories row — the Create card uploads a story ── */}
+      {/* order (top → bottom): stories · what's-on-your-mind · friends · chips · feed */}
       <StoriesRow
-        stories={stories}
+        groups={storyGroups}
         profileByUser={profileByUser}
         fallbackName={t("spearo.feedAthlete")}
         onCreate={() => setStoryComposerOpen(true)}
         onView={(i) => setStoryIndex(i)}
       />
 
-      {/* round profile circles — you + the crew */}
-      {profiles.length > 0 && (
-        <div className="no-scrollbar -mx-4 flex gap-4 overflow-x-auto px-4 pb-1">
-          {profiles.map((p) => (
-            <AvatarBubble key={p.user_id} profile={p} fallbackName={t("spearo.feedAthlete")} />
-          ))}
-        </div>
-      )}
+      {/* free-form post composer ("what's on your mind?") */}
+      <PostComposer open={composerOpen} onOpenChange={setComposerOpen} />
+
+      {/* friends — overlapping stack + "Friends", expands to the full crew */}
+      <FriendsStack profiles={profiles} fallbackName={t("spearo.feedAthlete")} />
 
       {/* quick chips into the training hubs (train · plan · calendar · history) */}
       <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
@@ -1434,14 +1428,11 @@ function SpearoFeed() {
         ))}
       </div>
 
-      {/* free-form post composer ("what's on your mind?") */}
-      <PostComposer open={composerOpen} onOpenChange={setComposerOpen} />
-
       {/* story composer + fullscreen viewer (overlays) */}
       <StoryComposer open={storyComposerOpen} onOpenChange={setStoryComposerOpen} />
       <StoryViewer
-        stories={stories}
-        startIndex={storyIndex}
+        groups={storyGroups}
+        startGroup={storyIndex}
         profileByUser={profileByUser}
         fallbackName={t("spearo.feedAthlete")}
         currentUserId={user?.id}
