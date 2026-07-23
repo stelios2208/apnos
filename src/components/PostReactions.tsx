@@ -1,70 +1,37 @@
 import { useEffect, useState } from "react";
-import { Heart, Send } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
+import { Heart, MessageCircle, Send } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { nativeVibrate } from "@/lib/native";
 
 // ── Post reactions (Instagram-style) ─────────────────────────────────────────
-// Icon-only action row, no pill backgrounds, premium line-icons: a heart (deep
-// Instagram red when liked), the "I'm OK" 👌 dive signal drawn as a matching
-// white outline hand, and a share button. Reactions are stored DEVICE-LOCAL in
-// localStorage (no reactions table yet). Swap the storage helpers for a
-// data-layer call when a shared table lands; the API stays the same.
+// Icon-only action row, no pill backgrounds, premium line-icons: heart (deep
+// Instagram red when liked) · message · share — exactly the Instagram trio. The
+// like is stored DEVICE-LOCAL in localStorage (no reactions table yet); swap the
+// storage helpers for a data-layer call when a shared table lands.
 
 const HEART_RED = "#ED4956"; // Instagram's deep like-red
-const OK_GREEN = "#1D9E75"; // brand green for the OK signal
 
-type Kind = "heart" | "ok";
-
-function storageKey(targetType: string, targetId: string, kind: Kind): string {
-  return `apnos:react:${targetType}:${targetId}:${kind}`;
+function heartKey(targetType: string, targetId: string): string {
+  return `apnos:react:${targetType}:${targetId}:heart`;
 }
-function readReaction(targetType: string, targetId: string, kind: Kind): boolean {
+function readHeart(targetType: string, targetId: string): boolean {
   if (typeof window === "undefined") return false;
   try {
-    return window.localStorage.getItem(storageKey(targetType, targetId, kind)) === "1";
+    return window.localStorage.getItem(heartKey(targetType, targetId)) === "1";
   } catch {
     return false;
   }
 }
-function writeReaction(targetType: string, targetId: string, kind: Kind, on: boolean): void {
+function writeHeart(targetType: string, targetId: string, on: boolean): void {
   if (typeof window === "undefined") return;
   try {
-    const key = storageKey(targetType, targetId, kind);
+    const key = heartKey(targetType, targetId);
     if (on) window.localStorage.setItem(key, "1");
     else window.localStorage.removeItem(key);
   } catch {
     /* private mode / quota — no persistence, no crash */
   }
-}
-
-// The diver's "I'm OK" 👌 as a clean outline that matches the heart: a pinch
-// loop + three raised fingers. Fills softly when active.
-function OkHand({ active, size = 25 }: { active: boolean; size?: number }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.8}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <circle
-        cx="7.5"
-        cy="15.5"
-        r="4"
-        fill={active ? "currentColor" : "none"}
-        opacity={active ? 0.18 : 1}
-      />
-      <circle cx="7.5" cy="15.5" r="4" />
-      <path d="M11 13.2 V6.6" />
-      <path d="M13.6 13.6 V7.6" />
-      <path d="M16.2 14 V9.2" />
-    </svg>
-  );
 }
 
 export function PostReactions({
@@ -77,25 +44,18 @@ export function PostReactions({
   shareData?: { title?: string; text?: string; url?: string };
 }) {
   const { t } = useI18n();
+  const navigate = useNavigate();
   const [heart, setHeart] = useState(false);
-  const [ok, setOk] = useState(false);
 
   useEffect(() => {
-    setHeart(readReaction(targetType, targetId, "heart"));
-    setOk(readReaction(targetType, targetId, "ok"));
+    setHeart(readHeart(targetType, targetId));
   }, [targetType, targetId]);
 
-  const toggle = (kind: Kind) => {
+  const toggleHeart = () => {
     nativeVibrate(10);
-    if (kind === "heart") {
-      const next = !heart;
-      setHeart(next);
-      writeReaction(targetType, targetId, "heart", next);
-    } else {
-      const next = !ok;
-      setOk(next);
-      writeReaction(targetType, targetId, "ok", next);
-    }
+    const next = !heart;
+    setHeart(next);
+    writeHeart(targetType, targetId, next);
   };
 
   const share = async () => {
@@ -118,7 +78,7 @@ export function PostReactions({
     <div className="flex items-center gap-5">
       <button
         type="button"
-        onClick={() => toggle("heart")}
+        onClick={toggleHeart}
         aria-pressed={heart}
         aria-label={t("react.heart")}
         className="pressable -m-1 p-1"
@@ -133,13 +93,15 @@ export function PostReactions({
 
       <button
         type="button"
-        onClick={() => toggle("ok")}
-        aria-pressed={ok}
-        aria-label={t("react.ok")}
+        onClick={() => {
+          nativeVibrate(10);
+          navigate({ to: "/messages" });
+        }}
+        aria-label={t("react.message")}
         className="pressable -m-1 p-1"
-        style={{ color: ok ? OK_GREEN : "var(--foreground)" }}
+        style={{ color: "var(--foreground)" }}
       >
-        <OkHand active={ok} />
+        <MessageCircle style={{ width: 24, height: 24 }} strokeWidth={1.8} />
       </button>
 
       <button
