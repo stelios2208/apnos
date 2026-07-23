@@ -18,10 +18,13 @@ export function StoriesRow({
   profiles,
   fallbackName,
   mode,
+  onCreate,
 }: {
   profiles: SocialProfile[];
   fallbackName: string;
   mode: "apnos" | "spearo";
+  /** When set, the + tile opens the post composer instead of the log. */
+  onCreate?: () => void;
 }) {
   const { t } = useI18n();
 
@@ -30,7 +33,7 @@ export function StoriesRow({
     // stable so tapping a bubble never reflows the feed below it.
     <div className="-mx-4 flex gap-4 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       {/* leading Create / + tile (also the future promoted-post slot) */}
-      <CreateTile mode={mode} label={t("stories.create")} />
+      <CreateTile mode={mode} label={t("stories.create")} onCreate={onCreate} />
 
       {profiles.map((p) => (
         <AvatarBubble key={p.user_id} profile={p} fallbackName={fallbackName} />
@@ -39,7 +42,15 @@ export function StoriesRow({
   );
 }
 
-function CreateTile({ mode, label }: { mode: "apnos" | "spearo"; label: string }) {
+function CreateTile({
+  mode,
+  label,
+  onCreate,
+}: {
+  mode: "apnos" | "spearo";
+  label: string;
+  onCreate?: () => void;
+}) {
   const inner = (
     <>
       <span
@@ -64,7 +75,24 @@ function CreateTile({ mode, label }: { mode: "apnos" | "spearo"; label: string }
 
   const cls = "pressable flex w-[4.5rem] shrink-0 flex-col items-center gap-1.5";
 
-  // Two fixed destinations so the TanStack Link stays fully typed.
+  // Preferred: open the free-form post composer. Falls back to the log
+  // destination when no composer callback is wired (two fixed, fully-typed
+  // TanStack Links).
+  if (onCreate) {
+    return (
+      <button
+        type="button"
+        className={cls}
+        onClick={() => {
+          nativeVibrate(10);
+          onCreate();
+        }}
+      >
+        {inner}
+      </button>
+    );
+  }
+
   return mode === "spearo" ? (
     <Link to="/spearo" search={{ log: true }} onClick={() => nativeVibrate(10)} className={cls}>
       {inner}

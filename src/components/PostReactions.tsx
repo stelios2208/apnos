@@ -46,7 +46,7 @@ export function PostReactions({
   targetId,
   onDark = true,
 }: {
-  targetType: "dive" | "catch";
+  targetType: "dive" | "catch" | "post";
   targetId: string;
   /** true when the bar sits over a dark photo/gradient (feed cards). */
   onDark?: boolean;

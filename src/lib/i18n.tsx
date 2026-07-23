@@ -283,6 +283,21 @@ const en: Dict = {
   "feed.friends": "Friends",
   "feed.friendsSub": "People you dive and share with.",
   "feed.tagline": "Freediving records & training",
+  // free-form community post composer + card
+  "post.placeholder": "What's on your mind?",
+  "post.newTitle": "New post",
+  "post.titlePlaceholder": "Title (optional)",
+  "post.bodyPlaceholder": "Share an adventure, a question, a shout-out…",
+  "post.addPhoto": "Add a photo",
+  "post.photoUploading": "Uploading…",
+  "post.photoRemove": "Remove photo",
+  "post.photoError": "Could not upload photo",
+  "post.publish": "Post",
+  "post.posted": "Posted to the community",
+  "post.couldNotPost": "Could not post",
+  "post.empty": "Write something or add a photo first",
+  "post.deleteTitle": "Delete post?",
+  "post.deleteDesc": "This permanently removes your post. This can't be undone.",
   // dive share-to-feed — per-dive opt-in (default OFF); the feed payload never
   // carries notes, wellness, gear or conditions (see the feed_dives view)
   "dive.shareToFeed": "Share with the community",
@@ -569,6 +584,21 @@ const el: Dict = {
   "feed.friends": "Φίλοι",
   "feed.friendsSub": "Άτομα που καταδύεσαι και μοιράζεσαι μαζί τους.",
   "feed.tagline": "Ρεκόρ & προπόνηση ελεύθερης κατάδυσης",
+  // ελεύθερο post κοινότητας — σύνθεση + κάρτα
+  "post.placeholder": "Τι σκέφτεσαι;",
+  "post.newTitle": "Νέο post",
+  "post.titlePlaceholder": "Τίτλος (προαιρετικό)",
+  "post.bodyPlaceholder": "Μοιράσου μια περιπέτεια, μια ερώτηση, ένα μήνυμα…",
+  "post.addPhoto": "Πρόσθεσε φωτογραφία",
+  "post.photoUploading": "Ανέβασμα…",
+  "post.photoRemove": "Αφαίρεση φωτογραφίας",
+  "post.photoError": "Αδυναμία ανεβάσματος φωτογραφίας",
+  "post.publish": "Δημοσίευση",
+  "post.posted": "Δημοσιεύτηκε στην κοινότητα",
+  "post.couldNotPost": "Αδυναμία δημοσίευσης",
+  "post.empty": "Γράψε κάτι ή πρόσθεσε φωτογραφία πρώτα",
+  "post.deleteTitle": "Διαγραφή post;",
+  "post.deleteDesc": "Αφαιρεί οριστικά το post σου. Δεν αναιρείται.",
   // κοινοποίηση βουτιάς στο feed — opt-in ανά κατάδυση (default OFF)· το payload
   // του feed δεν περιέχει ποτέ σημειώσεις, wellness, εξοπλισμό ή συνθήκες
   "dive.shareToFeed": "Κοινοποίηση στην κοινότητα",

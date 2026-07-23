@@ -57,6 +57,9 @@ import { athleteInitials, athleteColor } from "@/lib/athletes";
 import { StoriesRow } from "@/components/StoriesRow";
 import { PromoBanner } from "@/components/PromoBanner";
 import { PostReactions } from "@/components/PostReactions";
+import { PostComposer } from "@/components/PostComposer";
+import { PostCard } from "@/components/PostCard";
+import { listFeedPosts, deletePost, type CommunityPost } from "@/lib/posts";
 import { getCurrentSpot, mapsLink, SpotError } from "@/lib/spot";
 import { nativeVibrate } from "@/lib/native";
 import { shareCatchCard } from "@/lib/catch-share-card";
@@ -1316,11 +1319,46 @@ function SpearoFeed() {
     enabled: !!user,
   });
 
+  const { data: posts = [], isLoading: postsLoading } = useQuery({
+    queryKey: ["feed-posts"],
+    queryFn: () => listFeedPosts({ limit: 30 }),
+    enabled: !!user,
+  });
+
+  const queryClient = useQueryClient();
+  const [composerOpen, setComposerOpen] = useState(false);
+
   // client-side stitch: author profile by user_id (sharers without a public
   // profile fall back to a neutral identity in <FeedCard>)
   const profileByUser = useMemo(() => new Map(profiles.map((p) => [p.user_id, p])), [profiles]);
 
-  const isLoading = profilesLoading || feedLoading;
+  const isLoading = profilesLoading || feedLoading || postsLoading;
+
+  // Delete own post — best-effort photo cleanup, then refresh the feed.
+  const deletePostMutation = useMutation({
+    mutationFn: async (p: CommunityPost) => {
+      await deletePost(p.id);
+      if (p.photo_url) await deleteCatchPhoto(p.photo_url).catch(() => {});
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["feed-posts"] }),
+    onError: (err) => toast.error(err instanceof Error ? err.message : t("spearo.couldNotSave")),
+  });
+
+  // Interleave free-form posts with shared catches, newest first.
+  const items = useMemo(() => {
+    const merged: (
+      | { kind: "post"; date: number; post: CommunityPost }
+      | { kind: "catch"; date: number; catch: FeedCatch }
+    )[] = [
+      ...posts.map((p) => ({ kind: "post" as const, date: +new Date(p.created_at), post: p })),
+      ...feed.map((c) => ({
+        kind: "catch" as const,
+        date: +new Date(c.caught_at ?? c.created_at),
+        catch: c,
+      })),
+    ];
+    return merged.sort((a, b) => b.date - a.date);
+  }, [posts, feed]);
 
   return (
     <div className="space-y-6 pb-24">
@@ -1355,8 +1393,13 @@ function SpearoFeed() {
       {/* our promo / tips slot */}
       <PromoBanner variant="spearo" />
 
-      {/* ── Facebook-style stories row — always leads with the Create (+) tile ── */}
-      <StoriesRow profiles={profiles} fallbackName={t("spearo.feedAthlete")} mode="spearo" />
+      {/* ── Facebook-style stories row — the (+) tile opens the post composer ── */}
+      <StoriesRow
+        profiles={profiles}
+        fallbackName={t("spearo.feedAthlete")}
+        mode="spearo"
+        onCreate={() => setComposerOpen(true)}
+      />
 
       {/* quick chips into the training hubs (train · plan · calendar · history) */}
       <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -1387,12 +1430,15 @@ function SpearoFeed() {
         ))}
       </div>
 
-      {/* ── shared-catch feed ── */}
+      {/* free-form post composer ("what's on your mind?") */}
+      <PostComposer open={composerOpen} onOpenChange={setComposerOpen} />
+
+      {/* ── community feed — free-form posts interleaved with shared catches ── */}
       {isLoading ? (
         <div className="flex min-h-[30vh] items-center justify-center">
           <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
         </div>
-      ) : feed.length === 0 ? (
+      ) : items.length === 0 ? (
         // community empty state — same underwater language as the log's
         <div
           className="surface-2 relative overflow-hidden rounded-2xl p-10 text-center"
@@ -1412,15 +1458,26 @@ function SpearoFeed() {
       ) : (
         // full-bleed on phones (edge-to-edge like Facebook), rounded on wide
         <ul className="-mx-4 space-y-2.5 sm:mx-0">
-          {feed.map((c) => (
-            <FeedCard
-              key={c.id}
-              catch={c}
-              author={profileByUser.get(c.user_id)}
-              fallbackName={t("spearo.feedAthlete")}
-              lang={lang}
-            />
-          ))}
+          {items.map((it) =>
+            it.kind === "post" ? (
+              <PostCard
+                key={`post-${it.post.id}`}
+                post={it.post}
+                author={profileByUser.get(it.post.user_id)}
+                fallbackName={t("spearo.feedAthlete")}
+                currentUserId={user?.id}
+                onDelete={(p) => deletePostMutation.mutate(p)}
+              />
+            ) : (
+              <FeedCard
+                key={`catch-${it.catch.id}`}
+                catch={it.catch}
+                author={profileByUser.get(it.catch.user_id)}
+                fallbackName={t("spearo.feedAthlete")}
+                lang={lang}
+              />
+            ),
+          )}
         </ul>
       )}
     </div>

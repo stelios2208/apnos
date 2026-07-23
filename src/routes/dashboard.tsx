@@ -1,11 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { Trophy, Waves, ClipboardList, CalendarDays, History, Users } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { StoriesRow } from "@/components/StoriesRow";
 import { PromoBanner } from "@/components/PromoBanner";
 import { PostReactions } from "@/components/PostReactions";
+import { PostComposer } from "@/components/PostComposer";
+import { PostCard } from "@/components/PostCard";
 import { useAuth } from "@/hooks/use-auth";
 import {
   listPublicProfiles,
@@ -13,6 +16,8 @@ import {
   type SocialProfile,
   type FeedDive,
 } from "@/lib/profiles";
+import { listFeedPosts, deletePost, type CommunityPost } from "@/lib/posts";
+import { deleteCatchPhoto } from "@/lib/spearo-photos";
 import { disciplineName, formatResult, type DisciplineCode } from "@/lib/diving";
 import { athleteInitials, athleteColor } from "@/lib/athletes";
 import { nativeVibrate } from "@/lib/native";
@@ -122,6 +127,8 @@ function Dashboard() {
   const { user } = useAuth();
   const { t, lang } = useI18n();
   const el = lang === "el";
+  const qc = useQueryClient();
+  const [composerOpen, setComposerOpen] = useState(false);
 
   const { data: profiles = [], isLoading: profilesLoading } = useQuery({
     queryKey: ["public-profiles"],
@@ -135,8 +142,36 @@ function Dashboard() {
     enabled: !!user,
   });
 
+  const { data: posts = [], isLoading: postsLoading } = useQuery({
+    queryKey: ["feed-posts"],
+    queryFn: () => listFeedPosts({ limit: 30 }),
+    enabled: !!user,
+  });
+
   const profileByUser = useMemo(() => new Map(profiles.map((p) => [p.user_id, p])), [profiles]);
-  const isLoading = profilesLoading || feedLoading;
+  const isLoading = profilesLoading || feedLoading || postsLoading;
+
+  // Delete own post — best-effort photo cleanup, then refresh the feed.
+  const deletePostMutation = useMutation({
+    mutationFn: async (p: CommunityPost) => {
+      await deletePost(p.id);
+      if (p.photo_url) await deleteCatchPhoto(p.photo_url).catch(() => {});
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["feed-posts"] }),
+    onError: (err) => toast.error(err instanceof Error ? err.message : "Error"),
+  });
+
+  // Interleave free-form posts with shared dives, newest first — the real feed.
+  const items = useMemo(() => {
+    const merged: (
+      | { kind: "post"; date: number; post: CommunityPost }
+      | { kind: "dive"; date: number; dive: FeedDive }
+    )[] = [
+      ...posts.map((p) => ({ kind: "post" as const, date: +new Date(p.created_at), post: p })),
+      ...feed.map((d) => ({ kind: "dive" as const, date: +new Date(d.created_at), dive: d })),
+    ];
+    return merged.sort((a, b) => b.date - a.date);
+  }, [posts, feed]);
 
   // Quick access into the existing training hubs — routes unchanged.
   const chips = [
@@ -160,8 +195,13 @@ function Dashboard() {
       {/* our promo / tips slot */}
       <PromoBanner variant="apnos" />
 
-      {/* Facebook-style stories row — always leads with the Create (+) tile */}
-      <StoriesRow profiles={profiles} fallbackName={el ? "Αθλητής" : "Athlete"} mode="apnos" />
+      {/* Facebook-style stories row — the (+) tile opens the post composer */}
+      <StoriesRow
+        profiles={profiles}
+        fallbackName={el ? "Αθλητής" : "Athlete"}
+        mode="apnos"
+        onCreate={() => setComposerOpen(true)}
+      />
 
       {/* quick chips into the training hubs (train · plan · calendar · history) */}
       <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -187,12 +227,15 @@ function Dashboard() {
         ))}
       </div>
 
-      {/* shared-dive feed */}
+      {/* free-form post composer ("what's on your mind?") */}
+      <PostComposer open={composerOpen} onOpenChange={setComposerOpen} />
+
+      {/* community feed — free-form posts interleaved with shared dives */}
       {isLoading ? (
         <div className="flex min-h-[30vh] items-center justify-center">
           <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
         </div>
-      ) : feed.length === 0 ? (
+      ) : items.length === 0 ? (
         <div
           className="surface-2 relative overflow-hidden rounded-2xl p-10 text-center"
           style={{
@@ -217,15 +260,26 @@ function Dashboard() {
       ) : (
         // full-bleed on phones (edge-to-edge like Facebook), rounded card on wide
         <ul className="-mx-4 space-y-2.5 sm:mx-0">
-          {feed.map((d) => (
-            <FeedDiveCard
-              key={d.id}
-              dive={d}
-              author={profileByUser.get(d.user_id)}
-              fallbackName={el ? "Αθλητής" : "Athlete"}
-              lang={el ? "el" : "en"}
-            />
-          ))}
+          {items.map((it) =>
+            it.kind === "post" ? (
+              <PostCard
+                key={`post-${it.post.id}`}
+                post={it.post}
+                author={profileByUser.get(it.post.user_id)}
+                fallbackName={el ? "Αθλητής" : "Athlete"}
+                currentUserId={user?.id}
+                onDelete={(p) => deletePostMutation.mutate(p)}
+              />
+            ) : (
+              <FeedDiveCard
+                key={`dive-${it.dive.id}`}
+                dive={it.dive}
+                author={profileByUser.get(it.dive.user_id)}
+                fallbackName={el ? "Αθλητής" : "Athlete"}
+                lang={el ? "el" : "en"}
+              />
+            ),
+          )}
         </ul>
       )}
     </div>
