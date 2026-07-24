@@ -185,8 +185,10 @@ export async function getPublicProfile(userId: string): Promise<SocialProfile | 
 
 // ── avatar upload ────────────────────────────────────────────────────────────
 
-// Avatars render small; a 512px longest edge keeps uploads tiny and sharp.
-const AVATAR_MAX_EDGE = 512;
+// Avatars double as the full-width profile cover, so keep them large enough to
+// stay crisp on high-DPI phones (a 512px source looked pixelated stretched
+// across the cover). 1280px longest edge is sharp yet still light.
+const AVATAR_MAX_EDGE = 1280;
 
 /**
  * Upload the current user's avatar and return its public URL (cache-busted so a
