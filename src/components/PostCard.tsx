@@ -224,7 +224,12 @@ export function PostCard({
 
           {/* icon-only action row */}
           <div className="px-3 pb-1 pt-2.5">
-            <PostReactions targetType="post" targetId={post.id} shareData={shareData} />
+            <PostReactions
+              targetType="post"
+              targetId={post.id}
+              authorId={post.user_id}
+              shareData={shareData}
+            />
           </div>
 
           {/* caption below (Instagram) — small premium white text, more/less */}

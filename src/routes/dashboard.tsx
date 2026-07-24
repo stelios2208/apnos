@@ -372,6 +372,7 @@ function FeedDiveCard({
         <PostReactions
           targetType="dive"
           targetId={d.id}
+          authorId={d.user_id}
           shareData={{
             title: name,
             text: `${disciplineName(code, lang)} — ${formatResult(code, d.result)}`,

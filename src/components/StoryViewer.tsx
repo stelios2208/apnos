@@ -175,6 +175,7 @@ export function StoryViewer({
         <PostReactions
           targetType="story"
           targetId={story.id}
+          authorId={group.user_id}
           onDark
           shareData={{
             title: name,

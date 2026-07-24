@@ -1579,6 +1579,7 @@ function FeedCard({
         <PostReactions
           targetType="catch"
           targetId={c.id}
+          authorId={c.user_id}
           shareData={{
             title: name,
             text: [species, primary].filter(Boolean).join(" — "),
