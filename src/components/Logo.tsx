@@ -14,15 +14,15 @@ export function Logo({
   const { t } = useI18n();
   return (
     <Link to="/" className={className} aria-label="Apnos — breathe, dive, repeat">
-      <span className="flex items-center gap-2.5">
-        <BreathMark size={size} />
-        <span className="block">
+      <span className="flex min-w-0 items-center gap-2.5">
+        <BreathMark size={size} className="shrink-0" />
+        <span className="block min-w-0">
           <span
             className={`block text-2xl font-semibold lowercase leading-none tracking-tight ${onDark ? "text-white" : "text-foreground"}`}
           >
             apnos
           </span>
-          <span className="mt-1 block text-[0.55rem] font-medium lowercase tracking-[0.28em] text-[#5DCAA5]">
+          <span className="mt-1 block truncate text-[0.55rem] font-medium lowercase tracking-[0.22em] text-[#5DCAA5]">
             {t("tagline")}
           </span>
         </span>

@@ -334,42 +334,35 @@ function AthletePage() {
         </div>
       </div>
 
-      {/* ── Instagram-style action row: Edit (own) / Message (others) + Share ── */}
+      {/* ── Instagram-style action row: Edit (own only) + Share. The old
+          "Message" button on other athletes' profiles was removed — the
+          floating chat bubble already covers messaging, so it was redundant. ── */}
       <div className="flex items-center gap-2">
-        {isOwn ? (
+        {isOwn && (
           <button
             onClick={() => navigate({ to: "/profile" })}
-            className="pressable flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold"
+            className="pressable flex flex-1 items-center justify-center gap-2 rounded-xl py-2 text-sm font-semibold"
             style={{
               background: "rgba(29,158,117,0.12)",
               border: "1px solid rgba(93,202,165,0.3)",
               color: "#5DCAA5",
             }}
           >
-            <Pencil className="size-4" />
-            {t("athlete.edit")}
-          </button>
-        ) : (
-          <button
-            onClick={() => navigate({ to: "/messages", search: { to: id } })}
-            className="pressable flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold text-white"
-            style={{ background: "#1D9E75" }}
-          >
-            <MessageSquare className="size-4" />
-            {t("react.message")}
+            <Pencil className="size-4 shrink-0" />
+            <span className="whitespace-nowrap">{t("athlete.edit")}</span>
           </button>
         )}
         <button
           onClick={shareProfile}
-          className="pressable flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold"
+          className="pressable flex flex-1 items-center justify-center gap-2 rounded-xl py-2 text-sm font-semibold"
           style={{
             background: "rgba(var(--ink),0.05)",
             border: "1px solid rgba(var(--ink),0.1)",
             color: "rgba(var(--ink),0.75)",
           }}
         >
-          <Share2 className="size-4" />
-          {t("athlete.share")}
+          <Share2 className="size-4 shrink-0" />
+          <span className="whitespace-nowrap">{t("athlete.share")}</span>
         </button>
       </div>
 

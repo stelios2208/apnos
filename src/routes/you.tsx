@@ -10,7 +10,6 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
-import { ModeToggle } from "@/components/ModeToggle";
 import { useI18n } from "@/lib/i18n";
 import { nativeVibrate } from "@/lib/native";
 
@@ -112,9 +111,8 @@ function YouHub() {
         </p>
       </div>
 
-      {/* App mode switch (Apnos ⇄ Spearo) — placed up top so it's easy to find;
-          this is the cross-discovery hook that lets a freediver try Spearo. */}
-      <ModeToggle />
+      {/* The Apnos ⇄ Spearo switch lives in the app header (ModeSwitch), so the
+          large in-page toggle that used to sit here was redundant and removed. */}
 
       <div className="space-y-3">
         {ITEMS.map(({ to, icon: Icon, accent, title_el, title_en, sub_el, sub_en }) => (

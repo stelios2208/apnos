@@ -172,9 +172,9 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col px-4 pb-28 pt-6">
-      <header className="flex items-center justify-between">
-        <Logo />
-        <div className="flex items-center gap-1.5">
+      <header className="flex items-center justify-between gap-2">
+        <Logo className="min-w-0 shrink" />
+        <div className="flex shrink-0 items-center gap-1.5">
           {/* mode switch — sliding pill, tapping a side switches Apnos ↔ Spearo */}
           <ModeSwitch />
           <Button
