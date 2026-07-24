@@ -38,13 +38,17 @@ export function PostReactions({
   targetType,
   targetId,
   shareData,
+  onDark = false,
 }: {
-  targetType: "dive" | "catch" | "post";
+  targetType: "dive" | "catch" | "post" | "story";
   targetId: string;
   shareData?: { title?: string; text?: string; url?: string };
+  /** true over a dark photo (e.g. the story viewer) — icons render white. */
+  onDark?: boolean;
 }) {
   const { t } = useI18n();
   const navigate = useNavigate();
+  const iconColor = onDark ? "#fff" : "var(--foreground)";
   const [heart, setHeart] = useState(false);
 
   useEffect(() => {
@@ -82,7 +86,7 @@ export function PostReactions({
         aria-pressed={heart}
         aria-label={t("react.heart")}
         className="pressable -m-1 p-1"
-        style={{ color: heart ? HEART_RED : "var(--foreground)" }}
+        style={{ color: heart ? HEART_RED : iconColor }}
       >
         <Heart
           style={{ width: 25, height: 25 }}
@@ -99,7 +103,7 @@ export function PostReactions({
         }}
         aria-label={t("react.message")}
         className="pressable -m-1 p-1"
-        style={{ color: "var(--foreground)" }}
+        style={{ color: iconColor }}
       >
         <MessageCircle style={{ width: 24, height: 24 }} strokeWidth={1.8} />
       </button>
@@ -109,7 +113,7 @@ export function PostReactions({
         onClick={share}
         aria-label={t("react.share")}
         className="pressable -m-1 p-1"
-        style={{ color: "var(--foreground)" }}
+        style={{ color: iconColor }}
       >
         <Send style={{ width: 23, height: 23 }} className="-rotate-12" strokeWidth={1.8} />
       </button>
