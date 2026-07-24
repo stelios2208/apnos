@@ -14,7 +14,6 @@ import {
   CalendarDays,
   History,
   MessageSquare,
-  Settings2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AppLayout } from "@/components/AppLayout";
@@ -372,20 +371,6 @@ function AthletePage() {
           <Share2 className="size-4" />
           {t("athlete.share")}
         </button>
-        {isOwn && (
-          <button
-            onClick={() => navigate({ to: "/you" })}
-            aria-label={lang === "el" ? "Μενού" : "Menu"}
-            className="pressable flex size-11 shrink-0 items-center justify-center rounded-xl"
-            style={{
-              background: "rgba(var(--ink),0.05)",
-              border: "1px solid rgba(var(--ink),0.1)",
-              color: "rgba(var(--ink),0.75)",
-            }}
-          >
-            <Settings2 className="size-5" />
-          </button>
-        )}
       </div>
 
       {/* ── post from your own profile (the "option to post" on profiles) ── */}

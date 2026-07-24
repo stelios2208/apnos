@@ -9,9 +9,11 @@ import {
   Waves,
   UserRound,
   Home,
+  Menu,
   MessageCircle,
 } from "lucide-react";
 import { Logo } from "@/components/Logo";
+import { ModeSwitch } from "@/components/ModeSwitch";
 import { useAuth } from "@/hooks/use-auth";
 import { useI18n } from "@/lib/i18n";
 import { useMode, useModeAutoDefault } from "@/hooks/use-mode";
@@ -47,7 +49,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
   // App mode drives ONLY which bottom-nav tab set renders (below). `mode` is
   // always a concrete value; the smart default resolves once for new users.
-  const { mode, setMode } = useMode();
+  const { mode } = useMode();
   useModeAutoDefault();
 
   // My profile — drives the Instagram-style avatar on the profile tab.
@@ -86,9 +88,9 @@ export function AppLayout({ children }: { children: ReactNode }) {
   ]);
   const logActive = matches(["/log"]);
   const progressActive = matches(["/history"]);
-  const youActive = matches(["/you", "/profile", "/equipment", "/rules", "/settings"]);
-  // The avatar tab lights up on your OWN public profile page or the hub.
-  const meActive = youActive || pathname === `/athlete/${user.id}`;
+  const menuActive = matches(["/you", "/profile", "/equipment", "/rules", "/settings"]);
+  // The avatar tab lights up on your OWN public profile page.
+  const meActive = pathname === `/athlete/${user.id}`;
   // Spearo mode: the catch feed + log both live at /spearo.
   const spearoActive = matches(["/spearo"]);
 
@@ -157,14 +159,14 @@ export function AppLayout({ children }: { children: ReactNode }) {
       to={to}
       style={NAV_ITEM_STYLE}
       className={cn(
-        "rounded-lg text-[0.65rem] font-medium transition-colors",
+        "rounded-lg text-[0.6rem] font-medium transition-colors",
         active ? "text-primary" : "text-muted-foreground hover:text-foreground",
       )}
     >
       <span className="flex h-5 w-5 items-center justify-center">
         <Icon className={cn("size-5", active && "drop-shadow-[0_0_8px_var(--color-primary)]")} />
       </span>
-      {label}
+      <span className="whitespace-nowrap">{label}</span>
     </Link>
   );
 
@@ -172,24 +174,9 @@ export function AppLayout({ children }: { children: ReactNode }) {
     <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col px-4 pb-28 pt-6">
       <header className="flex items-center justify-between">
         <Logo />
-        <div className="flex items-center gap-1">
-          {/* mode toggle — tapping switches Apnos ↔ Spearo directly (no page) */}
-          <button
-            type="button"
-            onClick={() => {
-              nativeVibrate(10);
-              setMode(mode === "spearo" ? "apnos" : "spearo");
-            }}
-            aria-label={lang === "el" ? "Αλλαγή mode" : "Switch mode"}
-            className="pressable flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold"
-            style={{
-              background: "rgba(29,158,117,0.1)",
-              border: "1px solid rgba(93,202,165,0.3)",
-              color: "#5DCAA5",
-            }}
-          >
-            {mode === "spearo" ? "🎣 Spearo" : "🌊 Apnos"}
-          </button>
+        <div className="flex items-center gap-1.5">
+          {/* mode switch — sliding pill, tapping a side switches Apnos ↔ Spearo */}
+          <ModeSwitch />
           <Button
             variant="ghost"
             size="icon"
@@ -263,6 +250,12 @@ export function AppLayout({ children }: { children: ReactNode }) {
                 </span>
               </Link>
 
+              <NavLink
+                to="/you"
+                label={lang === "el" ? "Μενού" : "Menu"}
+                icon={Menu}
+                active={menuActive}
+              />
               <MeTab active={meActive} />
             </>
           ) : (
@@ -295,6 +288,12 @@ export function AppLayout({ children }: { children: ReactNode }) {
               {endItems.map((item) => (
                 <NavLink key={item.to} {...item} />
               ))}
+              <NavLink
+                to="/you"
+                label={lang === "el" ? "Μενού" : "Menu"}
+                icon={Menu}
+                active={menuActive}
+              />
               <MeTab active={meActive} />
             </>
           )}
