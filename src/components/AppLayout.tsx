@@ -1,4 +1,4 @@
-import React, { useEffect, useState, type ReactNode } from "react";
+import React, { useEffect, type ReactNode } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -10,7 +10,6 @@ import {
   UserRound,
   Home,
   MessageCircle,
-  Settings2,
 } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { useAuth } from "@/hooks/use-auth";
@@ -18,7 +17,6 @@ import { useI18n } from "@/lib/i18n";
 import { useMode, useModeAutoDefault } from "@/hooks/use-mode";
 import { getMyProfile } from "@/lib/profiles";
 import { nativeVibrate } from "@/lib/native";
-import { ModeGuideDialog } from "@/components/ModeGuideDialog";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -49,7 +47,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
   // App mode drives ONLY which bottom-nav tab set renders (below). `mode` is
   // always a concrete value; the smart default resolves once for new users.
-  const { mode } = useMode();
+  const { mode, setMode } = useMode();
   useModeAutoDefault();
 
   // My profile — drives the Instagram-style avatar on the profile tab.
@@ -58,20 +56,6 @@ export function AppLayout({ children }: { children: ReactNode }) {
     queryFn: () => getMyProfile(user!.id),
     enabled: !!user,
   });
-
-  // Mode / how-it-works dialog — opens once automatically for new users.
-  const [guideOpen, setGuideOpen] = useState(false);
-  useEffect(() => {
-    if (loading || !user) return;
-    try {
-      if (localStorage.getItem("apnos-guide-seen") !== "1") {
-        setGuideOpen(true);
-        localStorage.setItem("apnos-guide-seen", "1");
-      }
-    } catch {
-      /* ignore */
-    }
-  }, [loading, user]);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -189,10 +173,14 @@ export function AppLayout({ children }: { children: ReactNode }) {
       <header className="flex items-center justify-between">
         <Logo />
         <div className="flex items-center gap-1">
-          {/* mode chip — opens the focused mode-switch + how-it-works dialog */}
+          {/* mode toggle — tapping switches Apnos ↔ Spearo directly (no page) */}
           <button
             type="button"
-            onClick={() => setGuideOpen(true)}
+            onClick={() => {
+              nativeVibrate(10);
+              setMode(mode === "spearo" ? "apnos" : "spearo");
+            }}
+            aria-label={lang === "el" ? "Αλλαγή mode" : "Switch mode"}
             className="pressable flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold"
             style={{
               background: "rgba(29,158,117,0.1)",
@@ -202,12 +190,6 @@ export function AppLayout({ children }: { children: ReactNode }) {
           >
             {mode === "spearo" ? "🎣 Spearo" : "🌊 Apnos"}
           </button>
-          {/* hub / settings — profile edit, equipment, rules */}
-          <Button asChild variant="ghost" size="icon" aria-label={lang === "el" ? "Μενού" : "Menu"}>
-            <Link to="/you">
-              <Settings2 className="size-5" />
-            </Link>
-          </Button>
           <Button
             variant="ghost"
             size="icon"
@@ -218,8 +200,6 @@ export function AppLayout({ children }: { children: ReactNode }) {
           </Button>
         </div>
       </header>
-
-      <ModeGuideDialog open={guideOpen} onOpenChange={setGuideOpen} />
 
       <main className="flex-1 pt-8">{children}</main>
 
