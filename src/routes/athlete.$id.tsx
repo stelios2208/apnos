@@ -35,7 +35,7 @@ import { listFeedPosts, deletePost, type CommunityPost } from "@/lib/posts";
 import { deleteCatchPhoto } from "@/lib/spearo-photos";
 import { personalBestsBySpecies } from "@/lib/spearo-catches";
 import { speciesLabel, formatCatchSize, formatCatchWeight, type SpearoCatch } from "@/lib/spearo";
-import { fetchPublicResultsByUser } from "@/lib/competitions";
+import { fetchPublicPerformancesByUser, fetchCompetitions } from "@/lib/performances";
 import { disciplineName, formatResult, type DisciplineCode } from "@/lib/diving";
 import { athleteInitials, athleteColor } from "@/lib/athletes";
 import { SITE_URL } from "@/lib/site";
@@ -143,10 +143,20 @@ function AthletePage() {
     enabled: !!user && !!profile,
   });
 
-  // Their public freediving competition results.
+  // Their public freediving results — from the verified `performances` system.
+  // Competition-linked results only appear here once an admin has verified them
+  // (verified/self-reported are public; pending/rejected are not).
   const { data: results = [], isLoading: resultsLoading } = useQuery({
-    queryKey: ["public-comp-results", id],
-    queryFn: () => fetchPublicResultsByUser(id),
+    queryKey: ["public-performances", id],
+    queryFn: () => fetchPublicPerformancesByUser(id),
+    enabled: !!user && !!profile,
+  });
+
+  // Official events, to resolve a result's competition_id → name/date for the
+  // «Αγώνας» badge. Public read, cached and shared across the app.
+  const { data: competitions = [] } = useQuery({
+    queryKey: ["competitions"],
+    queryFn: fetchCompetitions,
     enabled: !!user && !!profile,
   });
 
@@ -205,10 +215,11 @@ function AthletePage() {
 
   const records = useMemo(() => personalBestsBySpecies(toCatches(shared)), [shared]);
 
-  // Best per discipline across shared dives AND public competition results —
+  // Best per discipline across shared dives AND public verified performances —
   // higher is better for both time (s) and distance/depth (m); when the record
-  // comes from a competition it carries the «Αγώνας» badge.
+  // is linked to an official event it carries the «Αγώνας» badge.
   const bestPerDiscipline = useMemo(() => {
+    const compById = new Map(competitions.map((c) => [c.id, c]));
     const best = new Map<string, ApnosBest>();
     for (const d of sharedDives) {
       const code = d.discipline as DisciplineCode;
@@ -222,20 +233,21 @@ function AthletePage() {
         });
       }
     }
-    for (const r of results) {
-      const cur = best.get(r.discipline);
-      if (!cur || r.result > cur.result) {
-        best.set(r.discipline, {
-          discipline: r.discipline,
-          result: r.result,
-          date: r.competition_date,
-          fromCompetition: true,
-          competitionName: r.competition_name,
+    for (const p of results) {
+      const cur = best.get(p.discipline);
+      if (!cur || p.value > cur.result) {
+        const comp = p.competition_id ? compById.get(p.competition_id) : undefined;
+        best.set(p.discipline, {
+          discipline: p.discipline,
+          result: p.value,
+          date: comp?.date ?? p.created_at,
+          fromCompetition: !!p.competition_id,
+          competitionName: comp?.name,
         });
       }
     }
     return [...best.values()].sort((a, b) => b.result - a.result);
-  }, [sharedDives, results]);
+  }, [sharedDives, results, competitions]);
 
   const color = athleteColor(id);
   const name = profile?.display_name || t("spearo.feedAthlete");

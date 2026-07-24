@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { Trophy, Plus, X, Pencil, Trash2, Globe, Lock, Loader2, Award } from "lucide-react";
@@ -30,8 +30,15 @@ import {
   type Federation,
 } from "@/lib/diving";
 
+// Legacy route. The self-reported competition_results system was consolidated
+// into the verified `performances` flow (/performances), so /rankings now just
+// redirects there — the old page/components below are kept dormant (unmounted)
+// to avoid churn and preserve history for reference.
 export const Route = createFileRoute("/rankings")({
   head: () => ({ meta: [{ title: "Κατατάξεις — Apnos" }] }),
+  beforeLoad: () => {
+    throw redirect({ to: "/performances" });
+  },
   component: () => (
     <AppLayout>
       <RankingsPage />
