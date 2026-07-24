@@ -209,7 +209,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
           to="/messages"
           aria-label={el ? "Μηνύματα" : "Messages"}
           onClick={hapticTick}
-          className="pressable glow-brand fixed bottom-28 right-4 z-30 flex size-12 items-center justify-center rounded-full"
+          className="pressable glow-brand fixed bottom-40 right-4 z-30 flex size-12 items-center justify-center rounded-full"
           style={{ background: "#1D9E75" }}
         >
           <MessageCircle className="size-6 text-white" />
@@ -316,7 +316,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
             aria-expanded={addOpen}
             className="pressable glow-brand absolute left-1/2 flex size-14 -translate-x-1/2 items-center justify-center rounded-full"
             style={{
-              bottom: 16,
+              bottom: 7,
               background: addOpen
                 ? "linear-gradient(180deg, #48566380, #2b3742)"
                 : "#1D9E75",
