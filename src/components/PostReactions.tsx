@@ -1,17 +1,21 @@
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
-import { Heart, MessageCircle, Send } from "lucide-react";
+import { Heart, Send } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import { useI18n } from "@/lib/i18n";
 import { nativeVibrate } from "@/lib/native";
 import { athleteInitials, athleteColor } from "@/lib/athletes";
+import { CommentsSheet } from "@/components/CommentsSheet";
+import { LikersDialog } from "@/components/LikersDialog";
 import { listLikes, toggleLike, type LikeInfo, type ReactionTarget } from "@/lib/reactions";
 
-// ── Post reactions (Instagram-style) ─────────────────────────────────────────
-// Icon row (heart · message · share) plus a "liked by" line with the actual
-// people's avatars. Likes are shared/server-backed (feed_reactions), so you see
-// WHO liked and a real count. Degrades to a plain heart if the table is missing.
+// ── Post reactions ───────────────────────────────────────────────────────────
+// Icon row (heart · comment · share) plus a tappable "liked by" line with the
+// actual people's avatars. Likes are shared/server-backed (feed_reactions) and
+// the comment icon opens comments on THIS item (feed_comments) — not a DM.
+// Tapping the likes line opens the "liked by" sheet. Degrades to a plain heart
+// if the tables are missing.
 
 const HEART_RED = "#ED4956";
 
@@ -19,22 +23,21 @@ export function PostReactions({
   targetType,
   targetId,
   shareData,
-  authorId,
   onDark = false,
 }: {
   targetType: ReactionTarget;
   targetId: string;
   shareData?: { title?: string; text?: string; url?: string };
-  /** When set, the message icon opens a DM with this user (the post author). */
+  /** Deprecated: the author id used to open a DM. Comments replaced that. */
   authorId?: string;
   onDark?: boolean;
 }) {
   const { t, lang } = useI18n();
   const { user } = useAuth();
-  const navigate = useNavigate();
   const qc = useQueryClient();
   const iconColor = onDark ? "#fff" : "var(--foreground)";
   const key = ["likes", targetType, targetId];
+  const [likersOpen, setLikersOpen] = useState(false);
 
   const { data: likes } = useQuery({
     queryKey: key,
@@ -85,12 +88,7 @@ export function PostReactions({
   };
 
   const likers = likes?.likers ?? [];
-  const likesLabel =
-    count === 1
-      ? lang === "el"
-        ? "1 like"
-        : "1 like"
-      : `${count} ${lang === "el" ? "likes" : "likes"}`;
+  const likesLabel = `${count} ${count === 1 ? t("react.likeOne") : t("react.likeMany")}`;
 
   return (
     <div className="space-y-1.5">
@@ -110,22 +108,8 @@ export function PostReactions({
           />
         </button>
 
-        <button
-          type="button"
-          onClick={() => {
-            nativeVibrate(10);
-            navigate(
-              authorId && authorId !== user?.id
-                ? { to: "/messages", search: { to: authorId } }
-                : { to: "/messages" },
-            );
-          }}
-          aria-label={t("react.message")}
-          className="pressable -m-1 p-1"
-          style={{ color: iconColor }}
-        >
-          <MessageCircle style={{ width: 24, height: 24 }} strokeWidth={1.8} />
-        </button>
+        {/* comment on THIS item (opens the comments sheet) */}
+        <CommentsSheet targetType={targetType} targetId={targetId} iconColor={iconColor} />
 
         <button
           type="button"
@@ -138,9 +122,16 @@ export function PostReactions({
         </button>
       </div>
 
-      {/* who liked — little avatars + count */}
+      {/* who liked — little avatars + count; tap to open the full "liked by" list */}
       {count > 0 && (
-        <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => {
+            nativeVibrate(10);
+            setLikersOpen(true);
+          }}
+          className="pressable -ml-0.5 flex items-center gap-2"
+        >
           {likers.length > 0 && (
             <div className="flex items-center">
               {likers.slice(0, 3).map((l, i) => {
@@ -172,8 +163,15 @@ export function PostReactions({
           >
             {likesLabel}
           </span>
-        </div>
+        </button>
       )}
+
+      <LikersDialog
+        targetType={targetType}
+        targetId={targetId}
+        open={likersOpen}
+        onOpenChange={setLikersOpen}
+      />
     </div>
   );
 }

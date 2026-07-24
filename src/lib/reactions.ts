@@ -63,6 +63,28 @@ export async function listLikes(
   return { count, likedByMe, likers };
 }
 
+/** The full list of PUBLIC people who liked a target (for the "liked by" sheet). */
+export async function listLikers(targetType: ReactionTarget, targetId: string): Promise<Liker[]> {
+  const { data, error } = await supabase
+    .from("feed_reactions")
+    .select("user_id")
+    .eq("target_type", targetType)
+    .eq("target_id", targetId)
+    .eq("kind", "heart");
+  if (error) {
+    if (isMissingTable(error)) return [];
+    throw error;
+  }
+  const ids = Array.from(new Set((data ?? []).map((r) => r.user_id as string)));
+  if (ids.length === 0) return [];
+  const { data: profs } = await supabase
+    .from("profiles")
+    .select("user_id, display_name, avatar_url")
+    .in("user_id", ids)
+    .eq("is_public", true);
+  return (profs ?? []) as Liker[];
+}
+
 /** Add or remove my like on a target (owner enforced by RLS). */
 export async function toggleLike(
   targetType: ReactionTarget,
