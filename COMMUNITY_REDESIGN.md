@@ -1,64 +1,70 @@
-# Apnos Community Redesign — Brief (copy)
+# Apnos Community — Brief (copy / continue)
 
-A running brief of the Facebook/Instagram-style community redesign, so we can
-keep building without re-deriving context. Audience: the freediving/spearfishing
-crew (30+), used to FB/Instagram — but with **our own branding**, not a clone.
+Ζωντανό brief για τον κοινωνικό ανασχεδιασμό (FB/Instagram feel) — ώστε να
+συνεχίζουμε **χωρίς να ξαναχτίζουμε context** και **χωρίς να σπαταλάμε tokens**.
+Κοινό: η παρέα freediving/spearfishing (30+), συνηθισμένη σε FB/Instagram.
 
-## ✅ Done so far
+## 🎯 Αρχές (να τις κρατάμε σε ΚΑΘΕ αλλαγή)
 
-- **Feed & profile as a social wall** — full-width photos, Instagram-style cards.
-- **Stories** — tall FB-style cards grouped per author; a "Create (+)" card with a
-  rotating tip; fullscreen grouped viewer with segmented progress bar (segments
-  only appear once opened).
-- **Green ring avatars** (brand green, not IG red) around profiles.
-- **General posts** (title + text + optional photo, no fish/dive required):
-  composer + `PostCard` with ⋯ menu (edit / share / delete) + caption more/less.
-- **Reactions** — server-backed shared likes (`feed_reactions`): heart (deep IG
-  red) + share, with little liker avatars + count. Works across post/dive/catch/story.
-- **Dive photos** — attach a photo to an Apnos dive (STA/DYN…), shown in the feed.
-- **Friends stack** — overlapping avatars + label, expands to the crew.
-- **Direct messages** between members (profile ↔ profile) at `/messages`.
-- **Profile** — cover header, Edit + Share actions, own composer, friends, posts.
-- **Bottom nav** — mode-aware; central "+"; profile tab is a round avatar → own profile.
-- **Mode** — Apnos ⇄ Spearo, persisted (`useMode`).
+1. **Premium αίσθηση** — καθαρό, «ακριβό», minimal. Λεπτομέρεια στο spacing,
+   στα avatars, στις κινήσεις (slide/scale), στα χρώματα.
+2. **Πάντα λειτουργικό** — τίποτα μισοτελειωμένο. Αν κάτι χρειάζεται SQL, το
+   λέμε καθαρά και ο κώδικας **degrade-άρει ευγενικά** μέχρι να τρέξει.
+3. **Κοντά σε FB/Instagram, ΟΧΙ copy** — γνώριμα μοτίβα (feed, stories, likes,
+   σχόλια) αλλά **δικός μας χαρακτήρας**: brand πράσινο, δικά μας σχήματα/λέξεις.
+4. **Δεν χαλάμε φτιάχνοντας** — κάθε αλλαγή περνά `tsc + lint + build` πριν το
+   commit· δεν αγγίζουμε άσχετα σημεία· κρατάμε το υπάρχον σε λειτουργία.
+5. **Token-efficient** — στοχευμένες αλλαγές, όχι μαζικά re-reads/rewrites.
+
+## ✅ Έτοιμα
+
+- **Feed & προφίλ ως social wall** — full-width φωτό, Instagram-style κάρτες.
+- **Stories** — ψηλές κάρτες ανά συγγραφέα· κάρτα «Δημιουργία (+)» με tip·
+  fullscreen viewer με segmented bar (γραμμές μόνο όταν ανοίξει).
+- **Πράσινο ring** (brand, όχι IG κόκκινο) γύρω από τα avatars.
+- **Γενικά posts** (τίτλος + κείμενο + προαιρετική φωτό): composer + `PostCard`
+  με ⋯ μενού (edit / share / delete) + caption more/less.
+- **Likes** shared/server-backed (`feed_reactions`): καρδιά (IG κόκκινο) +
+  μικρά avatars + πλήθος. **Ποιος έκανε like** → tap στη γραμμή ανοίγει
+  λίστα «Άρεσε σε» (μόνο δημόσια προφίλ, privacy-safe).
+- **Σχόλια** στα posts (όχι DM): `feed_comments` + bottom-sheet thread με
+  composer· δουλεύει σε post/βουτιά/ψαριά/ιστορία.
+- **Φωτό σε βουτιά** (STA/DYN…) — φαίνεται στο feed.
+- **Friends stack** — επικαλυπτόμενα avatars + label, ανοίγει η παρέα.
+- **Direct messages** μεταξύ μελών στο `/messages`.
+- **Header mode switch** — μικρό sliding πράσινο pill Apnos ⇄ Spearo (text-only,
+  χωρίς κύμα/ψάρι)· άμεσο switch, χωρίς σελίδα/pop-up. Σε feed & προφίλ.
+- **Μενού** στο bottom nav → `/you` (το avatar tab πάει στο δικό σου προφίλ).
 - Admin seeded: `techfollow.eshop@gmail.com`, `steliosmarkis@hotmail.com`.
 
-## 🎯 This round (priority order)
+## 🔜 Επόμενα (σειρά προτεραιότητας)
 
-1. **Header mode toggle** — bring back the compact "old" switch look (a horizontal
-   track with a sliding round knob, text-only Apnos/Spearo — NOT the wave/fish
-   card). Lives in the shared header, so it shows on both feed and profile. Remove
-   the separate sliders button from the profile.
-2. **Menu in the bottom nav** — the old `/you` page becomes a labelled **"Μενού" /
-   "Menu"** tab in the bottom navigation (no longer hidden behind a profile gear).
-3. **Comments on posts** (not DMs) — the icon under each post opens **comments on
-   that post**, not a direct message. New `feed_comments` table + `comments.ts` +
-   a comments sheet. Reused across post/dive/catch/story like likes.
-4. **Who liked** — tapping the likes row opens a "liked by" list (avatars + names).
-   Distinctive, our branding — not a pixel-clone of FB/Insta. Privacy-safe: only
-   public profiles are listed.
+1. **Tap σε post/φωτό → άνοιγμα & scroll στα posts** (IG-style viewer): από το
+   feed → scroll στο feed· από προφίλ → scroll στα posts του προφίλ.
+2. **Βουτιά ως post** — editable βουτιά + τίτλος/κείμενο (shareable caption)·
+   ⋯ edit/delete στην κάρτα βουτιάς (τα likes/σχόλια υπάρχουν ήδη).
+3. **Ειδοποιήσεις** (like/σχόλιο/μήνυμα/υπενθύμιση προπόνησης) — θέλει push infra.
+4. **Καθαρό avatar** — τα υπάρχοντα είναι 512px· re-upload για 1280px.
 
-## 🔜 Still pending / parked
+## 🛠 SQL στο Supabase (SQL editor — επικόλλησε το ΠΕΡΙΕΧΟΜΕΝΟ των αρχείων)
 
-- Tap a post/photo → open & scroll through posts (IG-style post viewer).
-- Dive-as-post: editable dive + title/text caption (likes already done).
-- Push reminders/notifications (needs push infra).
-- Existing avatars are 512px — re-upload for a crisp 1280px image.
-
-## 🛠 SQL to run in Supabase (in order, if not yet applied)
+Με τη σειρά, αν δεν έχουν τρέξει ήδη (όλα idempotent):
 
 ```
-supabase/migrations/20260724_feed_reactions.sql   -- shared likes
-supabase/migrations/20260724_direct_messages.sql  -- member DMs
-supabase/migrations/20260724_feed_comments.sql    -- NEW: post comments
+supabase/migrations/20260724_feed_reactions.sql   -- likes (ποιος έκανε like)
+supabase/migrations/20260724_direct_messages.sql  -- μηνύματα μελών
+supabase/migrations/20260724_feed_comments.sql    -- σχόλια στα posts
 ```
 
-## Conventions / gotchas
+## Σύμβαση / παγίδες
 
-- Render auto-deploys from `main` → **merge the branch to main** to ship.
-- Lovable-connected: never force-push / rebase / amend pushed commits.
-- Data layer degrades gracefully: missing table (PGRST205/42P01) → empty; missing
+- Το Render κάνει auto-deploy από **`main`** → για να ανέβει, **merge το branch
+  στο main**.
+- Lovable-connected: **ποτέ** force-push / rebase / amend / squash σε pushed
+  commits.
+- Το data layer degrade-άρει: λείπει table (PGRST205/42P01) → άδειο· λείπει
   column (PGRST204) → drop-and-retry.
-- Brand green `#1D9E75` (light `#5DCAA5`); heart red `#ED4956`.
-</content>
-</invoke>
+- Χρώματα: brand πράσινο `#1D9E75` (light `#5DCAA5`)· καρδιά `#ED4956`.
+- Reusable: `PostReactions` (καρδιά·σχόλιο·share + likers), `CommentsSheet`,
+  `LikersDialog`, `RingedAvatar`, `FriendsStack`, `StoriesRow`/`StoryViewer`.
+- i18n: **κάθε** string μπαίνει και στο `en` και στο `el` (`src/lib/i18n.tsx`).
