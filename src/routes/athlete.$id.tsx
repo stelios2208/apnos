@@ -335,9 +335,9 @@ function AthletePage() {
         </div>
       </div>
 
-      {/* ── Instagram-style action row: Edit (own) + Share ── */}
+      {/* ── Instagram-style action row: Edit (own) / Message (others) + Share ── */}
       <div className="flex items-center gap-2">
-        {isOwn && (
+        {isOwn ? (
           <button
             onClick={() => navigate({ to: "/profile" })}
             className="pressable flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold"
@@ -349,6 +349,15 @@ function AthletePage() {
           >
             <Pencil className="size-4" />
             {t("athlete.edit")}
+          </button>
+        ) : (
+          <button
+            onClick={() => navigate({ to: "/messages", search: { to: id } })}
+            className="pressable flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold text-white"
+            style={{ background: "#1D9E75" }}
+          >
+            <MessageSquare className="size-4" />
+            {t("react.message")}
           </button>
         )}
         <button

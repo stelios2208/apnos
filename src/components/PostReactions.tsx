@@ -19,11 +19,14 @@ export function PostReactions({
   targetType,
   targetId,
   shareData,
+  authorId,
   onDark = false,
 }: {
   targetType: ReactionTarget;
   targetId: string;
   shareData?: { title?: string; text?: string; url?: string };
+  /** When set, the message icon opens a DM with this user (the post author). */
+  authorId?: string;
   onDark?: boolean;
 }) {
   const { t, lang } = useI18n();
@@ -111,7 +114,11 @@ export function PostReactions({
           type="button"
           onClick={() => {
             nativeVibrate(10);
-            navigate({ to: "/messages" });
+            navigate(
+              authorId && authorId !== user?.id
+                ? { to: "/messages", search: { to: authorId } }
+                : { to: "/messages" },
+            );
           }}
           aria-label={t("react.message")}
           className="pressable -m-1 p-1"
