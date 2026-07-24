@@ -1,4 +1,4 @@
-import React, { useEffect, type ReactNode } from "react";
+import React, { useEffect, useState, type ReactNode } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -18,6 +18,7 @@ import { useI18n } from "@/lib/i18n";
 import { useMode, useModeAutoDefault } from "@/hooks/use-mode";
 import { getMyProfile } from "@/lib/profiles";
 import { nativeVibrate } from "@/lib/native";
+import { ModeGuideDialog } from "@/components/ModeGuideDialog";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -51,12 +52,26 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const { mode } = useMode();
   useModeAutoDefault();
 
-  // My profile — drives the Instagram-style avatar on the "You" tab.
+  // My profile — drives the Instagram-style avatar on the profile tab.
   const { data: myProfile } = useQuery({
     queryKey: ["profile-avatar", user?.id],
     queryFn: () => getMyProfile(user!.id),
     enabled: !!user,
   });
+
+  // Mode / how-it-works dialog — opens once automatically for new users.
+  const [guideOpen, setGuideOpen] = useState(false);
+  useEffect(() => {
+    if (loading || !user) return;
+    try {
+      if (localStorage.getItem("apnos-guide-seen") !== "1") {
+        setGuideOpen(true);
+        localStorage.setItem("apnos-guide-seen", "1");
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [loading, user]);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -117,40 +132,31 @@ export function AppLayout({ children }: { children: ReactNode }) {
     },
   ] as const;
 
-  // The profile tab, Instagram-style: your round photo goes to YOUR public
-  // profile (not the settings hub — that's the gear in the header), labelled
-  // with your first name.
-  const MeTab = ({ active }: { active: boolean }) => {
-    const first =
-      myProfile?.display_name?.trim().split(/\s+/)[0] || (lang === "el" ? "Προφίλ" : "Profile");
-    return (
-      <Link
-        to="/athlete/$id"
-        params={{ id: user.id }}
-        style={NAV_ITEM_STYLE}
-        className={cn(
-          "rounded-lg text-[0.65rem] font-medium transition-colors",
-          active ? "text-primary" : "text-muted-foreground hover:text-foreground",
-        )}
+  // The profile tab, Instagram-style: just your round photo (no label), opening
+  // YOUR public profile. Settings live behind the header gear.
+  const MeTab = ({ active }: { active: boolean }) => (
+    <Link
+      to="/athlete/$id"
+      params={{ id: user.id }}
+      aria-label={lang === "el" ? "Το προφίλ μου" : "My profile"}
+      style={NAV_ITEM_STYLE}
+    >
+      <span
+        className="flex size-8 items-center justify-center overflow-hidden rounded-full text-muted-foreground"
+        style={{
+          boxShadow: active
+            ? "0 0 0 2px var(--color-primary)"
+            : "0 0 0 1.5px rgba(var(--ink),0.25)",
+        }}
       >
-        <span
-          className="flex size-6 items-center justify-center overflow-hidden rounded-full"
-          style={{
-            boxShadow: active
-              ? "0 0 0 2px var(--color-primary)"
-              : "0 0 0 1.5px rgba(var(--ink),0.2)",
-          }}
-        >
-          {myProfile?.avatar_url ? (
-            <img src={myProfile.avatar_url} alt="" className="size-full object-cover" />
-          ) : (
-            <UserRound className="size-4" />
-          )}
-        </span>
-        <span className="max-w-[4.5rem] truncate">{first}</span>
-      </Link>
-    );
-  };
+        {myProfile?.avatar_url ? (
+          <img src={myProfile.avatar_url} alt="" className="size-full object-cover" />
+        ) : (
+          <UserRound className="size-4" />
+        )}
+      </span>
+    </Link>
+  );
 
   const NavLink = ({
     to,
@@ -182,8 +188,21 @@ export function AppLayout({ children }: { children: ReactNode }) {
     <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col px-4 pb-28 pt-6">
       <header className="flex items-center justify-between">
         <Logo />
-        <div className="flex items-center">
-          {/* hub / settings — profile edit, equipment, rules, mode switch */}
+        <div className="flex items-center gap-1">
+          {/* mode chip — opens the focused mode-switch + how-it-works dialog */}
+          <button
+            type="button"
+            onClick={() => setGuideOpen(true)}
+            className="pressable flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold"
+            style={{
+              background: "rgba(29,158,117,0.1)",
+              border: "1px solid rgba(93,202,165,0.3)",
+              color: "#5DCAA5",
+            }}
+          >
+            {mode === "spearo" ? "🎣 Spearo" : "🌊 Apnos"}
+          </button>
+          {/* hub / settings — profile edit, equipment, rules */}
           <Button asChild variant="ghost" size="icon" aria-label={lang === "el" ? "Μενού" : "Menu"}>
             <Link to="/you">
               <Settings2 className="size-5" />
@@ -199,6 +218,8 @@ export function AppLayout({ children }: { children: ReactNode }) {
           </Button>
         </div>
       </header>
+
+      <ModeGuideDialog open={guideOpen} onOpenChange={setGuideOpen} />
 
       <main className="flex-1 pt-8">{children}</main>
 

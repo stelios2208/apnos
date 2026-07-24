@@ -1,16 +1,24 @@
 import { useEffect, useState } from "react";
-import { X, Trash2 } from "lucide-react";
+import { MoreHorizontal, Trash2, X } from "lucide-react";
 import { athleteInitials, athleteColor } from "@/lib/athletes";
+import { PostReactions } from "@/components/PostReactions";
 import { useI18n } from "@/lib/i18n";
+import { SITE_URL } from "@/lib/site";
 import type { CommunityStory, StoryGroup } from "@/lib/stories";
 import type { SocialProfile } from "@/lib/profiles";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 // ── Story viewer ─────────────────────────────────────────────────────────────
-// Fullscreen playback grouped by author (Instagram). The segmented bar at the
-// top shows the current author's stories; tapping the right half advances to
-// the next segment and, at the end of a person's stories, continues to the next
-// author's group. Tapping the left half goes back. The author can delete their
-// own story. `startGroup === null` means closed.
+// Fullscreen playback grouped by author (Instagram). Segmented bar plays the
+// current author's stories then continues to the next author. Bottom bar has
+// the heart · message · share actions; the ⋯ menu (own stories) can delete.
+// The overlay uses 100dvh so it always covers the screen — no page peeking
+// through at the bottom.
 export function StoryViewer({
   groups,
   startGroup,
@@ -66,9 +74,12 @@ export function StoryViewer({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col" style={{ background: "#02101d" }}>
+    <div
+      className="fixed inset-0 z-50 flex flex-col"
+      style={{ background: "#02101d", height: "100dvh" }}
+    >
       {/* segmented progress — one segment per story in THIS author's group */}
-      <div className="flex gap-1 p-2">
+      <div className="flex gap-1 p-2 pt-3">
         {group.stories.map((_, i) => (
           <span
             key={i}
@@ -92,17 +103,29 @@ export function StoryViewer({
         </span>
         <span className="min-w-0 flex-1 truncate text-sm font-semibold text-white">{name}</span>
         {isOwn && (
-          <button
-            type="button"
-            onClick={() => {
-              onDelete(story);
-              next();
-            }}
-            aria-label={t("common.delete")}
-            className="flex size-9 items-center justify-center rounded-full text-white/80"
-          >
-            <Trash2 className="size-4" />
-          </button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                aria-label="•••"
+                className="flex size-9 items-center justify-center rounded-full text-white/90"
+              >
+                <MoreHorizontal className="size-5" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-40">
+              <DropdownMenuItem
+                onClick={() => {
+                  onDelete(story);
+                  next();
+                }}
+                className="text-red-500 focus:text-red-500"
+              >
+                <Trash2 className="mr-2 size-4" />
+                {t("common.delete")}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
         <button
           type="button"
@@ -142,6 +165,23 @@ export function StoryViewer({
             <p className="text-sm leading-snug text-white">{story.caption}</p>
           </div>
         )}
+      </div>
+
+      {/* bottom action bar — heart · message · share (solid, covers the bottom) */}
+      <div
+        className="px-4 pt-3"
+        style={{ background: "#02101d", paddingBottom: "calc(env(safe-area-inset-bottom) + 16px)" }}
+      >
+        <PostReactions
+          targetType="story"
+          targetId={story.id}
+          onDark
+          shareData={{
+            title: name,
+            text: story.caption || "",
+            url: `${SITE_URL}/athlete/${group.user_id}`,
+          }}
+        />
       </div>
     </div>
   );
