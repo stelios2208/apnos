@@ -147,6 +147,30 @@ export async function fetchLeaderboard(discipline: DisciplineCode): Promise<Perf
   return [...bestByUser.values()].sort((a, b) => b.value - a.value);
 }
 
+/**
+ * One athlete's PUBLIC results for the shared /athlete/$id profile — the
+ * canonical source for the profile's "records per discipline" now that the
+ * profile reads the verified `performances` system (not the legacy
+ * competition_results table). Only rows the athlete chose to make public and
+ * that are visible on the leaderboard (verified or self-reported) are returned;
+ * pending and rejected declarations stay off the public profile. Missing table
+ * degrades to an empty list instead of crashing.
+ */
+export async function fetchPublicPerformancesByUser(userId: string): Promise<Performance[]> {
+  const { data, error } = await supabase
+    .from("performances")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("is_public", true)
+    .in("status", ["verified", "self_reported"])
+    .order("created_at", { ascending: false });
+  if (error) {
+    if (isMissingTable(error)) return [];
+    throw error;
+  }
+  return (data ?? []) as Performance[];
+}
+
 /** Upload a proof photo to the owner-scoped folder; returns its public URL. */
 export async function uploadProof(userId: string, file: File): Promise<string> {
   const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";

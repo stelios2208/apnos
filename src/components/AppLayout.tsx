@@ -1,56 +1,58 @@
-import React, { useEffect, type ReactNode } from "react";
+import React, { useEffect, useState, type ReactNode } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
-  LayoutDashboard,
   Plus,
-  History,
+  X,
   LogOut,
   Waves,
   UserRound,
-  Home,
   Menu,
+  Search,
+  ClipboardList,
+  Target,
+  Fish,
   MessageCircle,
 } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { ModeSwitch } from "@/components/ModeSwitch";
+import { SearchSheet } from "@/components/SearchSheet";
 import { useAuth } from "@/hooks/use-auth";
 import { useI18n } from "@/lib/i18n";
 import { useMode, useModeAutoDefault } from "@/hooks/use-mode";
 import { getMyProfile } from "@/lib/profiles";
 import { nativeVibrate } from "@/lib/native";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 
 // Short haptic tick for primary taps — nativeVibrate carries all the SSR /
 // no-native guards, so this is safe to call from any click handler.
 const hapticTick = () => nativeVibrate(10);
 
-const NAV_ITEM_STYLE: React.CSSProperties = {
-  height: 56,
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  justifyContent: "center",
-  flex: 1,
-  gap: 4,
-};
+// One "add" action in the central "+" sheet.
+interface AddItem {
+  to: "/log" | "/planner" | "/coach" | "/spearo";
+  search?: { log: true };
+  icon: typeof Waves;
+  label: string;
+  sub: string;
+}
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const { user, loading, signOut } = useAuth();
   const { t, lang } = useI18n();
+  const el = lang === "el";
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  // Only /spearo consumes a search param (log: true = the catch-log view); read
-  // it here so the Spearo "+" can glow exactly when the log view is open.
-  const spearoLogOpen = useRouterState({
-    select: (s) => (s.location.search as { log?: boolean }).log === true,
-  });
 
-  // App mode drives ONLY which bottom-nav tab set renders (below). `mode` is
-  // always a concrete value; the smart default resolves once for new users.
+  // App mode drives ONLY the central "+" action set (below). `mode` is always a
+  // concrete value; the smart default resolves once for new users.
   const { mode } = useMode();
   useModeAutoDefault();
+
+  // The "+" action sheet and the search overlay — both are light client-side
+  // overlays, so they carry no route and reset on navigation via their onClick.
+  const [addOpen, setAddOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   // My profile — drives the Instagram-style avatar on the profile tab.
   const { data: myProfile } = useQuery({
@@ -76,56 +78,59 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const matches = (paths: string[]) =>
     paths.some((p) => pathname === p || pathname.startsWith(p + "/"));
 
-  // 5 hubs: Home · Train · (+) · Progress · You
-  const homeActive = matches(["/dashboard"]);
-  const trainActive = matches([
-    "/train",
-    "/sta-trainer",
-    "/warmup",
-    "/planner",
-    "/coach",
-    "/calendar",
-  ]);
-  const logActive = matches(["/log"]);
-  const progressActive = matches(["/history"]);
-  const menuActive = matches(["/you", "/profile", "/equipment", "/rules", "/settings"]);
+  // Bottom nav (4 zones): Μενού · (+) · Αναζήτηση · Εσύ(avatar).
+  const menuActive = matches(["/you"]);
   // The avatar tab lights up on your OWN public profile page.
   const meActive = pathname === `/athlete/${user.id}`;
-  // Spearo mode: the catch feed + log both live at /spearo.
-  const spearoActive = matches(["/spearo"]);
 
-  const sideItems = [
-    {
-      to: "/dashboard",
-      label: lang === "el" ? "Αρχική" : "Home",
-      icon: LayoutDashboard,
-      active: homeActive,
-    },
-    {
-      to: "/train",
-      label: lang === "el" ? "Προπόνηση" : "Train",
-      icon: Waves,
-      active: trainActive,
-    },
-  ] as const;
-
-  const endItems = [
-    {
-      to: "/history",
-      label: lang === "el" ? "Πρόοδος" : "Progress",
-      icon: History,
-      active: progressActive,
-    },
-  ] as const;
+  // Central "+" opens a small action sheet instead of jumping to one screen.
+  // Contents are mode-aware; Spearo logs a catch, Apnos logs a dive.
+  const addItems: AddItem[] =
+    mode === "spearo"
+      ? [
+          {
+            to: "/spearo",
+            search: { log: true },
+            icon: Fish,
+            label: el ? "Ψαριά" : "Catch",
+            sub: el ? "Καταγραφή ψαριάς" : "Log a catch",
+          },
+          {
+            to: "/planner",
+            icon: ClipboardList,
+            label: el ? "Πλάνο" : "Plan",
+            sub: el ? "Σετ & στόχοι" : "Sets & goals",
+          },
+        ]
+      : [
+          {
+            to: "/log",
+            icon: Waves,
+            label: el ? "Βουτιά" : "Dive",
+            sub: el ? "Καταγραφή κατάδυσης" : "Log a dive",
+          },
+          {
+            to: "/planner",
+            icon: ClipboardList,
+            label: el ? "Πλάνο" : "Plan",
+            sub: el ? "Σετ & στόχοι" : "Sets & goals",
+          },
+          {
+            to: "/coach",
+            icon: Target,
+            label: el ? "Πρόγραμμα Coach" : "Coach program",
+            sub: el ? "Ανάθεση σε αθλητή" : "Assign to an athlete",
+          },
+        ];
 
   // The profile tab, Instagram-style: just your round photo (no label), opening
-  // YOUR public profile. Settings live behind the header gear.
+  // YOUR public profile. Settings live inside the Menu grid.
   const MeTab = ({ active }: { active: boolean }) => (
     <Link
       to="/athlete/$id"
       params={{ id: user.id }}
-      aria-label={lang === "el" ? "Το προφίλ μου" : "My profile"}
-      style={NAV_ITEM_STYLE}
+      aria-label={el ? "Το προφίλ μου" : "My profile"}
+      className="flex flex-col items-center gap-1"
     >
       <span
         className="flex size-8 items-center justify-center overflow-hidden rounded-full text-muted-foreground"
@@ -141,40 +146,47 @@ export function AppLayout({ children }: { children: ReactNode }) {
           <UserRound className="size-4" />
         )}
       </span>
+      <span
+        className="text-[0.58rem] font-medium"
+        style={{ color: active ? "var(--color-primary)" : "rgba(var(--ink),0.4)" }}
+      >
+        {el ? "Εσύ" : "You"}
+      </span>
     </Link>
   );
 
-  const NavLink = ({
+  const NavIcon = ({
     to,
     label,
     icon: Icon,
     active,
+    onClick,
   }: {
     to: string;
     label: string;
-    icon: typeof History;
+    icon: typeof Menu;
     active: boolean;
+    onClick?: () => void;
   }) => (
     <Link
       to={to}
-      style={NAV_ITEM_STYLE}
-      className={cn(
-        "rounded-lg text-[0.6rem] font-medium transition-colors",
-        active ? "text-primary" : "text-muted-foreground hover:text-foreground",
-      )}
+      onClick={onClick}
+      className="flex flex-col items-center gap-1 text-[0.58rem] font-medium transition-colors"
+      style={{ color: active ? "var(--color-primary)" : "rgba(var(--ink),0.4)" }}
     >
-      <span className="flex h-5 w-5 items-center justify-center">
-        <Icon className={cn("size-5", active && "drop-shadow-[0_0_8px_var(--color-primary)]")} />
-      </span>
+      <Icon
+        className="size-6"
+        style={active ? { filter: "drop-shadow(0 0 8px var(--color-primary))" } : undefined}
+      />
       <span className="whitespace-nowrap">{label}</span>
     </Link>
   );
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-2xl flex-col px-4 pb-28 pt-6">
-      <header className="flex items-center justify-between">
-        <Logo />
-        <div className="flex items-center gap-1.5">
+      <header className="flex items-center justify-between gap-2">
+        <Logo className="min-w-0 shrink" />
+        <div className="flex shrink-0 items-center gap-1.5">
           {/* mode switch — sliding pill, tapping a side switches Apnos ↔ Spearo */}
           <ModeSwitch />
           <Button
@@ -191,112 +203,131 @@ export function AppLayout({ children }: { children: ReactNode }) {
       <main className="flex-1 pt-8">{children}</main>
 
       {/* floating chat bubble — direct line to the admin (Messenger-style).
-          Hidden on the chat screen itself. */}
-      {!pathname.startsWith("/messages") && (
+          Hidden on the chat screen itself and while an overlay is open. */}
+      {!pathname.startsWith("/messages") && !addOpen && !searchOpen && (
         <Link
           to="/messages"
-          aria-label={lang === "el" ? "Μηνύματα" : "Messages"}
+          aria-label={el ? "Μηνύματα" : "Messages"}
           onClick={hapticTick}
-          className="pressable glow-brand fixed bottom-24 right-4 z-40 flex size-12 items-center justify-center rounded-full"
+          className="pressable glow-brand fixed bottom-28 right-4 z-30 flex size-12 items-center justify-center rounded-full"
           style={{ background: "#1D9E75" }}
         >
           <MessageCircle className="size-6 text-white" />
         </Link>
       )}
 
+      {/* ── central "+" action sheet (Piraeus-style stack) ── */}
+      {addOpen && (
+        <div
+          className="fixed inset-0 z-40"
+          onClick={() => setAddOpen(false)}
+          role="presentation"
+        >
+          <div
+            className="absolute inset-0"
+            style={{
+              background:
+                "radial-gradient(120% 60% at 50% 100%, rgba(2,10,20,0.55), rgba(2,10,20,0.86))",
+              backdropFilter: "blur(2px)",
+            }}
+          />
+          <div
+            className="absolute inset-x-0 bottom-28 z-10 flex flex-col items-center gap-3 px-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {addItems.map((item) => (
+              <Link
+                key={item.label}
+                to={item.to}
+                search={item.search as never}
+                onClick={() => {
+                  hapticTick();
+                  setAddOpen(false);
+                }}
+                className="pressable flex w-full max-w-xs items-center gap-3 rounded-full py-3 pl-3 pr-5"
+                style={{
+                  background:
+                    "linear-gradient(180deg, rgba(29,158,117,0.18), rgba(255,255,255,0.05))",
+                  border: "1px solid rgba(93,202,165,0.28)",
+                  boxShadow: "0 10px 24px -12px rgba(0,0,0,0.7)",
+                }}
+              >
+                <span
+                  className="flex size-9 shrink-0 items-center justify-center rounded-xl text-white"
+                  style={{
+                    background: "linear-gradient(180deg, #5DCAA5, #1D9E75)",
+                    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.3)",
+                  }}
+                >
+                  <item.icon className="size-4" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-sm font-bold text-foreground">{item.label}</span>
+                  <span className="block text-[0.6rem] text-foreground/45">{item.sub}</span>
+                </span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── search overlay ── */}
+      <SearchSheet open={searchOpen} onClose={() => setSearchOpen(false)} />
+
+      {/* ── bottom nav: Μενού · (+) · Αναζήτηση · Εσύ ── */}
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-background/80 backdrop-blur-lg">
-        <div className="mx-auto flex max-w-2xl items-center justify-around px-2">
-          {/* Mode switches ONLY the tab set inside this shared <nav> shell.
-              DEFENSIVE: only an exact "spearo" renders the Spearo tabs; any other
-              value — undefined, unresolved, a future/unknown mode — falls through
-              to the existing Apnos nav, so a bug degrades to today's behaviour,
-              never a blank shell. The Apnos branch below is byte-for-byte the
-              original nav, only relocated inside this conditional. */}
-          {mode === "spearo" ? (
-            <>
-              {/* Spearo: Αρχική (feed) · (+) Log · Εσύ — same structure, 3 tabs.
-                  "Εσύ" points to the SAME /you route the Apnos nav uses. */}
-              <NavLink
-                to="/spearo"
-                label={t("nav.spearoHome")}
-                icon={Home}
-                active={spearoActive && !spearoLogOpen}
-              />
+        <div
+          className="relative mx-auto flex max-w-2xl items-center justify-between px-8"
+          style={{ height: 68 }}
+        >
+          <NavIcon
+            to="/you"
+            label={el ? "Μενού" : "Menu"}
+            icon={Menu}
+            active={menuActive}
+            onClick={hapticTick}
+          />
 
-              {/* central log button — identical treatment to the Apnos "+".
-                  Opens the catch-log view (/spearo?log=true); the bare /spearo
-                  home is the community feed. */}
-              <Link
-                to="/spearo"
-                search={{ log: true }}
-                aria-label={t("nav.spearoLog")}
-                className="flex flex-1 items-center justify-center"
-                style={{ height: 56 }}
-                onClick={hapticTick}
-              >
-                <span
-                  className="pressable glow-brand flex h-12 w-12 items-center justify-center rounded-full"
-                  style={
-                    {
-                      background: "#1D9E75",
-                      "--glow-ring":
-                        spearoActive && spearoLogOpen
-                          ? "0 0 0 4px rgba(29,158,117,0.25)"
-                          : undefined,
-                    } as React.CSSProperties
-                  }
-                >
-                  <Plus className="size-6 text-white" />
-                </span>
-              </Link>
+          <div className="flex items-center gap-7">
+            <button
+              type="button"
+              onClick={() => {
+                hapticTick();
+                setSearchOpen(true);
+              }}
+              aria-label={el ? "Αναζήτηση" : "Search"}
+              className="flex flex-col items-center gap-1 text-[0.58rem] font-medium"
+              style={{ color: searchOpen ? "var(--color-primary)" : "rgba(var(--ink),0.4)" }}
+            >
+              <Search className="size-6" />
+              <span className="whitespace-nowrap">{el ? "Αναζήτηση" : "Search"}</span>
+            </button>
+            <MeTab active={meActive} />
+          </div>
 
-              <NavLink
-                to="/you"
-                label={lang === "el" ? "Μενού" : "Menu"}
-                icon={Menu}
-                active={menuActive}
-              />
-              <MeTab active={meActive} />
-            </>
-          ) : (
-            <>
-              {sideItems.map((item) => (
-                <NavLink key={item.to} {...item} />
-              ))}
-
-              {/* central record / log button */}
-              <Link
-                to="/log"
-                aria-label={lang === "el" ? "Καταγραφή" : "Log"}
-                className="flex flex-1 items-center justify-center"
-                style={{ height: 56 }}
-                onClick={hapticTick}
-              >
-                <span
-                  className="pressable glow-brand flex h-12 w-12 items-center justify-center rounded-full"
-                  style={
-                    {
-                      background: "#1D9E75",
-                      "--glow-ring": logActive ? "0 0 0 4px rgba(29,158,117,0.25)" : undefined,
-                    } as React.CSSProperties
-                  }
-                >
-                  <Plus className="size-6 text-white" />
-                </span>
-              </Link>
-
-              {endItems.map((item) => (
-                <NavLink key={item.to} {...item} />
-              ))}
-              <NavLink
-                to="/you"
-                label={lang === "el" ? "Μενού" : "Menu"}
-                icon={Menu}
-                active={menuActive}
-              />
-              <MeTab active={meActive} />
-            </>
-          )}
+          {/* central "+" — raised, toggles the action sheet (becomes ✕ open) */}
+          <button
+            type="button"
+            onClick={() => {
+              hapticTick();
+              setAddOpen((o) => !o);
+            }}
+            aria-label={el ? "Προσθήκη" : "Add"}
+            aria-expanded={addOpen}
+            className="pressable glow-brand absolute left-1/2 flex size-14 -translate-x-1/2 items-center justify-center rounded-full"
+            style={{
+              bottom: 16,
+              background: addOpen
+                ? "linear-gradient(180deg, #48566380, #2b3742)"
+                : "#1D9E75",
+            }}
+          >
+            {addOpen ? (
+              <X className="size-6 text-white" />
+            ) : (
+              <Plus className="size-6 text-white" />
+            )}
+          </button>
         </div>
       </nav>
     </div>
